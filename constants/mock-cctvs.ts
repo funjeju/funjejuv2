@@ -1,9 +1,11 @@
 import type { Cctv } from "@/types/cctv";
 
-const WORKER = process.env.NEXT_PUBLIC_WORKER_URL ?? "";
+const PROXY_BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
 
 function proxy(id: string): string | null {
-  return WORKER ? `${WORKER}/cctv/${id}` : null;
+  if (!PROXY_BASE) return null;
+  // Cafe24 PHP 프록시: https://도메인/cctv-proxy.php?id=xxx
+  return `${PROXY_BASE}?id=${id}`;
 }
 
 export const mockCctvs: Cctv[] = [
