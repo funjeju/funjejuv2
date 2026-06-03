@@ -1,0 +1,18 @@
+name = "funjeju-cctv-proxy"
+main = "worker.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV 네임스페이스: CCTV 원본 URL 저장소
+# 배포 후 `wrangler kv:namespace create CCTV_ORIGINS` 로 id 발급
+[[kv_namespaces]]
+binding = "CCTV_ORIGINS"
+id = "a2e7fee994e94d9f9a5f1972201fcbc3"
+
+[vars]
+ALLOWED_ORIGIN = "https://funjeju.com"
+
+# 커스텀 도메인 (Cloudflare DNS에 worker.funjeju.com 등록 후 활성화)
+# [[routes]]
+# pattern = "worker.funjeju.com/cctv/*"
+# zone_name = "funjeju.com"

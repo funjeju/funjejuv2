@@ -1,29 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-primary: #f7f2e8;
-  --color-bg-secondary: #efe4d3;
-  --color-text-primary: #2b2b2b;
-  --color-text-secondary: #6e665e;
-  --color-ocean-blue: #6da7d8;
-  --color-sunset-orange: #d69c62;
-  --color-forest-green: #7fa58a;
-  --color-border-soft: #d8ccbc;
-  --radius-card: 16px;
-  --radius-panel: 24px;
-  --shadow-soft: 0 12px 28px rgba(43, 43, 43, 0.08);
+  --color-bg-primary: #fffbf2;
+  --color-bg-secondary: #fff3d6;
+  --color-bg-card: #ffffff;
+  --color-text-primary: #1e1e1e;
+  --color-text-secondary: #888888;
+  --color-brand-orange: #ff5722;
+  --color-brand-navy: #1a3a8a;
+  --color-brand-yellow: #ffd600;
+  --color-ocean-blue: #4ab8e8;
+  --color-jeju-green: #5cbf5c;
+  --color-border-soft: #ebebeb;
+  --color-live-red: #ff3b30;
+  --radius-card: 14px;
+  --radius-panel: 20px;
+  --radius-full: 9999px;
+  --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.07);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
   --font-sans: Pretendard, SUIT, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root {
-  --bg-primary: #f7f2e8;
-  --bg-secondary: #efe4d3;
-  --text-primary: #2b2b2b;
-  --text-secondary: #6e665e;
-  --ocean-blue: #6da7d8;
-  --sunset-orange: #d69c62;
-  --forest-green: #7fa58a;
-  --border-soft: #d8ccbc;
+  --bg-primary: #fffbf2;
+  --bg-secondary: #fff3d6;
+  --bg-card: #ffffff;
+  --text-primary: #1e1e1e;
+  --text-secondary: #888888;
+  --brand-orange: #ff5722;
+  --brand-navy: #1a3a8a;
+  --brand-yellow: #ffd600;
+  --ocean-blue: #4ab8e8;
+  --jeju-green: #5cbf5c;
+  --border-soft: #ebebeb;
+  --live-red: #ff3b30;
 }
 
 * {
@@ -39,9 +49,7 @@ body {
   min-height: 100%;
   margin: 0;
   color: var(--text-primary);
-  background:
-    linear-gradient(180deg, rgba(247, 242, 232, 0.96), rgba(239, 228, 211, 0.78)),
-    var(--bg-primary);
+  background: var(--bg-primary);
 }
 
 a {

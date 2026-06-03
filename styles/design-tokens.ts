@@ -1,18 +1,23 @@
 export const designTokens = {
   colors: {
-    backgroundPrimary: "#F7F2E8",
-    backgroundSecondary: "#EFE4D3",
-    textPrimary: "#2B2B2B",
-    textSecondary: "#6E665E",
-    oceanBlue: "#6DA7D8",
-    sunsetOrange: "#D69C62",
-    forestGreen: "#7FA58A",
-    borderSoft: "#D8CCBC"
+    bgPrimary: "#fffbf2",
+    bgSecondary: "#fff3d6",
+    bgCard: "#ffffff",
+    textPrimary: "#1e1e1e",
+    textSecondary: "#888888",
+    brandOrange: "#ff5722",
+    brandNavy: "#1a3a8a",
+    brandYellow: "#ffd600",
+    oceanBlue: "#4ab8e8",
+    jejuGreen: "#5cbf5c",
+    borderSoft: "#ebebeb",
+    liveRed: "#ff3b30",
   },
   radius: {
     sm: "8px",
-    md: "16px",
-    lg: "24px"
+    md: "14px",
+    lg: "20px",
+    full: "9999px",
   },
-  spacing: [4, 8, 12, 16, 24, 32]
+  spacing: [4, 8, 12, 16, 24, 32],
 } as const;
