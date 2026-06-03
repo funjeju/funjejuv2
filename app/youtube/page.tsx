@@ -1,162 +1,225 @@
+"use client";
+
+import { useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 
-const categories = ["전체", "드라이브", "오름", "맛집", "카페", "힐링", "액티비티"];
+type Spot = {
+  name: string;
+  category: string;
+  description: string;
+  timestamp: string;
+  emoji: string;
+};
 
-const videos = [
-  {
-    id: 1,
-    title: "제주 서쪽 감성 여행",
-    channel: "제주감성여행",
-    duration: "3:25",
-    spots: 12,
-    summary: "애월 해안도로 → 협재 해수욕장 → 한림공원 → 수월봉 노을 순서로 제주 서부의 핵심 감성 코스를 담았습니다.",
-    tags: ["드라이브", "감성"],
-    thumb: "🌅",
-  },
-  {
-    id: 2,
-    title: "제주 오름 BEST 5",
-    channel: "오름탐방대",
-    duration: "4:11",
-    spots: 8,
-    summary: "새별오름, 다랑쉬오름, 용눈이오름, 성산일출봉, 한라산 백록담까지 난이도별로 소개합니다.",
-    tags: ["오름", "트래킹"],
-    thumb: "⛰️",
-  },
-  {
-    id: 3,
-    title: "제주 흑돼지 맛집 TOP 10",
-    channel: "제주맛집탐방",
-    duration: "7:33",
-    spots: 10,
-    summary: "제주시와 서귀포시 흑돼지 맛집 10곳. 가성비, 맛, 대기시간 기준으로 랭킹을 매겼습니다.",
-    tags: ["맛집", "흑돼지"],
-    thumb: "🍖",
-  },
-  {
-    id: 4,
-    title: "제주 카페 투어 브이로그",
-    channel: "jeju_cafe_lover",
-    duration: "12:08",
-    spots: 7,
-    summary: "오션뷰 카페부터 귤밭 속 숨은 카페까지. 직접 다녀온 감성 카페 7곳의 솔직 리뷰.",
-    tags: ["카페", "브이로그"],
-    thumb: "☕",
-  },
-  {
-    id: 5,
-    title: "제주 서핑 입문 완벽 가이드",
-    channel: "surf_jeju",
-    duration: "8:55",
-    spots: 5,
-    summary: "중문, 이호테우, 협재 등 서핑 포인트와 강습 업체 비교. 초보자도 따라할 수 있는 팁 정리.",
-    tags: ["액티비티", "서핑"],
-    thumb: "🏄",
-  },
-  {
-    id: 6,
-    title: "한달살기 제주 현실 후기",
-    channel: "slow_jeju_life",
-    duration: "18:22",
-    spots: 15,
-    summary: "제주 한달살기 숙소 선정부터 마트 위치, 동네 카페, 일상 루틴까지 현실적인 정보 총정리.",
-    tags: ["힐링", "한달살기"],
-    thumb: "🏡",
-  },
+type Summary = {
+  title: string;
+  summary: string;
+  duration: string;
+  spots: Spot[];
+  course: string[];
+  tags: string[];
+};
+
+const EXAMPLES = [
+  { label: "협재리", url: "https://www.youtube.com/watch?v=ZO4M9siq8MA" },
+  { label: "신창리 싱계물공원", url: "https://www.youtube.com/watch?v=FvITqIw4WkA" },
+  { label: "성산일출봉", url: "https://www.youtube.com/watch?v=3zcicFYlePc" },
+  { label: "마라도", url: "https://www.youtube.com/watch?v=ZghXO3Ih5NU" },
 ];
 
+function extractVideoId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
 export default function YoutubePage() {
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<Summary | null>(null);
+  const [error, setError] = useState("");
+
+  async function analyze(targetUrl: string) {
+    if (!targetUrl.trim()) return;
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/youtube-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: targetUrl }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "분석 실패");
+      }
+      setResult(data as Summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "오류가 발생했어요");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const videoId = result ? extractVideoId(url) : null;
+
   return (
-    <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
+    <div className="mx-auto max-w-4xl px-0 md:px-4 md:py-6">
       <PageHeader
         title="유튜브 요약"
-        subtitle="제주 관련 유튜브를 AI가 스팟 단위로 요약해드려요"
+        subtitle="제주 여행 유튜브를 AI가 스팟 단위로 요약해드려요"
         emoji="▶️"
       />
 
-      {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-3 md:px-0">
-        {categories.map((cat, i) => (
-          <button
-            key={cat}
-            type="button"
-            className={[
-              "shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
-              i === 0
-                ? "bg-live-red text-white"
-                : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
-            ].join(" ")}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Video list */}
-      <div className="space-y-3 px-4 md:px-0">
-        {videos.map((v) => (
-          <div
-            key={v.id}
-            className="flex gap-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card transition-transform hover:scale-[1.01]"
-          >
-            {/* Thumbnail */}
-            <div className="flex h-20 w-32 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-4xl md:h-24 md:w-40">
-              {v.thumb}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                  <span className="ml-0.5 text-white text-sm">▶</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap gap-1 mb-1.5">
-                {v.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-live-red/10 px-2 py-0.5 text-[10px] font-semibold text-live-red">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <h3 className="text-sm font-bold text-text-primary">{v.title}</h3>
-              <p className="mt-0.5 text-[11px] text-text-secondary">{v.channel} · {v.duration} · 스팟 {v.spots}개</p>
-              <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-text-secondary">{v.summary}</p>
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-semibold text-white hover:bg-brand-navy/90 transition-colors"
-                >
-                  스팟 보기
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-border-soft bg-bg-secondary px-3 py-1 text-[11px] font-medium text-text-secondary hover:bg-bg-primary transition-colors"
-                >
-                  ⭐ 저장
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* YouTube URL 직접 입력 */}
-      <div className="mx-4 mt-6 rounded-2xl border border-dashed border-brand-navy/30 bg-brand-navy/5 p-4 md:mx-0">
-        <p className="mb-2 text-sm font-bold text-brand-navy">유튜브 URL 직접 요약하기</p>
+      {/* URL 입력 */}
+      <div className="mx-4 mb-5 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:mx-0">
+        <p className="mb-2 text-sm font-bold text-text-primary">유튜브 URL 입력</p>
         <div className="flex gap-2">
           <input
             type="text"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && analyze(url)}
             placeholder="https://youtube.com/watch?v=..."
-            className="flex-1 rounded-full border border-border-soft bg-bg-card px-4 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none"
+            disabled={loading}
+            className="flex-1 rounded-full border border-border-soft bg-bg-secondary px-4 py-2.5 text-sm text-text-primary outline-none focus:border-brand-orange disabled:opacity-50"
           />
           <button
             type="button"
-            className="rounded-full bg-live-red px-4 py-2 text-xs font-bold text-white hover:bg-live-red/90 transition-colors"
+            onClick={() => analyze(url)}
+            disabled={loading || !url.trim()}
+            className="shrink-0 rounded-full bg-live-red px-5 py-2.5 text-xs font-bold text-white hover:bg-live-red/90 disabled:opacity-50 transition-colors"
           >
-            요약하기
+            {loading ? "분석 중..." : "요약하기"}
           </button>
         </div>
+
+        {/* 예시 */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="text-[11px] text-text-secondary">예시:</span>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex.url}
+              type="button"
+              onClick={() => { setUrl(ex.url); analyze(ex.url); }}
+              disabled={loading}
+              className="rounded-full bg-bg-secondary px-2.5 py-0.5 text-[10px] font-medium text-text-secondary hover:bg-border-soft transition-colors disabled:opacity-50"
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <p className="mt-2 text-xs font-semibold text-live-red">❌ {error}</p>
+        )}
       </div>
+
+      {/* 로딩 */}
+      {loading && (
+        <div className="mx-4 flex flex-col items-center py-16 md:mx-0">
+          <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-orange/30 border-t-brand-orange" />
+          <p className="mt-4 text-sm font-medium text-text-primary">
+            🗿 돌맹이가 영상을 보고 있어요...
+          </p>
+          <p className="mt-1 text-xs text-text-secondary">영상 길이에 따라 30초~1분 정도 걸려요</p>
+        </div>
+      )}
+
+      {/* 결과 */}
+      {result && (
+        <div className="mx-4 space-y-4 md:mx-0">
+          {/* 영상 임베드 */}
+          {videoId && (
+            <div className="overflow-hidden rounded-2xl border border-border-soft shadow-card">
+              <div className="relative aspect-video bg-black">
+                <iframe
+                  src={`https://www.youtube.com/embed/${videoId}`}
+                  className="absolute inset-0 h-full w-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 요약 카드 */}
+          <div className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
+            <h2 className="text-lg font-black text-text-primary">{result.title}</h2>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                ⏱ {result.duration}
+              </span>
+              <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                📍 스팟 {result.spots.length}개
+              </span>
+              {result.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] text-text-secondary">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-brand-yellow/10 p-3">
+              <span className="text-xl">🗿</span>
+              <p className="text-sm leading-6 text-text-primary">{result.summary}</p>
+            </div>
+          </div>
+
+          {/* 추천 코스 */}
+          {result.course.length > 0 && (
+            <div className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
+              <p className="mb-3 text-sm font-bold text-text-primary">🗺️ 추천 코스</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {result.course.map((spot, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="rounded-full bg-brand-navy/10 px-3 py-1 text-xs font-semibold text-brand-navy">
+                      {i + 1}. {spot}
+                    </span>
+                    {i < result.course.length - 1 && (
+                      <span className="text-text-secondary">→</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 스팟 리스트 */}
+          <div className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
+            <p className="mb-3 text-sm font-bold text-text-primary">📍 등장 스팟</p>
+            <div className="space-y-2">
+              {result.spots.map((spot, i) => (
+                <div key={i} className="flex gap-3 rounded-xl bg-bg-secondary/50 p-3 hover:bg-bg-secondary transition-colors">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-bg-card text-2xl shadow-card">
+                    {spot.emoji}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-text-primary">{spot.name}</p>
+                      <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-medium text-brand-orange">
+                        {spot.category}
+                      </span>
+                      {videoId && (
+                        <a
+                          href={`https://youtube.com/watch?v=${videoId}&t=${spot.timestamp.replace(":", "m")}s`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-auto rounded-full bg-live-red/10 px-2 py-0.5 text-[10px] font-bold text-live-red hover:bg-live-red/20 transition-colors"
+                        >
+                          ▶ {spot.timestamp}
+                        </a>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs leading-5 text-text-secondary">{spot.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
