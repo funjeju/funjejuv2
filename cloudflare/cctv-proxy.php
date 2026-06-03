@@ -89,7 +89,12 @@ $seg = $_GET['seg'] ?? '';
 
 // 세그먼트 프록시 모드
 if ($seg) {
-    proxySegment($seg);
+    // proxyBase: 현재 id 파라미터 유지 (서브 m3u8 재작성용)
+    $segProxyBase = (isset($_SERVER['HTTPS']) ? 'https' : 'http')
+                  . '://' . $_SERVER['HTTP_HOST']
+                  . $_SERVER['SCRIPT_NAME']
+                  . '?id=' . urlencode($id ?: '');
+    proxySegment($seg, $segProxyBase);
     exit;
 }
 
@@ -166,8 +171,15 @@ function proxyM3u8(string $originUrl, string $proxyBase): void {
     echo implode("\n", $rewritten);
 }
 
-function proxySegment(string $segUrl): void {
-    // Range 헤더 전달
+function proxySegment(string $segUrl, string $proxyBase): void {
+    // 서브 m3u8(chunklist)이면 URL 재작성 처리 (PHP 7 호환)
+    $path = parse_url($segUrl, PHP_URL_PATH) ?? '';
+    if (substr($path, -5) === '.m3u8' || strpos($segUrl, '.m3u8') !== false) {
+        proxyM3u8($segUrl, $proxyBase);
+        return;
+    }
+
+    // .ts 세그먼트 스트리밍
     $headers = ['Accept: */*'];
     if (!empty($_SERVER['HTTP_RANGE'])) {
         $headers[] = 'Range: ' . $_SERVER['HTTP_RANGE'];
