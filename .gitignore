@@ -13,5 +13,9 @@ yarn-error.log*
 .vercel
 .DS_Store
 
+# 대용량 데이터 파일 (Firestore로 임포트, Git 제외)
+k-lokal_*.json
+scripts/data/*.json
+
 # 도민맛집 이미지는 Git LFS로 관리 (.gitattributes 참조)
 # /public/restaurant-images/ — LFS 추적 중
