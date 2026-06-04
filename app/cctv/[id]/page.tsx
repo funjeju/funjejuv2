@@ -2,6 +2,8 @@ import Link from "next/link";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
+import { fetchWeather } from "@/lib/weather";
+import { LiveChat } from "@/components/cctv/LiveChat";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,12 +18,15 @@ export async function generateStaticParams() {
   return mockCctvs.map((c) => ({ id: c.id }));
 }
 
+export const revalidate = 600; // 10분마다 재생성 (날씨 갱신)
+
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
   const cctv = mockCctvs.find((c) => c.id === id);
   if (!cctv) notFound();
 
   const nearby = mockCctvs.filter((c) => c.id !== id).slice(0, 3);
+  const weather = await fetchWeather(cctv.latitude, cctv.longitude);
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
@@ -74,55 +79,57 @@ export default async function CctvDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* AI 날씨/혼잡도 요약 */}
+          {/* 실시간 날씨 */}
           <div className="mx-4 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-4 md:mx-0">
-            <p className="mb-2 text-xs font-bold text-brand-navy">🤖 AI 현장 요약</p>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              {[
-                { label: "날씨", value: "☀️ 맑음", sub: "23°C" },
-                { label: "혼잡도", value: "🟡 보통", sub: "적당함" },
-                { label: "바람", value: "💨 약풍", sub: "2m/s" },
-              ].map((item) => (
-                <div key={item.label} className="rounded-xl bg-white px-3 py-2.5 shadow-card">
-                  <p className="text-[10px] text-text-secondary">{item.label}</p>
-                  <p className="mt-0.5 text-sm font-bold text-text-primary">{item.value}</p>
-                  <p className="text-[10px] text-text-secondary">{item.sub}</p>
-                </div>
-              ))}
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-bold text-brand-navy">🌡️ 현장 실시간 정보</p>
+              <p className="text-[10px] text-text-secondary">
+                Open-Meteo · 10분마다 갱신
+              </p>
             </div>
+            {weather ? (
+              <>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
+                    <p className="text-[10px] text-text-secondary">날씨</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                      {weather.emoji} {weather.description}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">
+                      {weather.temperature}°C (체감 {weather.apparentTemp}°)
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
+                    <p className="text-[10px] text-text-secondary">예상 혼잡도</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                      {weather.congestionEmoji} {weather.congestion}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">시간·날씨 기반</p>
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
+                    <p className="text-[10px] text-text-secondary">바람</p>
+                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                      💨 {weather.windLabel}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">{weather.windSpeed}m/s</p>
+                  </div>
+                </div>
+                {weather.precipitation > 0 && (
+                  <p className="mt-2 rounded-lg bg-blue-100 px-3 py-1.5 text-center text-[11px] font-semibold text-blue-700">
+                    ☔ 강수량 {weather.precipitation}mm — 우산 챙기세요!
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-center text-xs text-text-secondary py-3">
+                날씨 정보를 가져올 수 없어요
+              </p>
+            )}
           </div>
 
-          {/* Live Chat */}
-          <div className="mx-4 rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
-            <div className="border-b border-border-soft px-4 py-3">
-              <p className="text-sm font-bold text-text-primary">💬 실시간 채팅</p>
-            </div>
-            <div className="space-y-2 p-3">
-              {relatedComments.map((c, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-bg-secondary text-sm">
-                    {c.emoji}
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-brand-navy">{c.user}</span>
-                    <span className="ml-1 text-[10px] text-text-secondary">{c.time}</span>
-                    <p className="text-xs text-text-primary">{c.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="border-t border-border-soft px-3 py-2.5">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="채팅 참여하기..."
-                  className="flex-1 rounded-full border border-border-soft bg-bg-secondary px-3 py-1.5 text-xs outline-none placeholder:text-text-secondary"
-                />
-                <button type="button" className="rounded-full bg-brand-navy px-4 py-1.5 text-xs font-bold text-white hover:bg-brand-navy/90 transition-colors">
-                  전송
-                </button>
-              </div>
-            </div>
+          {/* Live Chat (Firestore 실시간) */}
+          <div className="mx-4 md:mx-0">
+            <LiveChat cctvId={cctv.id} cctvName={cctv.name} />
           </div>
         </div>
 

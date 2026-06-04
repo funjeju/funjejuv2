@@ -1,0 +1,172 @@
+"use client";
+
+import { useEffect, useState, useRef, type FormEvent } from "react";
+import {
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
+  serverTimestamp,
+  type Timestamp,
+} from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
+
+type ChatMessage = {
+  id: string;
+  uid: string;
+  displayName: string;
+  photoURL?: string | null;
+  text: string;
+  createdAt: Timestamp | null;
+};
+
+function timeAgo(date: Date): string {
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60) return "방금 전";
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+}
+
+export function LiveChat({ cctvId, cctvName }: { cctvId: string; cctvName: string }) {
+  const { user, signInWithGoogle } = useAuth();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const db = getFirebaseDb();
+    const q = query(
+      collection(db, "cctv_chats", cctvId, "messages"),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const msgs = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<ChatMessage, "id">),
+      }));
+      setMessages(msgs.reverse());
+    });
+
+    return unsub;
+  }, [cctvId]);
+
+  // 새 메시지 시 스크롤 맨 아래
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  async function handleSend(e: FormEvent) {
+    e.preventDefault();
+    if (!input.trim() || !user || sending) return;
+
+    setSending(true);
+    try {
+      const db = getFirebaseDb();
+      await addDoc(collection(db, "cctv_chats", cctvId, "messages"), {
+        uid: user.uid,
+        displayName: user.displayName ?? user.email?.split("@")[0] ?? "여행자",
+        photoURL: user.photoURL ?? null,
+        text: input.trim().slice(0, 200),
+        createdAt: serverTimestamp(),
+      });
+      setInput("");
+    } catch (e) {
+      console.error("Chat send error:", e);
+      alert("메시지 전송에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border-soft bg-bg-card shadow-card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+        <p className="text-sm font-bold text-text-primary">💬 실시간 채팅</p>
+        <span className="rounded-full bg-jeju-green/10 px-2 py-0.5 text-[10px] font-bold text-jeju-green">
+          {messages.length}명 참여
+        </span>
+      </div>
+
+      {/* 메시지 리스트 */}
+      <div ref={listRef} className="max-h-80 min-h-[200px] space-y-2 overflow-y-auto p-3">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <span className="text-3xl">🗿</span>
+            <p className="mt-2 text-xs font-semibold text-text-primary">
+              첫 메시지를 남겨보세요!
+            </p>
+            <p className="mt-0.5 text-[10px] text-text-secondary">
+              {cctvName} 현장을 보고 있는 여행자들과 함께해요
+            </p>
+          </div>
+        ) : (
+          messages.map((m) => {
+            const date = m.createdAt?.toDate?.() ?? new Date();
+            return (
+              <div key={m.id} className="flex items-start gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-secondary text-sm">
+                  {m.photoURL ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.photoURL} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    m.displayName[0]?.toUpperCase() ?? "👤"
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[10px] font-bold text-brand-navy truncate">
+                      {m.displayName}
+                    </span>
+                    <span className="text-[10px] text-text-secondary shrink-0">
+                      {timeAgo(date)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-primary break-words">{m.text}</p>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* 입력창 */}
+      <div className="border-t border-border-soft px-3 py-2.5">
+        {user ? (
+          <form onSubmit={handleSend} className="flex gap-2">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="채팅 참여하기..."
+              maxLength={200}
+              disabled={sending}
+              className="flex-1 rounded-full border border-border-soft bg-bg-secondary px-3 py-1.5 text-xs outline-none placeholder:text-text-secondary disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={sending || !input.trim()}
+              className="rounded-full bg-brand-navy px-4 py-1.5 text-xs font-bold text-white hover:bg-brand-navy/90 disabled:opacity-50 transition-colors"
+            >
+              {sending ? "..." : "전송"}
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-bg-secondary py-2 text-xs font-semibold text-text-secondary hover:bg-border-soft transition-colors"
+          >
+            <span>🔐</span> 로그인하고 채팅 참여하기
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
