@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 7, // 1주
+    // 도민맛집 이미지 (Vercel 최적화 거치지 않고 직접 서빙)
+    // remotePatterns 설정 시 외부 CDN 추가 가능
   },
 };
 
