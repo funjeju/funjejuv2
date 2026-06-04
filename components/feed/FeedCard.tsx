@@ -78,10 +78,17 @@ export function FeedCard({ feed }: { feed: Feed }) {
           </p>
         </div>
 
-        {/* 카테고리 뱃지 (좌상단) */}
-        <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-text-primary backdrop-blur">
-          {feed.category}
-        </span>
+        {/* 카테고리 + 지역 뱃지 (좌상단) */}
+        <div className="absolute left-3 top-3 flex flex-col gap-1">
+          <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-text-primary backdrop-blur">
+            {feed.category}
+          </span>
+          {feed.regionName && (
+            <span className="rounded-full bg-brand-navy/90 px-2.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+              📍 {feed.regionName}
+            </span>
+          )}
+        </div>
 
         {/* EXIF 정보 (하단) */}
         {hasExif && (

@@ -48,12 +48,22 @@ export async function createFeed(input: {
   aiCopy: string;
   filter: FeedFilter;
   category: string;
+  regionId?: string;
+  regionName?: string;
+  regionCity?: "제주시" | "서귀포시";
+  gps?: { lat: number; lng: number };
 }): Promise<string> {
   const db = getFirebaseDb();
   const id = `feed_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const ref = doc(db, "feeds", id);
+
+  // undefined 필드 제거 (Firestore 에러 방지)
+  const cleanInput = Object.fromEntries(
+    Object.entries(input).filter(([, v]) => v !== undefined)
+  );
+
   await setDoc(ref, {
-    ...input,
+    ...cleanInput,
     createdAt: serverTimestamp(),
     likes: 0,
   });
@@ -61,13 +71,24 @@ export async function createFeed(input: {
 }
 
 /** 피드 목록 (최신순, 실시간 구독) */
-export function subscribeFeeds(callback: (feeds: Feed[]) => void, max = 50) {
+export function subscribeFeeds(
+  callback: (feeds: Feed[]) => void,
+  onError?: (err: Error) => void,
+  max = 50
+) {
   const db = getFirebaseDb();
   const q = query(collection(db, "feeds"), orderBy("createdAt", "desc"), limit(max));
-  return onSnapshot(q, (snap) => {
-    const feeds = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Feed, "id">) }));
-    callback(feeds);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const feeds = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Feed, "id">) }));
+      callback(feeds);
+    },
+    (err) => {
+      console.error("[subscribeFeeds]", err);
+      onError?.(err);
+    }
+  );
 }
 
 /** 일회성 조회 (홈 페이지용) */

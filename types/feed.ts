@@ -22,6 +22,10 @@ export type Feed = {
   aiCopy: string;             // 10~20자
   filter: FeedFilter;
   category: string;           // "자연" | "카페" | "맛집" | "액티비티" | "숙소"
+  regionId?: string;          // "jeju-hallim" 등 JEJU_REGIONS id
+  regionName?: string;        // "한림읍" (표시용)
+  regionCity?: "제주시" | "서귀포시";
+  gps?: { lat: number; lng: number };
   createdAt: Timestamp | null;
   likes: number;
 };

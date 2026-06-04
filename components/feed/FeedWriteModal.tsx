@@ -5,6 +5,12 @@ import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFeedImage, createFeed } from "@/lib/feed";
 import type { ExifData, FeedFilter } from "@/types/feed";
+import {
+  JEJU_REGIONS,
+  findNearestRegion,
+  groupRegionsByCity,
+  type JejuRegion,
+} from "@/constants/jeju-regions";
 
 const FILTER_OPTIONS: { id: FeedFilter; label: string; css: string }[] = [
   { id: "none", label: "원본", css: "" },
@@ -26,6 +32,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [aiCopy, setAiCopy] = useState("");
   const [category, setCategory] = useState("자연");
   const [filter, setFilter] = useState<FeedFilter>("none");
+  const [region, setRegion] = useState<JejuRegion | null>(null);
+  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
+  const [showRegionPicker, setShowRegionPicker] = useState(false);
 
   const [status, setStatus] = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
   const [error, setError] = useState("");
@@ -38,6 +47,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setExif({});
       setAiCopy("");
       setFilter("none");
+      setRegion(null);
+      setGps(null);
+      setShowRegionPicker(false);
       setStatus("idle");
       setError("");
     }
@@ -61,8 +73,18 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         pick: [
           "Make", "Model", "LensModel", "FocalLength",
           "FNumber", "ISO", "ExposureTime", "DateTimeOriginal",
+          "latitude", "longitude", "GPSLatitude", "GPSLongitude",
         ],
       }).catch(() => null);
+
+      // GPS 추출 + 제주 지역 자동 매칭
+      const lat = data?.latitude ?? data?.GPSLatitude;
+      const lng = data?.longitude ?? data?.GPSLongitude;
+      if (typeof lat === "number" && typeof lng === "number") {
+        setGps({ lat, lng });
+        const matched = findNearestRegion(lat, lng);
+        if (matched) setRegion(matched);
+      }
 
       const parsed: ExifData = {};
       if (data) {
@@ -131,6 +153,12 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         aiCopy: aiCopy.trim().slice(0, 30),
         filter,
         category,
+        ...(region && {
+          regionId: region.id,
+          regionName: region.name,
+          regionCity: region.city,
+        }),
+        ...(gps && { gps }),
       });
       setStatus("done");
       onPosted?.();
@@ -278,6 +306,71 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* 지역 (GPS 자동 매칭 + 수동 선택) */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-bold text-text-secondary">
+                    📍 지역
+                    {gps && (
+                      <span className="ml-1 rounded-full bg-jeju-green/10 px-1.5 py-0.5 text-[9px] font-bold text-jeju-green">
+                        GPS 자동
+                      </span>
+                    )}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegionPicker((v) => !v)}
+                    className="text-[11px] font-semibold text-brand-orange hover:underline"
+                  >
+                    {showRegionPicker ? "닫기" : region ? "변경" : "선택하기"}
+                  </button>
+                </div>
+
+                {region && !showRegionPicker && (
+                  <div className="rounded-xl bg-bg-secondary p-3">
+                    <p className="text-sm font-bold text-text-primary">
+                      📍 {region.fullName}
+                    </p>
+                    <p className="text-[10px] text-text-secondary">
+                      {region.city} · {region.type}
+                    </p>
+                  </div>
+                )}
+
+                {(showRegionPicker || !region) && (
+                  <div className="space-y-2 rounded-xl border border-border-soft bg-bg-secondary p-3">
+                    {(["제주시", "서귀포시"] as const).map((city) => {
+                      const regions = groupRegionsByCity()[city];
+                      return (
+                        <div key={city}>
+                          <p className="mb-1.5 text-[10px] font-bold text-text-secondary">{city}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {regions.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                onClick={() => {
+                                  setRegion(r);
+                                  setShowRegionPicker(false);
+                                }}
+                                className={[
+                                  "rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors",
+                                  region?.id === r.id
+                                    ? "bg-brand-navy text-white"
+                                    : "bg-bg-card border border-border-soft text-text-secondary hover:bg-bg-primary",
+                                ].join(" ")}
+                              >
+                                {r.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* EXIF 정보 */}

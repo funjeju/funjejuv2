@@ -14,10 +14,16 @@ export function HomeFeedSection() {
   const [activeCategory, setActiveCategory] = useState("전체");
 
   useEffect(() => {
-    fetchFeeds(8).then((list) => {
-      setFeeds(list);
-      setLoading(false);
-    });
+    fetchFeeds(8)
+      .then((list) => {
+        setFeeds(list);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("[HomeFeedSection]", err);
+        setFeeds([]);
+        setLoading(false);
+      });
   }, []);
 
   const filtered = activeCategory === "전체"
