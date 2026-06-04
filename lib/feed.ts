@@ -6,6 +6,7 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  deleteDoc,
   query,
   orderBy,
   limit,
@@ -123,6 +124,12 @@ export async function updateUserProfile(
   const db = getFirebaseDb();
   const ref = doc(db, "users", uid);
   await setDoc(ref, data, { merge: true });
+}
+
+/** 피드 삭제 (본인 또는 어드민) */
+export async function deleteFeed(feedId: string): Promise<void> {
+  const db = getFirebaseDb();
+  await deleteDoc(doc(db, "feeds", feedId));
 }
 
 /** 좋아요 증가 */

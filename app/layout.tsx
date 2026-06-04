@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppHeader } from "@/components/common/AppHeader";
-import { BottomNavigation } from "@/components/common/BottomNavigation";
-import { Sidebar } from "@/components/common/Sidebar";
+import { AppShell } from "@/components/common/AppShell";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://funjeju.com"),
@@ -51,14 +49,7 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <AppHeader />
-            <main className="flex-1 pb-20 md:pb-0">{children}</main>
-          </div>
-        </div>
-        <BottomNavigation />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

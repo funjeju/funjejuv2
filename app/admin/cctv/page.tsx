@@ -147,20 +147,21 @@ export default function AdminCctvPage() {
   }
 
   async function handleSeedFromMock() {
-    if (!confirm(`mock-cctvs.ts의 ${mockCctvs.length}개 항목을 Firestore에 시딩할까요? 이미 있는 항목은 덮어씁니다.`)) return;
+    if (!confirm(`기존 CCTV ${mockCctvs.length}개를 Firestore에 시딩할까요?\n\n⚠️ 주의: Firebase 콘솔 → Firestore → 규칙에서\ncctvs 컬렉션 write 허용이 필요합니다.`)) return;
     setSeeding(true);
     try {
-      for (const c of mockCctvs) {
-        await adminSetCctv({
-          id: c.id, name: c.name, region: c.region,
-          direction: c.direction, category: c.category,
-          originUrl: ORIGIN_URLS[c.id] ?? "",
-          youtubeId: undefined, active: true,
-          description: c.description, lat: c.latitude, lng: c.longitude,
-        });
+      const res = await fetch("/api/admin/seed-cctvs", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.hint) {
+          notify("err", `${data.error}\n\n${data.hint}\n규칙: ${data.rule}`);
+        } else {
+          notify("err", data.error ?? "시딩 실패");
+        }
+      } else {
+        notify("ok", `${data.count}개 시딩 완료!`);
+        load();
       }
-      notify("ok", `${mockCctvs.length}개 시딩 완료!`);
-      load();
     } catch (e) {
       notify("err", e instanceof Error ? e.message : "시딩 실패");
     } finally {

@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { likeFeed, getAuthor } from "@/lib/feed";
+import { likeFeed, deleteFeed, getAuthor } from "@/lib/feed";
+import { useAuth } from "@/hooks/useAuth";
 import type { Feed, FeedAuthor, FeedFilter } from "@/types/feed";
+
+const ADMIN_EMAIL = "naggu1999@gmail.com";
 
 // CSS 필터 프리셋
 const FILTER_PRESETS: Record<FeedFilter, string> = {
@@ -22,14 +25,31 @@ function timeAgo(date: Date): string {
   return `${Math.floor(diff / 86400)}일 전`;
 }
 
-export function FeedCard({ feed }: { feed: Feed }) {
-  const [author, setAuthor] = useState<FeedAuthor | null>(null);
-  const [liked, setLiked] = useState(false);
+export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => void }) {
+  const { user } = useAuth();
+  const [author,    setAuthor]    = useState<FeedAuthor | null>(null);
+  const [liked,     setLiked]     = useState(false);
   const [likeCount, setLikeCount] = useState(feed.likes);
+  const [deleting,  setDeleting]  = useState(false);
+
+  const isOwner = !!user && user.uid === feed.authorId;
+  const isAdmin = !!user && user.email === ADMIN_EMAIL;
+  const canDelete = isOwner || isAdmin;
 
   useEffect(() => {
     getAuthor(feed.authorId).then(setAuthor);
   }, [feed.authorId]);
+
+  async function handleDelete() {
+    if (!confirm("이 피드를 삭제할까요?")) return;
+    setDeleting(true);
+    try {
+      await deleteFeed(feed.id);
+      onDeleted?.();
+    } catch {
+      setDeleting(false);
+    }
+  }
 
   async function handleLike() {
     if (liked) return;
@@ -143,6 +163,20 @@ export function FeedCard({ feed }: { feed: Feed }) {
           <span className={liked ? "text-live-red" : "text-text-secondary"}>{likeCount}</span>
         </button>
       </div>
+
+      {/* 삭제 버튼 (본인 or 어드민) */}
+      {canDelete && (
+        <div className="flex justify-end px-4 pb-1">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-[10px] font-medium text-text-secondary hover:text-live-red transition-colors disabled:opacity-40"
+          >
+            {deleting ? "삭제 중..." : isAdmin && !isOwner ? "🗑 관리자 삭제" : "🗑 삭제"}
+          </button>
+        </div>
+      )}
 
       {/* 비즈니스 CTA */}
       {author?.isBusiness && author.ctaData?.text && author.ctaData.url && (
