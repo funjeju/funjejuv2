@@ -1,32 +1,144 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { fetchWeather } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
+import { getCctvSeo } from "@/constants/cctv-seo";
 
 type Props = { params: Promise<{ id: string }> };
 
-// 정적 생성 끄고 매 요청마다 SSR (캐시 문제 해결)
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+const SITE_URL = "https://funjeju.com";
+
+// SSG — 빌드 시 모든 CCTV 정적 생성 (SEO 최적화)
+export async function generateStaticParams() {
+  return mockCctvs.map((c) => ({ id: c.id }));
+}
+
+// 10분마다 재생성 (날씨 갱신)
+export const revalidate = 600;
+
+// 동적 SEO 메타데이터
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const cctv = mockCctvs.find((c) => c.id === id);
+  if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
+
+  const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
+  const cleanName = cctv.name.replace(/\s+/g, "");
+
+  // 핵심 SEO 타이틀 (60자 이내 권장)
+  const title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
+
+  // 메타 디스크립션 (155자 이내)
+  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 혼잡도를 라이브로 확인하세요. 제주 ${cctv.region} ${cctv.category} 실시간 CCTV.`;
+
+  const url = `${SITE_URL}/cctv/${id}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: "FunJeju",
+      locale: "ko_KR",
+      type: "website",
+      images: [{
+        url: `${SITE_URL}/og-cctv.png`,
+        width: 1200,
+        height: 630,
+        alt: `${cctv.name} 실시간 CCTV`,
+      }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+    keywords: [...seo.keywords, ...seo.longTailKeywords],
+  };
+}
 
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
   const cctv = mockCctvs.find((c) => c.id === id);
   if (!cctv) notFound();
 
-  const nearby = mockCctvs.filter((c) => c.id !== id).slice(0, 3);
+  const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
+  const nearby = mockCctvs.filter((c) => c.id !== id && c.region === cctv.region).slice(0, 3);
+  // 같은 지역에 다른 CCTV가 없으면 전체에서 가져옴
+  const finalNearby = nearby.length >= 3
+    ? nearby
+    : [...nearby, ...mockCctvs.filter((c) => c.id !== id && !nearby.includes(c)).slice(0, 3 - nearby.length)];
+
   const weather = await fetchWeather(cctv.latitude, cctv.longitude);
+
+  // JSON-LD: TouristAttraction (관광지 구조화 데이터)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristAttraction",
+    name: cctv.name,
+    description: seo.intro,
+    image: `${SITE_URL}/og-cctv.png`,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: cctv.region,
+      addressRegion: "제주특별자치도",
+      addressCountry: "KR",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: cctv.latitude,
+      longitude: cctv.longitude,
+    },
+    url: `${SITE_URL}/cctv/${id}`,
+    isAccessibleForFree: true,
+  };
+
+  // 브레드크럼 (검색 결과에 경로 표시)
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "홈", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "실시간 CCTV", item: `${SITE_URL}/cctv` },
+      { "@type": "ListItem", position: 3, name: cctv.region, item: `${SITE_URL}/cctv/region/${encodeURIComponent(cctv.region)}` },
+      { "@type": "ListItem", position: 4, name: cctv.name, item: `${SITE_URL}/cctv/${id}` },
+    ],
+  };
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      {/* Back */}
-      <div className="px-4 pb-3 md:px-0">
-        <Link href="/cctv" className="inline-flex items-center gap-1 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors">
-          ← CCTV 목록
-        </Link>
-      </div>
+      {/* JSON-LD 구조화 데이터 (SEO) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
+      />
+
+      {/* Breadcrumb 시각적 표시 */}
+      <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
+        <ol className="flex flex-wrap items-center gap-1 text-xs text-text-secondary">
+          <li><Link href="/" className="hover:text-text-primary">홈</Link></li>
+          <li>›</li>
+          <li><Link href="/cctv" className="hover:text-text-primary">실시간 CCTV</Link></li>
+          <li>›</li>
+          <li>
+            <Link href={`/cctv/region/${encodeURIComponent(cctv.region)}`} className="hover:text-text-primary">
+              {cctv.region}
+            </Link>
+          </li>
+          <li>›</li>
+          <li className="font-bold text-text-primary">{cctv.name}</li>
+        </ol>
+      </nav>
 
       <div className="flex flex-col gap-5 lg:flex-row">
         {/* ── 왼쪽: 플레이어 + 정보 ── */}
@@ -118,6 +230,65 @@ export default async function CctvDetailPage({ params }: Props) {
             )}
           </div>
 
+          {/* ─── SEO 본문 콘텐츠 (검색 엔진 최적화) ─── */}
+          <article className="mx-4 space-y-4 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
+            <h2 className="text-base font-black text-text-primary">
+              {cctv.name} 실시간 라이브캠 안내
+            </h2>
+            <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
+
+            {seo.bestTime && (
+              <div className="rounded-xl bg-bg-secondary p-3">
+                <p className="text-[11px] font-bold text-text-secondary">⏰ 추천 시간대</p>
+                <p className="mt-1 text-sm text-text-primary">{seo.bestTime}</p>
+              </div>
+            )}
+
+            {seo.tips.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold text-text-secondary">💡 방문 팁</p>
+                <ul className="space-y-1">
+                  {seo.tips.map((tip, i) => (
+                    <li key={i} className="text-xs leading-6 text-text-primary">
+                      • {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {seo.nearby.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-bold text-text-secondary">📍 주변 명소</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {seo.nearby.map((place) => (
+                    <span
+                      key={place}
+                      className="rounded-full bg-brand-orange/10 px-2.5 py-1 text-[11px] font-medium text-brand-orange"
+                    >
+                      {place}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 키워드 푸터 (SEO 보강용, 자연스럽게 배치) */}
+            <div className="border-t border-border-soft pt-3">
+              <p className="text-[10px] text-text-secondary leading-5">
+                <strong>이 페이지에서 확인 가능한 정보:</strong>{" "}
+                {cctv.name} 실시간 영상, {cctv.region} 날씨, {cctv.category} 혼잡도,
+                파도·바람 상태, 일출·일몰 시간대 풍경.{" "}
+                <Link
+                  href={`/cctv/region/${encodeURIComponent(cctv.region)}`}
+                  className="text-brand-orange hover:underline"
+                >
+                  {cctv.region} 다른 CCTV 보기 →
+                </Link>
+              </p>
+            </div>
+          </article>
+
           {/* Live Chat (Firestore 실시간) */}
           <div className="mx-4 md:mx-0">
             <LiveChat cctvId={cctv.id} cctvName={cctv.name} />
@@ -126,8 +297,8 @@ export default async function CctvDetailPage({ params }: Props) {
 
         {/* ── 오른쪽: 근처 CCTV ── */}
         <aside className="w-full space-y-3 lg:w-72 lg:shrink-0">
-          <p className="px-4 text-sm font-bold text-text-primary md:px-0">📷 근처 CCTV</p>
-          {nearby.map((c) => (
+          <p className="px-4 text-sm font-bold text-text-primary md:px-0">📷 {cctv.region} CCTV</p>
+          {finalNearby.map((c) => (
             <Link
               key={c.id}
               href={`/cctv/${c.id}`}

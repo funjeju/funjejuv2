@@ -24,8 +24,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const cctvPages: MetadataRoute.Sitemap = mockCctvs.map((c) => ({
     url: `${BASE}/cctv/${c.id}`,
     lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
+    changeFrequency: "always" as const, // 실시간 영상이라 변동 큼
+    priority: 0.8,
+  }));
+
+  // 지역별 허브 페이지
+  const regions = [...new Set(mockCctvs.map((c) => c.region))];
+  const regionPages: MetadataRoute.Sitemap = regions.map((region) => ({
+    url: `${BASE}/cctv/region/${encodeURIComponent(region)}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.75,
   }));
 
   // 도민맛집 상세 페이지 (589개)
@@ -37,5 +46,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...cctvPages, ...foodPages];
+  return [...staticPages, ...cctvPages, ...regionPages, ...foodPages];
 }

@@ -132,13 +132,32 @@ export default function CctvPage() {
         </div>
       )}
 
-      {filtered.length > 0 && viewMode === "grid" && (
-        <div className="mt-6 px-4 md:px-0">
-          <button type="button" className="w-full rounded-full border border-border-soft bg-bg-card py-3.5 text-sm font-semibold text-text-secondary shadow-card hover:bg-bg-secondary transition-colors">
-            더 많은 CCTV 보기 ∨
-          </button>
+      {/* 지역별 빠른 진입 (SEO 내부 링크 보강) */}
+      <section className="mx-4 mt-10 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
+        <h2 className="mb-3 text-base font-bold text-text-primary">
+          📍 지역별 실시간 CCTV
+        </h2>
+        <p className="mb-3 text-xs leading-5 text-text-secondary">
+          제주 전 지역의 실시간 라이브캠을 지역별로 확인하세요. 각 지역의 모든 CCTV를 한 페이지에서 볼 수 있어요.
+        </p>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+          {[...new Set(mockCctvs.map((c) => c.region))].map((r) => {
+            const count = mockCctvs.filter((c) => c.region === r).length;
+            return (
+              <Link
+                key={r}
+                href={`/cctv/region/${encodeURIComponent(r)}`}
+                className="flex items-center justify-between rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs hover:border-brand-orange hover:bg-brand-orange/5 transition-colors"
+              >
+                <span className="font-semibold text-text-primary">{r}</span>
+                <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                  {count}곳
+                </span>
+              </Link>
+            );
+          })}
         </div>
-      )}
+      </section>
     </div>
   );
 }
