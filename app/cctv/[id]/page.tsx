@@ -7,18 +7,12 @@ import { LiveChat } from "@/components/cctv/LiveChat";
 
 type Props = { params: Promise<{ id: string }> };
 
-const relatedComments = [
-  { user: "jeju_lover", text: "바다 색깔 오늘 너무 예쁘다!", time: "3분 전", emoji: "🌊" },
-  { user: "travel_mom", text: "혼잡도 어떤가요? 주차 괜찮을까요?", time: "8분 전", emoji: "🚗" },
-  { user: "surf_boy", text: "파도 좋아 보이는데 서핑 하기 좋겠다", time: "15분 전", emoji: "🏄" },
-  { user: "photo_jeju", text: "노을 시간대 진짜 예쁠 것 같아요", time: "22분 전", emoji: "📸" },
-];
-
 export async function generateStaticParams() {
   return mockCctvs.map((c) => ({ id: c.id }));
 }
 
-export const revalidate = 600; // 10분마다 재생성 (날씨 갱신)
+export const revalidate = 600; // 날씨는 10분 캐시 (채팅은 클라이언트 실시간)
+export const dynamicParams = true;
 
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
