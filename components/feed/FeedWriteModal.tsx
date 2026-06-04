@@ -5,17 +5,14 @@ import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFeedImage, createFeed } from "@/lib/feed";
 import type { ExifData, FeedFilter } from "@/types/feed";
-import {
-  findNearestRegion,
-  type JejuRegion,
-} from "@/constants/jeju-regions";
+import { findNearestRegion, type JejuRegion } from "@/constants/jeju-regions";
 
 const FILTER_OPTIONS: { id: FeedFilter; label: string; css: string }[] = [
-  { id: "none", label: "원본", css: "" },
-  { id: "warm", label: "웜", css: "contrast(1.1) saturate(1.2) brightness(1.05) sepia(0.1)" },
-  { id: "cool", label: "쿨", css: "contrast(1.15) saturate(0.9) hue-rotate(-5deg) brightness(1.05)" },
-  { id: "vivid", label: "비비드", css: "contrast(1.2) saturate(1.4) brightness(1.02)" },
-  { id: "cinematic", label: "시네마", css: "contrast(1.25) saturate(1.1) brightness(0.95) sepia(0.15)" },
+  { id: "none",     label: "원본",   css: "" },
+  { id: "warm",     label: "웜",     css: "contrast(1.1) saturate(1.2) brightness(1.05) sepia(0.1)" },
+  { id: "cool",     label: "쿨",     css: "contrast(1.15) saturate(0.9) hue-rotate(-5deg) brightness(1.05)" },
+  { id: "vivid",    label: "비비드", css: "contrast(1.2) saturate(1.4) brightness(1.02)" },
+  { id: "cinematic",label: "시네마", css: "contrast(1.25) saturate(1.1) brightness(0.95) sepia(0.15)" },
 ];
 
 type Props = { open: boolean; onClose: () => void; onPosted?: () => void };
@@ -24,32 +21,25 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const { user, signInWithGoogle } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [exif, setExif] = useState<ExifData>({});
-  const [aiCopy, setAiCopy] = useState("");
-  const [category, setCategory] = useState("자연");
-  const [filter, setFilter] = useState<FeedFilter>("none");
-  const [region, setRegion] = useState<JejuRegion | null>(null);
-  const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
+  const [file,        setFile]        = useState<File | null>(null);
+  const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
+  const [exif,        setExif]        = useState<ExifData>({});
+  const [aiCopy,      setAiCopy]      = useState("");
+  const [userCopy,    setUserCopy]    = useState("");   // 유저 직접 입력 카피
+  const [category,    setCategory]    = useState("자연");
+  const [filter,      setFilter]      = useState<FeedFilter>("none");
+  const [region,      setRegion]      = useState<JejuRegion | null>(null);
+  const [gps,         setGps]         = useState<{ lat: number; lng: number } | null>(null);
   const [exifMissing, setExifMissing] = useState(false);
+  const [status,      setStatus]      = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
+  const [error,       setError]       = useState("");
 
-  const [status, setStatus] = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
-  const [error, setError] = useState("");
-
-  // 모달 닫힐 때 리셋
   useEffect(() => {
     if (!open) {
-      setFile(null);
-      setPreviewUrl(null);
-      setExif({});
-      setAiCopy("");
-      setFilter("none");
-      setRegion(null);
-      setGps(null);
-      setExifMissing(false);
-      setStatus("idle");
-      setError("");
+      setFile(null); setPreviewUrl(null); setExif({});
+      setAiCopy(""); setUserCopy(""); setFilter("none");
+      setRegion(null); setGps(null); setExifMissing(false);
+      setStatus("idle"); setError("");
     }
   }, [open]);
 
@@ -58,6 +48,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (!selected) return;
+    e.target.value = "";   // 같은 파일 재선택 허용
 
     setError("");
     setFile(selected);
@@ -65,17 +56,14 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setStatus("analyzing");
 
     try {
-      // EXIF 추출 (동적 import — 클라이언트 only)
+      // EXIF 추출
       const exifr = await import("exifr");
       const data = await exifr.default.parse(selected, {
-        pick: [
-          "Make", "Model", "LensModel", "FocalLength",
-          "FNumber", "ISO", "ExposureTime", "DateTimeOriginal",
-          "latitude", "longitude", "GPSLatitude", "GPSLongitude",
-        ],
+        pick: ["Make","Model","LensModel","FocalLength","FNumber","ISO",
+               "ExposureTime","DateTimeOriginal","latitude","longitude",
+               "GPSLatitude","GPSLongitude"],
       }).catch(() => null);
 
-      // GPS 없으면 차단 — Live Feed는 위치 정보 필수
       const lat = data?.latitude ?? data?.GPSLatitude;
       const lng = data?.longitude ?? data?.GPSLongitude;
       if (typeof lat !== "number" || typeof lng !== "number") {
@@ -84,20 +72,16 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         return;
       }
 
-      // GPS → 제주 지역 자동 매칭
       setGps({ lat, lng });
       const matched = findNearestRegion(lat, lng);
       if (matched) setRegion(matched);
 
-      // 나머지 EXIF 파싱
       const parsed: ExifData = {};
-      if (data.Make || data.Model) {
-        parsed.camera = `${data.Make ?? ""} ${data.Model ?? ""}`.trim();
-      }
-      if (data.LensModel) parsed.lens = data.LensModel;
-      if (data.FocalLength) parsed.focalLength = `${Math.round(data.FocalLength)}mm`;
-      if (data.FNumber) parsed.fStop = `f/${data.FNumber}`;
-      if (data.ISO) parsed.iso = data.ISO;
+      if (data.Make || data.Model) parsed.camera = `${data.Make ?? ""} ${data.Model ?? ""}`.trim();
+      if (data.LensModel)     parsed.lens         = data.LensModel;
+      if (data.FocalLength)   parsed.focalLength  = `${Math.round(data.FocalLength)}mm`;
+      if (data.FNumber)       parsed.fStop        = `f/${data.FNumber}`;
+      if (data.ISO)           parsed.iso          = data.ISO;
       if (data.ExposureTime) {
         parsed.exposureTime = data.ExposureTime < 1
           ? `1/${Math.round(1 / data.ExposureTime)}s`
@@ -108,21 +92,23 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       }
       setExif(parsed);
 
-      // AI 카피 + 카테고리 자동 생성
-      const base64 = await fileToBase64(selected);
+      // 이미지 압축 후 AI 카피 생성 (413 방지: max 1024px, 80% JPEG)
+      const base64 = await compressToBase64(selected, 1024, 0.8);
       const res = await fetch("/api/feed-copy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: selected.type }),
+        body: JSON.stringify({ imageBase64: base64, mimeType: "image/jpeg" }),
       });
 
       if (res.ok) {
         const { copy, category: cat } = await res.json();
-        setAiCopy(copy);
+        setAiCopy(copy ?? "");
         setCategory(cat || "자연");
       } else {
-        const { error: err } = await res.json();
-        setError(`AI 카피 생성 실패: ${err}. 직접 입력해주세요.`);
+        const text = await res.text();
+        let msg = "AI 카피 생성 실패";
+        try { msg = JSON.parse(text).error ?? msg; } catch { /* noop */ }
+        setError(`${msg} — 직접 입력해주세요`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "처리 실패");
@@ -132,34 +118,20 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   }
 
   async function handlePost() {
-    if (!user) {
-      setError("로그인이 필요해요");
-      return;
-    }
-    if (!file || !aiCopy.trim()) {
-      setError("이미지와 카피가 필요해요");
-      return;
-    }
+    if (!user || !file) return;
+    const finalCopy = (userCopy.trim() || aiCopy.trim()).slice(0, 30);
+    if (!finalCopy) { setError("카피를 입력해주세요"); return; }
 
     setStatus("uploading");
     setError("");
-
     try {
       const imageUrl = await uploadFeedImage(user.uid, file);
       await createFeed({
         authorId: user.uid,
         authorName: user.displayName ?? user.email?.split("@")[0] ?? "여행자",
         authorPhoto: user.photoURL ?? null,
-        imageUrl,
-        exif,
-        aiCopy: aiCopy.trim().slice(0, 30),
-        filter,
-        category,
-        ...(region && {
-          regionId: region.id,
-          regionName: region.name,
-          regionCity: region.city,
-        }),
+        imageUrl, exif, aiCopy: finalCopy, filter, category,
+        ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
         ...(gps && { gps }),
       });
       setStatus("done");
@@ -172,6 +144,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   }
 
   const activeFilterCss = FILTER_OPTIONS.find((f) => f.id === filter)?.css ?? "";
+  // 이미지 위에 표시할 카피: 유저 카피 우선
+  const displayCopy = userCopy.trim() || aiCopy;
+  const hasExif = !!(exif.camera || exif.fStop || exif.iso);
 
   return (
     <div
@@ -185,13 +160,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-5 py-4">
           <h2 className="text-base font-black text-text-primary">✨ 피드 올리기</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-2xl text-text-secondary hover:text-text-primary transition-colors"
-          >
-            ×
-          </button>
+          <button type="button" onClick={onClose} className="text-2xl text-text-secondary hover:text-text-primary">×</button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -199,15 +168,12 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
             <div className="flex flex-col items-center py-12 text-center">
               <span className="text-4xl">🗿</span>
               <p className="mt-3 text-sm font-bold text-text-primary">로그인이 필요해요</p>
-              <p className="mt-1 text-xs text-text-secondary">피드를 올리려면 로그인이 필요합니다</p>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                className="mt-4 rounded-full bg-brand-navy px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-navy/90 transition-colors"
-              >
+              <button type="button" onClick={signInWithGoogle}
+                className="mt-4 rounded-full bg-brand-navy px-5 py-2.5 text-sm font-bold text-white">
                 Google 로그인
               </button>
             </div>
+
           ) : !previewUrl ? (
             <button
               type="button"
@@ -220,36 +186,34 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 GPS가 포함된 카메라·스마트폰 원본 사진만 올릴 수 있어요
               </p>
             </button>
+
           ) : exifMissing ? (
-            <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="flex flex-col items-center gap-4">
               <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-900">
                 <Image src={previewUrl} alt="preview" fill className="object-cover opacity-30" unoptimized />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
                   <span className="text-5xl">🚫</span>
                   <p className="text-base font-black text-white">Live Feed는 EXIF 설정이 필수입니다</p>
-                  <p className="text-xs text-white/70 leading-relaxed">
+                  <p className="text-xs text-white/70 leading-relaxed text-center">
                     이 사진에는 GPS 위치 정보가 없어요.<br />
-                    카메라·스마트폰 설정에서 위치 정보 저장을<br />
-                    켜고 다시 촬영한 사진을 올려주세요.
+                    카메라·스마트폰 설정에서 위치 정보 저장을 켜고<br />
+                    다시 촬영한 사진을 올려주세요.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setExifMissing(false);
-                  setPreviewUrl(null);
-                  setFile(null);
-                  fileInputRef.current?.click();
-                }}
+                onClick={() => { setExifMissing(false); setPreviewUrl(null); setFile(null); fileInputRef.current?.click(); }}
                 className="w-full rounded-xl border border-border-soft bg-bg-secondary py-3 text-sm font-semibold text-text-secondary hover:bg-bg-primary transition-colors"
               >
                 다른 사진 선택하기
               </button>
             </div>
+
           ) : (
             <div className="space-y-4">
-              {/* 프리뷰 + 필터 적용 */}
+
+              {/* ── 이미지 프리뷰 + 오버레이 ── */}
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-900">
                 <Image
                   src={previewUrl}
@@ -259,16 +223,55 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                   style={{ filter: activeFilterCss }}
                   unoptimized
                 />
-                {aiCopy && (
-                  <div className="absolute right-3 top-3 max-w-[60%]">
+
+                {/* AI 감성 카피 오버레이 — 상단 우측 */}
+                {displayCopy && (
+                  <div className="absolute right-3 top-3 max-w-[65%]">
                     <p
-                      className="text-right text-base font-bold leading-6 text-white"
-                      style={{ textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
+                      className="text-right font-black leading-7 text-white"
+                      style={{
+                        fontSize: "clamp(14px, 4vw, 18px)",
+                        textShadow: "0 1px 12px rgba(0,0,0,0.7), 0 0 24px rgba(0,0,0,0.4)",
+                        letterSpacing: "-0.01em",
+                      }}
                     >
-                      {aiCopy}
+                      {displayCopy}
                     </p>
                   </div>
                 )}
+
+                {/* EXIF 오버레이 — 하단 */}
+                {hasExif && !status && (
+                  <>
+                    {/* 그라데이션 */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                    {/* 지역 + EXIF 정보 */}
+                    <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+                      {region && (
+                        <div className="mb-1.5 flex items-center gap-1">
+                          <span className="rounded-full bg-white/20 backdrop-blur-sm px-2 py-0.5 text-[9px] font-bold text-white">
+                            📍 {region.fullName}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        {exif.camera && (
+                          <span className="flex items-center gap-1 text-[10px] font-medium text-white/90">
+                            <span className="text-xs">📷</span> {exif.camera}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2 text-[10px] font-medium text-white/75">
+                          {exif.focalLength && <span>{exif.focalLength}</span>}
+                          {exif.fStop &&       <span>{exif.fStop}</span>}
+                          {exif.iso &&         <span>ISO {exif.iso}</span>}
+                          {exif.exposureTime && <span>{exif.exposureTime}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* AI 분석 중 */}
                 {status === "analyzing" && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -277,43 +280,62 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 )}
               </div>
 
-              {/* 필터 선택 */}
+              {/* ── 감성 필터 ── */}
               <div>
                 <p className="mb-2 text-xs font-bold text-text-secondary">🎨 감성 필터</p>
                 <div className="flex gap-1.5 overflow-x-auto pb-1">
                   {FILTER_OPTIONS.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setFilter(f.id)}
-                      className={[
-                        "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                        filter === f.id
-                          ? "bg-brand-navy text-white"
-                          : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
-                      ].join(" ")}
-                    >
+                    <button key={f.id} type="button" onClick={() => setFilter(f.id)}
+                      className={["shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                        filter === f.id ? "bg-brand-navy text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}>
                       {f.label}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* AI 카피 (수정 가능) */}
+              {/* ── AI 감성 카피 ── */}
               <div>
-                <p className="mb-2 text-xs font-bold text-text-secondary">
-                  ✨ AI 감성 카피 <span className="text-text-secondary font-normal">({aiCopy.length}/30)</span>
-                </p>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-xs font-bold text-text-secondary">
+                    ✨ AI 감성 카피
+                    <span className="ml-1 font-normal">({aiCopy.length}/30)</span>
+                  </p>
+                  {aiCopy && (
+                    <span className="text-[10px] text-jeju-green font-medium">AI 자동 생성됨</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={aiCopy}
                   onChange={(e) => setAiCopy(e.target.value.slice(0, 30))}
-                  placeholder="AI가 사진 보고 자동 생성해요..."
-                  className="w-full rounded-xl border border-border-soft bg-bg-secondary px-3 py-2.5 text-sm outline-none focus:border-brand-orange"
+                  placeholder={status === "analyzing" ? "AI 분석 중..." : "AI가 사진 보고 자동 생성해요..."}
+                  disabled={status === "analyzing"}
+                  className="w-full rounded-xl border border-border-soft bg-bg-secondary px-3 py-2.5 text-sm outline-none focus:border-brand-orange disabled:opacity-50"
                 />
               </div>
 
-              {/* 카테고리 — AI 자동, 수정 가능 */}
+              {/* ── 나만의 카피 (선택) ── */}
+              <div>
+                <p className="mb-2 text-xs font-bold text-text-secondary">
+                  ✏️ 나만의 카피
+                  <span className="ml-1 font-normal text-text-secondary">(입력 시 AI 카피 대신 사용 · 선택)</span>
+                </p>
+                <input
+                  type="text"
+                  value={userCopy}
+                  onChange={(e) => setUserCopy(e.target.value.slice(0, 30))}
+                  placeholder="직접 쓰고 싶은 문구..."
+                  className="w-full rounded-xl border border-border-soft bg-bg-secondary px-3 py-2.5 text-sm outline-none focus:border-brand-orange"
+                />
+                {userCopy && (
+                  <p className="mt-1 text-[10px] text-brand-orange font-medium">
+                    👆 이 카피가 사진 위에 표시됩니다
+                  </p>
+                )}
+              </div>
+
+              {/* ── 카테고리 — AI 자동, 수정 가능 ── */}
               <div>
                 <p className="mb-2 text-xs font-bold text-text-secondary">
                   📂 카테고리
@@ -321,50 +343,14 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 </p>
                 <div className="flex gap-1.5 overflow-x-auto pb-1">
                   {["자연", "카페", "맛집", "액티비티", "숙소"].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setCategory(c)}
-                      className={[
-                        "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                        category === c
-                          ? "bg-brand-orange text-white"
-                          : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
-                      ].join(" ")}
-                    >
+                    <button key={c} type="button" onClick={() => setCategory(c)}
+                      className={["shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                        category === c ? "bg-brand-orange text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}>
                       {c}
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* 지역 — GPS 자동 매칭, 읽기 전용 */}
-              {region && (
-                <div className="flex items-center gap-2 rounded-xl bg-bg-secondary px-3 py-2.5">
-                  <span className="text-sm">📍</span>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-text-primary">{region.fullName}</p>
-                    <p className="text-[10px] text-text-secondary">{region.city} · GPS 자동 인식</p>
-                  </div>
-                  <span className="rounded-full bg-jeju-green/10 px-2 py-0.5 text-[9px] font-bold text-jeju-green">
-                    GPS
-                  </span>
-                </div>
-              )}
-
-              {/* EXIF 정보 */}
-              {(exif.camera || exif.fStop || exif.iso) && (
-                <div className="rounded-xl bg-bg-secondary p-3">
-                  <p className="mb-1.5 text-[10px] font-bold text-text-secondary">📷 자동 추출된 EXIF</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {exif.camera && <Pill>{exif.camera}</Pill>}
-                    {exif.focalLength && <Pill>{exif.focalLength}</Pill>}
-                    {exif.fStop && <Pill>{exif.fStop}</Pill>}
-                    {exif.iso && <Pill>ISO {exif.iso}</Pill>}
-                    {exif.exposureTime && <Pill>{exif.exposureTime}</Pill>}
-                  </div>
-                </div>
-              )}
 
               {error && (
                 <p className="rounded-xl bg-live-red/10 px-3 py-2 text-[11px] font-semibold text-live-red">
@@ -381,7 +367,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
             <button
               type="button"
               onClick={handlePost}
-              disabled={status === "analyzing" || status === "uploading" || !aiCopy.trim()}
+              disabled={status === "analyzing" || status === "uploading" || (!aiCopy.trim() && !userCopy.trim())}
               className="w-full rounded-xl bg-brand-orange py-3 text-sm font-bold text-white hover:bg-brand-orange/90 disabled:opacity-50 transition-colors"
             >
               {status === "uploading" ? "올리는 중..." : status === "done" ? "✅ 완료!" : "피드 올리기"}
@@ -389,36 +375,32 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
           </div>
         )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
       </div>
     </div>
   );
 }
 
-function Pill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-bg-card px-2 py-0.5 text-[10px] font-medium text-text-secondary">
-      {children}
-    </span>
-  );
-}
-
-async function fileToBase64(file: File): Promise<string> {
+/** 캔버스로 이미지 압축 → base64 (413 방지) */
+async function compressToBase64(file: File, maxWidth: number, quality: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // "data:image/jpeg;base64,xxx" 에서 base64 부분만
-      const base64 = result.split(",")[1];
-      resolve(base64);
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w > maxWidth) { h = Math.round(h * (maxWidth / w)); w = maxWidth; }
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("canvas context")); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      URL.revokeObjectURL(url);
+      resolve(dataUrl.split(",")[1]);
     };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load")); };
+    img.src = url;
   });
 }
