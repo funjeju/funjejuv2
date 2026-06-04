@@ -8,7 +8,8 @@ import {
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -16,9 +17,42 @@ export function useAuth() {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
+
+      // 로그인 시 users 컬렉션에 프로필 자동 생성/업데이트
+      if (u) {
+        try {
+          const db = getFirebaseDb();
+          const userRef = doc(db, "users", u.uid);
+          const snap = await getDoc(userRef);
+          if (!snap.exists()) {
+            // 첫 로그인 → 프로필 생성
+            await setDoc(userRef, {
+              displayName: u.displayName ?? u.email?.split("@")[0] ?? "여행자",
+              email: u.email,
+              photoURL: u.photoURL,
+              isBusiness: false,
+              createdAt: serverTimestamp(),
+            });
+          } else {
+            // 이름/사진 변경됐을 수도 → 머지 업데이트
+            await setDoc(
+              userRef,
+              {
+                displayName: u.displayName ?? snap.data().displayName,
+                photoURL: u.photoURL ?? snap.data().photoURL,
+                email: u.email ?? snap.data().email,
+                lastSeenAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
+        } catch {
+          // 프로필 생성 실패해도 로그인은 계속
+        }
+      }
     });
     return unsub;
   }, []);

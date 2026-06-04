@@ -1,0 +1,31 @@
+// Firebase Console → Storage → 규칙 탭에 붙여넣기
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 피드 이미지 — 누구나 읽기, 로그인 사용자가 자기 폴더에만 업로드
+    match /feeds/{userId}/{fileName} {
+      allow read: if true;
+      // 5MB 이하, 이미지 파일만, 본인 폴더만
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // 프로필 사진 등 향후 확장
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // 나머지 거부
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -4,30 +4,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 사용자 저장 스팟 (본인만 읽기/쓰기)
+    // 사용자 프로필 (누구나 읽기 — 작성자 정보 노출용, 본인만 쓰기)
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // 본인 정보 수정 — 단 isBusiness는 어드민만 변경 가능 (또는 본인이 false로 셀프 다운그레이드)
+      allow update: if request.auth != null && request.auth.uid == userId
+        && (
+          // isBusiness가 변경되지 않거나
+          !('isBusiness' in request.resource.data) ||
+          request.resource.data.isBusiness == resource.data.isBusiness ||
+          // false로 변경 (셀프 다운그레이드 허용)
+          request.resource.data.isBusiness == false
+        );
+    }
+
+    // 저장한 스팟 (본인만)
     match /users/{userId}/saved/{spotId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // CCTV 실시간 채팅 (로그인 사용자 누구나 읽기, 본인 메시지만 쓰기)
+    // CCTV 실시간 채팅 (누구나 읽기, 로그인 사용자만 작성)
     match /cctv_chats/{cctvId}/messages/{messageId} {
-      // 누구나 읽기 가능
       allow read: if true;
-
-      // 로그인한 사용자만 작성 가능 + 자기 uid로만 + 200자 이하
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 200
-        && request.resource.data.createdAt == request.time;
-
-      // 본인 메시지만 삭제 가능
+        && request.resource.data.text.size() <= 200;
       allow delete: if request.auth != null
         && resource.data.uid == request.auth.uid;
     }
 
-    // 기본: 나머지는 모두 거부
+    // 라이브 피드 (누구나 읽기, 로그인 사용자만 자기 글 작성/삭제)
+    match /feeds/{feedId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.imageUrl is string
+        && request.resource.data.aiCopy is string
+        && request.resource.data.aiCopy.size() <= 50;
+      // 좋아요만 모두 가능 (likes 필드만)
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow delete: if request.auth != null
+        && resource.data.authorId == request.auth.uid;
+    }
+
+    // 기본: 나머지 모두 거부
     match /{document=**} {
       allow read, write: if false;
     }

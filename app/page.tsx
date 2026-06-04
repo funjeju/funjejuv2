@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
+import { HomeFeedSection } from "@/components/feed/HomeFeedSection";
 
 const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
@@ -8,17 +9,6 @@ const quickLinks = [
   { href: "/youtube", label: "유튜브 요약", emoji: "▶️", bg: "bg-red-50", color: "text-red-500" },
   { href: "/trip-ai", label: "AI 여행 일정", emoji: "🗓️", bg: "bg-green-50", color: "text-green-600" },
   { href: "/saved", label: "저장한 스팟", emoji: "⭐", bg: "bg-orange-50", color: "text-orange-500" },
-];
-
-const liveFeedMock = [
-  { id: 1, text: "오늘 삼산 드라이브 최고였어요!", user: "jeju_love_0", time: "2시간 전", likes: 128, emoji: "🌊" },
-  { id: 2, text: "바다 보며 커피 한잔 ☕", user: "cafe_jeju", time: "3시간 전", likes: 97, emoji: "☕" },
-  { id: 3, text: "흑돼지 진짜 맛집 발견!", user: "yum_jeju", time: "4시간 전", likes: 153, emoji: "🍖" },
-  { id: 4, text: "협재 바다색 미쳤다..💙", user: "beach_day", time: "5시간 전", likes: 209, emoji: "🏖️" },
-  { id: 5, text: "귤이 주렁주렁 🍊", user: "orange_jeju", time: "6시간 전", likes: 87, emoji: "🍊" },
-  { id: 6, text: "제주 바람은 늘 좋다", user: "slow_moment", time: "7시간 전", likes: 75, emoji: "🌿" },
-  { id: 7, text: "노을 찰칵 인생샷..📸", user: "film_jeju", time: "8시간 전", likes: 112, emoji: "🌅" },
-  { id: 8, text: "오션뷰 점심 최고!", user: "delicious_jeju", time: "8시간 전", likes: 66, emoji: "🍱" },
 ];
 
 const hotSpots = [
@@ -97,64 +87,8 @@ export default function HomePage() {
           {/* CCTV Section - 자동 전환 뷰어 + 실시간 채팅 */}
           <AutoRotateViewer />
 
-          {/* Live Feed */}
-          <section className="px-4 md:px-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold text-text-primary md:text-lg">
-                라이브 피드 <span className="text-brand-yellow">✨</span>
-              </h2>
-            </div>
-
-            {/* Filter tabs */}
-            <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-              {["전체", "자연", "카페", "맛집", "액티비티"].map((tab, i) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={[
-                    "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                    i === 0
-                      ? "bg-text-primary text-white"
-                      : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
-                  ].join(" ")}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              {liveFeedMock.map((post) => (
-                <div
-                  key={post.id}
-                  className="overflow-hidden rounded-xl border border-border-soft bg-bg-card shadow-card"
-                >
-                  <div className="flex aspect-square items-center justify-center bg-gradient-to-br from-sky-100 to-teal-50 text-4xl">
-                    {post.emoji}
-                  </div>
-                  <div className="p-2.5">
-                    <p className="line-clamp-2 text-xs font-medium text-text-primary">{post.text}</p>
-                    <div className="mt-1.5 flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <div className="h-4 w-4 rounded-full bg-brand-orange/20 text-center text-[8px] leading-4">
-                          {post.user[0].toUpperCase()}
-                        </div>
-                        <span className="text-[10px] text-text-secondary">{post.time}</span>
-                      </div>
-                      <span className="text-[10px] text-text-secondary">❤️ {post.likes}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              className="mt-4 w-full rounded-full border border-border-soft bg-bg-card py-3 text-sm font-semibold text-text-secondary hover:bg-bg-secondary transition-colors"
-            >
-              더 많은 피드 보기 ∨
-            </button>
-          </section>
+          {/* Live Feed - Firestore 실시간 연동 */}
+          <HomeFeedSection />
 
           {/* Bottom mascot banner (mobile) */}
           <section className="mx-4 mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-yellow/20 to-brand-orange/10 p-4 md:hidden">

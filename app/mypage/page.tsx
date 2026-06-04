@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
 
 const menuItems = [
   { label: "저장한 스팟", href: "/saved",   emoji: "⭐" },
@@ -146,6 +147,9 @@ export default function MyPage() {
           </section>
         );
       })()}
+
+      {/* 비즈니스 CTA 설정 */}
+      <BusinessCtaSettings />
 
       {/* Menu */}
       <div className="mx-4 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
