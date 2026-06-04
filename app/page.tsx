@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HomeCctvSection } from "@/components/cctv/HomeCctvSection";
+import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
 
 const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
@@ -94,8 +94,8 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* CCTV Section */}
-          <HomeCctvSection />
+          {/* CCTV Section - 자동 전환 뷰어 + 실시간 채팅 */}
+          <AutoRotateViewer />
 
           {/* Live Feed */}
           <section className="px-4 md:px-0">
