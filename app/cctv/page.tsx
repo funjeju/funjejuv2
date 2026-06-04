@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CctvList } from "@/components/cctv/CctvList";
 import { PageHeader } from "@/components/common/PageHeader";
 import { mockCctvs } from "@/constants/mock-cctvs";
@@ -26,21 +27,29 @@ export default function CctvPage() {
         subtitle="지금 제주 현장을 실시간으로 확인하세요"
         emoji="📷"
         right={
-          <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-xs font-semibold shadow-card">
-            <button
-              type="button"
-              onClick={() => setViewMode("grid")}
-              className={["rounded-full px-4 py-2 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/cctv/multiview"
+              className="flex items-center gap-1.5 rounded-full bg-brand-orange px-3 py-2 text-xs font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
             >
-              목록형
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("map")}
-              className={["px-4 py-2 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
-            >
-              지도형
-            </button>
+              📺 멀티뷰
+            </Link>
+            <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-xs font-semibold shadow-card">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={["rounded-full px-4 py-2 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
+              >
+                목록형
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("map")}
+                className={["px-4 py-2 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
+              >
+                지도형
+              </button>
+            </div>
           </div>
         }
       />

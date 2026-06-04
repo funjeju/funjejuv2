@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { mockCctvs } from "@/constants/mock-cctvs";
-import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { HomeCctvSection } from "@/components/cctv/HomeCctvSection";
 
 const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
@@ -96,41 +95,7 @@ export default function HomePage() {
           </section>
 
           {/* CCTV Section */}
-          <section className="px-4 md:px-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold text-text-primary md:text-lg">실시간 제주 CCTV</h2>
-              <Link href="/cctv" className="text-xs font-medium text-brand-orange">전체보기 →</Link>
-            </div>
-
-            {/* TV-shaped container */}
-            <div className="relative rounded-2xl border-4 border-jeju-green bg-jeju-green/10 p-3">
-              {/* TV antenna */}
-              <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 gap-4 text-xl text-jeju-green">
-                <span className="-rotate-12 inline-block">📡</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {mockCctvs.slice(0, 2).map((cctv) => (
-                  <HlsMiniPlayer
-                    key={cctv.id}
-                    id={cctv.id}
-                    proxyUrl={cctv.streamProxyUrl}
-                    name={cctv.name}
-                    forcePlay
-                  />
-                ))}
-              </div>
-
-              <Link
-                href="/cctv"
-                className="mt-3 flex w-full items-center justify-between rounded-xl border border-jeju-green/30 bg-white px-4 py-2.5 text-sm font-semibold text-text-primary hover:bg-jeju-green/5 transition-colors"
-              >
-                <span className="text-sm">〈</span>
-                <span>전체 CCTV 보기</span>
-                <span className="text-sm">〉</span>
-              </Link>
-            </div>
-          </section>
+          <HomeCctvSection />
 
           {/* Live Feed */}
           <section className="px-4 md:px-0">

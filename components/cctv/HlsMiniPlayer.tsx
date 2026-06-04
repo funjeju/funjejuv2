@@ -1,65 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 
 type Props = {
   id: string;
   proxyUrl: string | null;
   name: string;
-  /** 강제 재생 (홈의 작은 미리보기 등). 기본은 가시성 기반 */
+  /** 강제 자동재생 (홈의 메인 미리보기 등) */
   forcePlay?: boolean;
 };
 
 /**
- * 컴팩트 자동재생 미니 플레이어
- * 데이터/CPU 절약 — 화면에 보이지 않으면 자동 정지하고 스트림 끊음
+ * 컴팩트 미니 플레이어
+ * 기본: 썸네일 + 재생 버튼 → 사용자가 클릭해야 재생 시작
+ * forcePlay=true: 자동 재생
  */
 export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) {
-  const containerRef = useRef<HTMLAnchorElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [activated, setActivated] = useState(forcePlay);
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">(
     forcePlay ? "loading" : "idle"
   );
-  const [visible, setVisible] = useState(forcePlay);
   const [viewers] = useState(() => Math.floor(Math.random() * 300 + 100));
 
-  // ── 가시성 감지 (Intersection Observer) ─────────────────────
   useEffect(() => {
-    if (forcePlay || !containerRef.current) return;
-
-    const el = containerRef.current;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setVisible(entry.isIntersecting);
-      },
-      {
-        // 최소 30%가 보이면 활성, 카드가 큰 영역만큼 보일 때만 재생
-        threshold: 0.3,
-        // 위/아래 100px 미리 로드해서 스크롤 부드럽게
-        rootMargin: "100px 0px",
-      }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [forcePlay]);
-
-  // ── HLS 스트림 부착/해제 ────────────────────────────────────
-  useEffect(() => {
-    if (!proxyUrl || !videoRef.current) {
-      if (!proxyUrl) setStatus("error");
-      return;
-    }
-
-    // 안 보이면 스트림 끊기
-    if (!visible) {
-      const video = videoRef.current;
-      video.pause();
-      // src 비우면 네트워크 다운로드 즉시 중단
-      video.removeAttribute("src");
-      video.load();
-      setStatus("idle");
+    if (!activated || !proxyUrl || !videoRef.current) {
+      if (activated && !proxyUrl) setStatus("error");
       return;
     }
 
@@ -84,7 +51,6 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        // 메모리 절약 — 버퍼 작게
         maxBufferLength: 10,
         maxMaxBufferLength: 20,
         backBufferLength: 0,
@@ -118,11 +84,18 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       video.removeAttribute("src");
       video.load();
     };
-  }, [proxyUrl, visible]);
+  }, [proxyUrl, activated]);
+
+  function handlePlayClick(e: MouseEvent) {
+    // 카드의 Link 이동을 막고 재생만 활성화
+    e.preventDefault();
+    e.stopPropagation();
+    if (!proxyUrl) return;
+    setActivated(true);
+  }
 
   return (
     <Link
-      ref={containerRef}
       href={`/cctv/${id}`}
       className="group relative block aspect-video overflow-hidden rounded-xl bg-gray-900"
     >
@@ -134,22 +107,30 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
         preload="none"
       />
 
-      {/* 아직 안 보이는 카드 (대기 상태) */}
-      {status === "idle" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500/30 to-teal-400/20">
-          <span className="text-3xl opacity-50">🏝️</span>
+      {/* 비활성 상태 — 썸네일 + 재생 버튼 */}
+      {!activated && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500/40 to-teal-400/30">
+          <button
+            type="button"
+            onClick={handlePlayClick}
+            disabled={!proxyUrl}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60 transition-all hover:scale-110 disabled:opacity-30"
+            aria-label="재생"
+          >
+            <span className="ml-1 text-2xl">▶</span>
+          </button>
         </div>
       )}
 
       {/* 로딩 */}
-      {status === "loading" && (
+      {activated && status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500/40 to-teal-400/30">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         </div>
       )}
 
       {/* 에러 */}
-      {status === "error" && (
+      {activated && status === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
           <span className="text-2xl">📡</span>
           <span className="text-[10px]">연결 실패</span>
@@ -168,13 +149,6 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
         <p className="text-xs font-medium text-white truncate">{name}</p>
         <p className="text-[10px] text-white/70">👥 {viewers}</p>
-      </div>
-
-      {/* 호버 hint */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-        <span className="opacity-0 group-hover:opacity-100 rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-text-primary transition-opacity">
-          크게 보기
-        </span>
       </div>
     </Link>
   );

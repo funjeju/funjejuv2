@@ -4,6 +4,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
+import { mockCctvs } from "@/constants/mock-cctvs";
+import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 
 const menuItems = [
   { label: "저장한 스팟", href: "/saved",   emoji: "⭐" },
@@ -113,6 +115,37 @@ export default function MyPage() {
           일정 만들기
         </Link>
       </div>
+
+      {/* 즐겨찾기 CCTV */}
+      {(() => {
+        const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
+        if (savedCctvs.length === 0) return null;
+        return (
+          <section className="mx-4 mb-5 md:mx-0">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                📷 내 즐겨찾기 CCTV
+                <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                  {savedCctvs.length}
+                </span>
+              </h2>
+              <Link href="/cctv/multiview" className="text-xs font-medium text-brand-orange">
+                4분할로 보기 →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              {savedCctvs.map((cctv) => (
+                <HlsMiniPlayer
+                  key={cctv.id}
+                  id={cctv.id}
+                  proxyUrl={cctv.streamProxyUrl}
+                  name={cctv.name}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* Menu */}
       <div className="mx-4 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
