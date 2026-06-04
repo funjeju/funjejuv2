@@ -31,7 +31,14 @@ function timeAgo(date: Date): string {
   return `${Math.floor(diff / 86400)}일 전`;
 }
 
-export function LiveChat({ cctvId, cctvName }: { cctvId: string; cctvName: string }) {
+type LiveChatProps = {
+  cctvId: string;
+  cctvName: string;
+  /** true면 부모 컨테이너 전체 높이 사용 (flex 자식) */
+  fillHeight?: boolean;
+};
+
+export function LiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps) {
   const { user, signInWithGoogle } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -86,8 +93,13 @@ export function LiveChat({ cctvId, cctvName }: { cctvId: string; cctvName: strin
   }
 
   return (
-    <div className="rounded-2xl border border-border-soft bg-bg-card shadow-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+    <div
+      className={[
+        "rounded-2xl border border-border-soft bg-bg-card shadow-card overflow-hidden",
+        fillHeight ? "flex flex-1 flex-col min-h-0" : "",
+      ].join(" ")}
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-4 py-3">
         <p className="text-sm font-bold text-text-primary">💬 실시간 채팅</p>
         <span className="rounded-full bg-jeju-green/10 px-2 py-0.5 text-[10px] font-bold text-jeju-green">
           {messages.length}명 참여
@@ -95,7 +107,13 @@ export function LiveChat({ cctvId, cctvName }: { cctvId: string; cctvName: strin
       </div>
 
       {/* 메시지 리스트 */}
-      <div ref={listRef} className="max-h-80 min-h-[200px] space-y-2 overflow-y-auto p-3">
+      <div
+        ref={listRef}
+        className={[
+          "space-y-2 overflow-y-auto p-3",
+          fillHeight ? "flex-1 min-h-0" : "max-h-80 min-h-[200px]",
+        ].join(" ")}
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <span className="text-3xl">🗿</span>
@@ -137,7 +155,7 @@ export function LiveChat({ cctvId, cctvName }: { cctvId: string; cctvName: strin
       </div>
 
       {/* 입력창 */}
-      <div className="border-t border-border-soft px-3 py-2.5">
+      <div className="shrink-0 border-t border-border-soft px-3 py-2.5">
         {user ? (
           <form onSubmit={handleSend} className="flex gap-2">
             <input

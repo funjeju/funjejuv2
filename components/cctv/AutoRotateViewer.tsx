@@ -7,90 +7,169 @@ import { mockCctvs } from "@/constants/mock-cctvs";
 import { LiveChat } from "@/components/cctv/LiveChat";
 
 const ROTATE_SEC = 7;
+const FADE_MS = 600;
 
-/** 자동 전환 HLS 플레이어 (1개 CCTV만 재생) */
-function AutoPlayer({ proxyUrl, cctvName }: { proxyUrl: string | null; cctvName: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+/**
+ * 이중 video 엘리먼트로 부드러운 전환
+ * - 비활성 video에 새 스트림 미리 로드
+ * - 새 영상이 재생 가능해지면 opacity로 전환
+ * - 이전 영상은 fade-out 후 정리
+ */
+function CrossfadePlayer({
+  proxyUrl,
+  cctvName,
+}: {
+  proxyUrl: string | null;
+  cctvName: string;
+}) {
+  const videoARef = useRef<HTMLVideoElement>(null);
+  const videoBRef = useRef<HTMLVideoElement>(null);
+  const hlsARef = useRef<import("hls.js").default | null>(null);
+  const hlsBRef = useRef<import("hls.js").default | null>(null);
+
+  const [activeLayer, setActiveLayer] = useState<"A" | "B">("A");
   const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
 
   useEffect(() => {
-    if (!proxyUrl || !videoRef.current) {
-      if (!proxyUrl) setStatus("error");
+    if (!proxyUrl) {
+      setStatus("error");
       return;
     }
 
+    let cancelled = false;
+    const nextLayer = activeLayer === "A" ? "B" : "A";
+    const nextVideo = nextLayer === "A" ? videoARef.current : videoBRef.current;
+    const prevVideo = activeLayer === "A" ? videoARef.current : videoBRef.current;
+    const nextHlsRef = nextLayer === "A" ? hlsARef : hlsBRef;
+    const prevHlsRef = activeLayer === "A" ? hlsARef : hlsBRef;
+
+    if (!nextVideo) return;
     setStatus("loading");
-    const video = videoRef.current;
-    let hls: import("hls.js").default | null = null;
 
-    async function init() {
+    async function loadIntoNext() {
       const Hls = (await import("hls.js")).default;
+      if (cancelled) return;
 
+      // Safari 네이티브 HLS
       if (!Hls.isSupported()) {
-        if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = proxyUrl!;
-          video.addEventListener("loadedmetadata", () => setStatus("playing"));
-          video.addEventListener("error", () => setStatus("error"));
-        } else setStatus("error");
+        if (nextVideo!.canPlayType("application/vnd.apple.mpegurl")) {
+          nextVideo!.src = proxyUrl!;
+          nextVideo!.addEventListener("loadedmetadata", () => onReady(), { once: true });
+          nextVideo!.addEventListener("error", () => setStatus("error"), { once: true });
+        } else {
+          setStatus("error");
+        }
         return;
       }
 
-      hls = new Hls({
+      const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
         maxBufferLength: 10,
         backBufferLength: 0,
         manifestLoadingMaxRetry: 2,
+        levelLoadingMaxRetry: 2,
+        fragLoadingMaxRetry: 2,
       });
+      nextHlsRef.current = hls;
       hls.loadSource(proxyUrl!);
-      hls.attachMedia(video);
+      hls.attachMedia(nextVideo!);
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setStatus("playing");
-        video.muted = true;
-        video.play().catch(() => setStatus("error"));
+        if (cancelled) return;
+        nextVideo!.muted = true;
+        nextVideo!
+          .play()
+          .then(() => {
+            // 한두 프레임 재생됐을 때 전환
+            if (cancelled) return;
+            onReady();
+          })
+          .catch(() => onReady());
       });
+
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal) {
+        if (data.fatal && !cancelled) {
           setStatus("error");
-          hls?.destroy();
+          hls.destroy();
         }
       });
     }
 
-    init();
+    function onReady() {
+      if (cancelled) return;
+      setStatus("playing");
+      setActiveLayer(nextLayer);
+
+      // 페이드 끝나면 이전 레이어 정리
+      setTimeout(() => {
+        const prevHls = prevHlsRef.current;
+        if (prevHls) {
+          prevHls.destroy();
+          prevHlsRef.current = null;
+        }
+        if (prevVideo) {
+          prevVideo.pause();
+          prevVideo.removeAttribute("src");
+          prevVideo.load();
+        }
+      }, FADE_MS + 100);
+    }
+
+    loadIntoNext();
+
     return () => {
-      hls?.destroy();
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
+      cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proxyUrl]);
 
+  // 언마운트 시 양쪽 다 정리
+  useEffect(() => {
+    return () => {
+      hlsARef.current?.destroy();
+      hlsBRef.current?.destroy();
+    };
+  }, []);
+
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-gray-900">
+    <div className="relative h-full w-full overflow-hidden rounded-xl bg-gray-900">
+      {/* 두 개의 video 레이어 */}
       <video
-        ref={videoRef}
-        className="h-full w-full object-cover"
+        ref={videoARef}
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms]"
+        style={{ opacity: activeLayer === "A" ? 1 : 0 }}
+        playsInline
+        muted
+        preload="none"
+      />
+      <video
+        ref={videoBRef}
+        className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms]"
+        style={{ opacity: activeLayer === "B" ? 1 : 0 }}
         playsInline
         muted
         preload="none"
       />
 
+      {/* 로딩 인디케이터 (이전 영상은 여전히 보이는 상태) */}
       {status === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-500/40 to-teal-400/30">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <div className="absolute right-3 top-3 z-10">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         </div>
       )}
 
+      {/* 에러 */}
       {status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
           <span className="text-3xl">📡</span>
           <span className="text-xs">{cctvName} 연결 실패</span>
         </div>
       )}
 
+      {/* LIVE 뱃지 */}
       {status === "playing" && (
-        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-live-red px-2.5 py-1 text-[11px] font-bold text-white shadow">
+        <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-live-red px-2.5 py-1 text-[11px] font-bold text-white shadow">
           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
           LIVE
         </span>
@@ -103,33 +182,29 @@ export function AutoRotateViewer() {
   const { savedIds } = useSaved();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [progress, setProgress] = useState(0); // 0~100
+  const [progress, setProgress] = useState(0);
 
-  // 즐겨찾기 우선, 없으면 전체
   const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
   const cctvs = savedCctvs.length > 0 ? savedCctvs : mockCctvs;
   const isPersonalized = savedCctvs.length > 0;
 
   const current = cctvs[index % cctvs.length];
 
-  // 자동 전환 + 진행률
   useEffect(() => {
     if (paused || cctvs.length <= 1) return;
-
-    const TICK = 100; // 100ms마다 진행률 업데이트
+    const TICK = 100;
     const totalTicks = (ROTATE_SEC * 1000) / TICK;
     let tickCount = 0;
     setProgress(0);
 
     const id = setInterval(() => {
       tickCount++;
-      const p = (tickCount / totalTicks) * 100;
       if (tickCount >= totalTicks) {
         setIndex((i) => (i + 1) % cctvs.length);
         tickCount = 0;
         setProgress(0);
       } else {
-        setProgress(p);
+        setProgress((tickCount / totalTicks) * 100);
       }
     }, TICK);
 
@@ -149,7 +224,6 @@ export function AutoRotateViewer() {
 
   return (
     <section className="px-4 md:px-0">
-      {/* 헤더 */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-bold text-text-primary md:text-lg">
@@ -168,22 +242,22 @@ export function AutoRotateViewer() {
         </Link>
       </div>
 
-      {/* TV-shaped container */}
       <div className="relative rounded-2xl border-4 border-jeju-green bg-jeju-green/10 p-3">
         <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 gap-4 text-xl text-jeju-green">
           <span className="-rotate-12 inline-block">📡</span>
         </div>
 
         {/* 데스크탑: 좌영상 우채팅 / 모바일: 위아래 */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
 
           {/* ── 영상 영역 ── */}
-          <div className="space-y-2">
-            <AutoPlayer
-              key={current.id}
-              proxyUrl={current.streamProxyUrl}
-              cctvName={current.name}
-            />
+          <div className="flex flex-col gap-2">
+            <div className="aspect-video w-full">
+              <CrossfadePlayer
+                proxyUrl={current.streamProxyUrl}
+                cctvName={current.name}
+              />
+            </div>
 
             {/* CCTV 정보 + 컨트롤 */}
             <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 shadow-card">
@@ -224,7 +298,6 @@ export function AutoRotateViewer() {
               </div>
             </div>
 
-            {/* 진행률 바 */}
             {cctvs.length > 1 && (
               <div className="h-1 overflow-hidden rounded-full bg-bg-secondary">
                 <div
@@ -234,7 +307,6 @@ export function AutoRotateViewer() {
               </div>
             )}
 
-            {/* 다음 CCTV 미리보기 (점) */}
             {cctvs.length > 1 && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {cctvs.slice(0, 10).map((c, i) => {
@@ -262,17 +334,16 @@ export function AutoRotateViewer() {
             )}
           </div>
 
-          {/* ── 채팅 영역 ── */}
-          <div className="lg:max-h-[420px]">
+          {/* ── 채팅 영역 (영상 영역 전체 높이만큼 확장) ── */}
+          <div className="flex flex-col min-h-0">
             <LiveChat
-              key={current.id}
-              cctvId={current.id}
-              cctvName={current.name}
+              cctvId="jeju_global"
+              cctvName="제주 실시간"
+              fillHeight
             />
           </div>
         </div>
 
-        {/* 하단 안내 */}
         <Link
           href="/cctv"
           className="mt-3 flex w-full items-center justify-between rounded-xl border border-jeju-green/30 bg-white px-4 py-2.5 text-sm font-semibold text-text-primary hover:bg-jeju-green/5 transition-colors"
