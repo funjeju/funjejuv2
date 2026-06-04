@@ -13,5 +13,5 @@ yarn-error.log*
 .vercel
 .DS_Store
 
-# 도민맛집 이미지 (별도 CDN 호스팅 예정 - 616MB)
-/public/restaurant-images/
+# 도민맛집 이미지는 Git LFS로 관리 (.gitattributes 참조)
+# /public/restaurant-images/ — LFS 추적 중

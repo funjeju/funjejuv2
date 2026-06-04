@@ -1,1 +1,8 @@
+public/restaurant-images/*.jpeg filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.png filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.PNG filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.jpg filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.JPG filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.gif filter=lfs diff=lfs merge=lfs -text
+public/restaurant-images/*.GIF filter=lfs diff=lfs merge=lfs -text
 public/restaurant-images/* !text !filter !merge !diff
