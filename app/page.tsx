@@ -116,6 +116,7 @@ export default function HomePage() {
                     id={cctv.id}
                     proxyUrl={cctv.streamProxyUrl}
                     name={cctv.name}
+                    forcePlay
                   />
                 ))}
               </div>
