@@ -7,12 +7,9 @@ import { LiveChat } from "@/components/cctv/LiveChat";
 
 type Props = { params: Promise<{ id: string }> };
 
-export async function generateStaticParams() {
-  return mockCctvs.map((c) => ({ id: c.id }));
-}
-
-export const revalidate = 600; // 날씨는 10분 캐시 (채팅은 클라이언트 실시간)
-export const dynamicParams = true;
+// 정적 생성 끄고 매 요청마다 SSR (캐시 문제 해결)
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
