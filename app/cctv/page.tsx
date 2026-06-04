@@ -4,21 +4,30 @@ import { useState } from "react";
 import Link from "next/link";
 import { CctvList } from "@/components/cctv/CctvList";
 import { PageHeader } from "@/components/common/PageHeader";
-import { mockCctvs } from "@/constants/mock-cctvs";
+import { useCctvs } from "@/hooks/useCctvs";
+import { DIRECTION_META } from "@/constants/cctv-directions";
+import type { CctvDirection } from "@/types/cctv";
 
-const categories = ["전체", "해변", "오름", "드라이브", "관광지"];
-const regions = ["전체 지역", "제주시", "서귀포시"];
+type DirectionFilter = "전체" | CctvDirection;
+
+const DIR_FILTERS: { id: DirectionFilter; label: string; emoji: string; sub: string }[] = [
+  { id: "전체", label: "전체",  emoji: "📡", sub: "제주 전 지역" },
+  { id: "북",   label: "북쪽",  emoji: DIRECTION_META["북"].emoji, sub: DIRECTION_META["북"].sub },
+  { id: "동",   label: "동쪽",  emoji: DIRECTION_META["동"].emoji, sub: DIRECTION_META["동"].sub },
+  { id: "남",   label: "남쪽",  emoji: DIRECTION_META["남"].emoji, sub: DIRECTION_META["남"].sub },
+  { id: "서",   label: "서쪽",  emoji: DIRECTION_META["서"].emoji, sub: DIRECTION_META["서"].sub },
+];
 
 export default function CctvPage() {
-  const [activeCat, setActiveCat] = useState("전체");
-  const [activeRegion, setActiveRegion] = useState("전체 지역");
+  const { cctvs, loading } = useCctvs();
+  const [activeDir, setActiveDir] = useState<DirectionFilter>("전체");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
-  const filtered = mockCctvs.filter((c) => {
-    const catOk = activeCat === "전체" || c.category === activeCat;
-    const regionOk = activeRegion === "전체 지역" || c.region === activeRegion;
-    return catOk && regionOk;
-  });
+  const filtered = cctvs.filter((c) =>
+    activeDir === "전체" || c.direction === activeDir
+  );
+
+  const youtubeCount = filtered.filter((c) => c.youtubeId).length;
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
@@ -61,50 +70,51 @@ export default function CctvPage() {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-jeju-green" />
         </span>
         <p className="text-sm font-medium text-text-primary">
-          현재 <span className="font-bold text-jeju-green">{filtered.length}개</span> CCTV 실시간 연결 중
+          {loading ? "연결 중..." : (
+            <>
+              <span className="font-bold text-jeju-green">{filtered.length}개</span> CCTV 연결 중
+              {youtubeCount > 0 && (
+                <span className="ml-2 text-xs text-red-500 font-medium">▶ YouTube {youtubeCount}개 포함</span>
+              )}
+            </>
+          )}
         </p>
-        <span className="ml-auto text-xs text-text-secondary">방금 업데이트</span>
+        <span className="ml-auto text-xs text-text-secondary">실시간 업데이트</span>
       </div>
 
-      {/* Category filter */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2 md:px-0">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setActiveCat(cat)}
-            className={[
-              "shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
-              activeCat === cat
-                ? "bg-brand-orange text-white"
-                : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
-            ].join(" ")}
-          >
-            {cat}
-          </button>
-        ))}
+      {/* 방향 필터 — 컴퍼스 기반 */}
+      <div className="mx-4 mb-4 grid grid-cols-5 gap-2 md:mx-0">
+        {DIR_FILTERS.map((f) => {
+          const count = f.id === "전체" ? cctvs.length : cctvs.filter((c) => c.direction === f.id).length;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setActiveDir(f.id)}
+              className={[
+                "flex flex-col items-center rounded-2xl px-2 py-3 text-center transition-all",
+                activeDir === f.id
+                  ? "bg-brand-navy text-white shadow-soft"
+                  : "border border-border-soft bg-bg-card text-text-secondary hover:border-brand-navy/30 hover:bg-bg-secondary",
+              ].join(" ")}
+            >
+              <span className="text-xl">{f.emoji}</span>
+              <span className="mt-0.5 text-xs font-bold">{f.label}</span>
+              <span className={["text-[9px] leading-tight", activeDir === f.id ? "text-white/70" : "text-text-secondary"].join(" ")}>
+                {f.sub}
+              </span>
+              <span className={[
+                "mt-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+                activeDir === f.id ? "bg-white/20 text-white" : "bg-brand-orange/10 text-brand-orange",
+              ].join(" ")}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Region filter */}
-      <div className="mt-2 flex gap-2 overflow-x-auto px-4 pb-3 md:px-0">
-        {regions.map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => setActiveRegion(r)}
-            className={[
-              "shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors",
-              activeRegion === r
-                ? "bg-brand-navy/10 font-semibold text-brand-navy"
-                : "text-text-secondary hover:text-text-primary",
-            ].join(" ")}
-          >
-            {r}
-          </button>
-        ))}
-      </div>
-
-      {/* Map placeholder */}
+      {/* 지도 플레이스홀더 */}
       {viewMode === "map" && (
         <div className="mx-4 mb-4 flex h-64 items-center justify-center rounded-2xl border border-border-soft bg-bg-secondary text-center md:mx-0">
           <div>
@@ -115,49 +125,28 @@ export default function CctvPage() {
         </div>
       )}
 
-      {/* Grid */}
+      {/* 그리드 */}
       {viewMode === "grid" && (
         <div className="px-4 md:px-0">
-          {filtered.length > 0 ? (
+          {loading ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-video animate-pulse rounded-2xl bg-bg-secondary" />
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
             <CctvList cctvs={filtered} />
           ) : (
             <div className="flex flex-col items-center py-16 text-center">
               <p className="text-4xl">📷</p>
-              <p className="mt-3 text-sm font-bold text-text-primary">해당 조건의 CCTV가 없어요</p>
-              <button type="button" onClick={() => { setActiveCat("전체"); setActiveRegion("전체 지역"); }} className="mt-3 text-xs text-brand-orange underline">
-                필터 초기화
+              <p className="mt-3 text-sm font-bold text-text-primary">해당 방향의 CCTV가 없어요</p>
+              <button type="button" onClick={() => setActiveDir("전체")} className="mt-3 text-xs text-brand-orange underline">
+                전체 보기
               </button>
             </div>
           )}
         </div>
       )}
-
-      {/* 지역별 빠른 진입 (SEO 내부 링크 보강) */}
-      <section className="mx-4 mt-10 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
-        <h2 className="mb-3 text-base font-bold text-text-primary">
-          📍 지역별 실시간 CCTV
-        </h2>
-        <p className="mb-3 text-xs leading-5 text-text-secondary">
-          제주 전 지역의 실시간 라이브캠을 지역별로 확인하세요. 각 지역의 모든 CCTV를 한 페이지에서 볼 수 있어요.
-        </p>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-          {[...new Set(mockCctvs.map((c) => c.region))].map((r) => {
-            const count = mockCctvs.filter((c) => c.region === r).length;
-            return (
-              <Link
-                key={r}
-                href={`/cctv/region/${encodeURIComponent(r)}`}
-                className="flex items-center justify-between rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs hover:border-brand-orange hover:bg-brand-orange/5 transition-colors"
-              >
-                <span className="font-semibold text-text-primary">{r}</span>
-                <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
-                  {count}곳
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
     </div>
   );
 }
