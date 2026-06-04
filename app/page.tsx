@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { mockCctvs } from "@/constants/mock-cctvs";
+import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 
 const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
@@ -110,18 +111,12 @@ export default function HomePage() {
 
               <div className="grid grid-cols-2 gap-3">
                 {mockCctvs.slice(0, 2).map((cctv) => (
-                  <div key={cctv.id} className="relative overflow-hidden rounded-xl bg-gray-800 aspect-video">
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-blue-400/40 to-teal-400/40">
-                      <span className="text-4xl">🏝️</span>
-                    </div>
-                    <span className="absolute left-2 top-2 rounded-full bg-live-red px-2 py-0.5 text-[10px] font-bold text-white">
-                      LIVE
-                    </span>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 px-2 py-1.5">
-                      <p className="text-xs font-medium text-white">{cctv.name}</p>
-                      <p className="text-[10px] text-white/70">👥 {Math.floor(Math.random() * 300 + 100)}</p>
-                    </div>
-                  </div>
+                  <HlsMiniPlayer
+                    key={cctv.id}
+                    id={cctv.id}
+                    proxyUrl={cctv.streamProxyUrl}
+                    name={cctv.name}
+                  />
                 ))}
               </div>
 
