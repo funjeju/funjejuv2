@@ -4,8 +4,8 @@ const PROXY_BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
 
 function proxy(id: string): string | null {
   if (!PROXY_BASE) return null;
-  // Cafe24 PHP 프록시: https://도메인/cctv-proxy.php?id=xxx
-  return `${PROXY_BASE}?id=${id}`;
+  // AWS Lightsail Node 프록시: https://proxy.tuberecipe.co.kr/cctv/{id}
+  return `${PROXY_BASE}/cctv/${id}`;
 }
 
 export const mockCctvs: Cctv[] = [
