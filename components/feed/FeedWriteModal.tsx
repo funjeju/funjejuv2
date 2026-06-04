@@ -6,9 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { uploadFeedImage, createFeed } from "@/lib/feed";
 import type { ExifData, FeedFilter } from "@/types/feed";
 import {
-  JEJU_REGIONS,
   findNearestRegion,
-  groupRegionsByCity,
   type JejuRegion,
 } from "@/constants/jeju-regions";
 
@@ -34,7 +32,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [filter, setFilter] = useState<FeedFilter>("none");
   const [region, setRegion] = useState<JejuRegion | null>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
-  const [showRegionPicker, setShowRegionPicker] = useState(false);
+  const [exifMissing, setExifMissing] = useState(false);
 
   const [status, setStatus] = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
   const [error, setError] = useState("");
@@ -49,7 +47,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setFilter("none");
       setRegion(null);
       setGps(null);
-      setShowRegionPicker(false);
+      setExifMissing(false);
       setStatus("idle");
       setError("");
     }
@@ -77,36 +75,40 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         ],
       }).catch(() => null);
 
-      // GPS 추출 + 제주 지역 자동 매칭
+      // GPS 없으면 차단 — Live Feed는 위치 정보 필수
       const lat = data?.latitude ?? data?.GPSLatitude;
       const lng = data?.longitude ?? data?.GPSLongitude;
-      if (typeof lat === "number" && typeof lng === "number") {
-        setGps({ lat, lng });
-        const matched = findNearestRegion(lat, lng);
-        if (matched) setRegion(matched);
+      if (typeof lat !== "number" || typeof lng !== "number") {
+        setExifMissing(true);
+        setStatus("idle");
+        return;
       }
 
+      // GPS → 제주 지역 자동 매칭
+      setGps({ lat, lng });
+      const matched = findNearestRegion(lat, lng);
+      if (matched) setRegion(matched);
+
+      // 나머지 EXIF 파싱
       const parsed: ExifData = {};
-      if (data) {
-        if (data.Make || data.Model) {
-          parsed.camera = `${data.Make ?? ""} ${data.Model ?? ""}`.trim();
-        }
-        if (data.LensModel) parsed.lens = data.LensModel;
-        if (data.FocalLength) parsed.focalLength = `${Math.round(data.FocalLength)}mm`;
-        if (data.FNumber) parsed.fStop = `f/${data.FNumber}`;
-        if (data.ISO) parsed.iso = data.ISO;
-        if (data.ExposureTime) {
-          parsed.exposureTime = data.ExposureTime < 1
-            ? `1/${Math.round(1 / data.ExposureTime)}s`
-            : `${data.ExposureTime}s`;
-        }
-        if (data.DateTimeOriginal) {
-          parsed.date = new Date(data.DateTimeOriginal).toLocaleDateString("ko-KR");
-        }
+      if (data.Make || data.Model) {
+        parsed.camera = `${data.Make ?? ""} ${data.Model ?? ""}`.trim();
+      }
+      if (data.LensModel) parsed.lens = data.LensModel;
+      if (data.FocalLength) parsed.focalLength = `${Math.round(data.FocalLength)}mm`;
+      if (data.FNumber) parsed.fStop = `f/${data.FNumber}`;
+      if (data.ISO) parsed.iso = data.ISO;
+      if (data.ExposureTime) {
+        parsed.exposureTime = data.ExposureTime < 1
+          ? `1/${Math.round(1 / data.ExposureTime)}s`
+          : `${data.ExposureTime}s`;
+      }
+      if (data.DateTimeOriginal) {
+        parsed.date = new Date(data.DateTimeOriginal).toLocaleDateString("ko-KR");
       }
       setExif(parsed);
 
-      // AI 카피 생성
+      // AI 카피 + 카테고리 자동 생성
       const base64 = await fileToBase64(selected);
       const res = await fetch("/api/feed-copy", {
         method: "POST",
@@ -215,11 +217,36 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
               <span className="text-5xl">📷</span>
               <p className="text-sm font-bold text-text-primary">사진 선택하기</p>
               <p className="text-xs text-text-secondary text-center px-4">
-                EXIF 정보가 있는 카메라/스마트폰 원본 사진을 올리면
-                <br />
-                기종·렌즈·조리개가 자동 표시돼요
+                GPS가 포함된 카메라·스마트폰 원본 사진만 올릴 수 있어요
               </p>
             </button>
+          ) : exifMissing ? (
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-gray-900">
+                <Image src={previewUrl} alt="preview" fill className="object-cover opacity-30" unoptimized />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
+                  <span className="text-5xl">🚫</span>
+                  <p className="text-base font-black text-white">Live Feed는 EXIF 설정이 필수입니다</p>
+                  <p className="text-xs text-white/70 leading-relaxed">
+                    이 사진에는 GPS 위치 정보가 없어요.<br />
+                    카메라·스마트폰 설정에서 위치 정보 저장을<br />
+                    켜고 다시 촬영한 사진을 올려주세요.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setExifMissing(false);
+                  setPreviewUrl(null);
+                  setFile(null);
+                  fileInputRef.current?.click();
+                }}
+                className="w-full rounded-xl border border-border-soft bg-bg-secondary py-3 text-sm font-semibold text-text-secondary hover:bg-bg-primary transition-colors"
+              >
+                다른 사진 선택하기
+              </button>
+            </div>
           ) : (
             <div className="space-y-4">
               {/* 프리뷰 + 필터 적용 */}
@@ -286,9 +313,12 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 />
               </div>
 
-              {/* 카테고리 */}
+              {/* 카테고리 — AI 자동, 수정 가능 */}
               <div>
-                <p className="mb-2 text-xs font-bold text-text-secondary">📂 카테고리</p>
+                <p className="mb-2 text-xs font-bold text-text-secondary">
+                  📂 카테고리
+                  <span className="ml-1 font-normal text-brand-orange">AI 자동 · 수정 가능</span>
+                </p>
                 <div className="flex gap-1.5 overflow-x-auto pb-1">
                   {["자연", "카페", "맛집", "액티비티", "숙소"].map((c) => (
                     <button
@@ -308,70 +338,19 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 </div>
               </div>
 
-              {/* 지역 (GPS 자동 매칭 + 수동 선택) */}
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-bold text-text-secondary">
-                    📍 지역
-                    {gps && (
-                      <span className="ml-1 rounded-full bg-jeju-green/10 px-1.5 py-0.5 text-[9px] font-bold text-jeju-green">
-                        GPS 자동
-                      </span>
-                    )}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowRegionPicker((v) => !v)}
-                    className="text-[11px] font-semibold text-brand-orange hover:underline"
-                  >
-                    {showRegionPicker ? "닫기" : region ? "변경" : "선택하기"}
-                  </button>
+              {/* 지역 — GPS 자동 매칭, 읽기 전용 */}
+              {region && (
+                <div className="flex items-center gap-2 rounded-xl bg-bg-secondary px-3 py-2.5">
+                  <span className="text-sm">📍</span>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-text-primary">{region.fullName}</p>
+                    <p className="text-[10px] text-text-secondary">{region.city} · GPS 자동 인식</p>
+                  </div>
+                  <span className="rounded-full bg-jeju-green/10 px-2 py-0.5 text-[9px] font-bold text-jeju-green">
+                    GPS
+                  </span>
                 </div>
-
-                {region && !showRegionPicker && (
-                  <div className="rounded-xl bg-bg-secondary p-3">
-                    <p className="text-sm font-bold text-text-primary">
-                      📍 {region.fullName}
-                    </p>
-                    <p className="text-[10px] text-text-secondary">
-                      {region.city} · {region.type}
-                    </p>
-                  </div>
-                )}
-
-                {(showRegionPicker || !region) && (
-                  <div className="space-y-2 rounded-xl border border-border-soft bg-bg-secondary p-3">
-                    {(["제주시", "서귀포시"] as const).map((city) => {
-                      const regions = groupRegionsByCity()[city];
-                      return (
-                        <div key={city}>
-                          <p className="mb-1.5 text-[10px] font-bold text-text-secondary">{city}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {regions.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => {
-                                  setRegion(r);
-                                  setShowRegionPicker(false);
-                                }}
-                                className={[
-                                  "rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors",
-                                  region?.id === r.id
-                                    ? "bg-brand-navy text-white"
-                                    : "bg-bg-card border border-border-soft text-text-secondary hover:bg-bg-primary",
-                                ].join(" ")}
-                              >
-                                {r.name}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* EXIF 정보 */}
               {(exif.camera || exif.fStop || exif.iso) && (
@@ -397,7 +376,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         </div>
 
         {/* Footer */}
-        {user && previewUrl && (
+        {user && previewUrl && !exifMissing && (
           <div className="shrink-0 border-t border-border-soft p-4">
             <button
               type="button"

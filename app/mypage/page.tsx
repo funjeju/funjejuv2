@@ -1,12 +1,17 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
+import { getAuthor } from "@/lib/feed";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
+import type { FeedAuthor } from "@/types/feed";
+
+const ADMIN_EMAIL = "naggu1999@gmail.com";
 
 const menuItems = [
   { label: "저장한 스팟", href: "/saved",   emoji: "⭐" },
@@ -16,23 +21,25 @@ const menuItems = [
   { label: "앱 설정",     href: "#",        emoji: "⚙️" },
 ];
 
-const recentActivity = [
-  { text: "협재 해변을 저장했어요",            time: "1시간 전", emoji: "⭐" },
-  { text: "서부 감성 힐링 코스 일정을 만들었어요", time: "어제",    emoji: "🗓️" },
-  { text: "흑돼지 맛집 발견! 피드를 올렸어요",  time: "2일 전",  emoji: "📸" },
-];
-
 export default function MyPage() {
   const { user, loading, signInWithGoogle, logout } = useAuth();
   const { savedIds } = useSaved();
+  const [author, setAuthor] = useState<FeedAuthor | null>(null);
+  const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
+  useEffect(() => {
+    if (!user) return;
+    getAuthor(user.uid).then(setAuthor);
+  }, [user]);
 
   const stats = [
-    { label: "저장한 스팟",  value: String(savedIds.size), emoji: "⭐" },
-    { label: "작성한 피드",  value: "3",  emoji: "📸" },
-    { label: "완성한 일정",  value: "2",  emoji: "🗓️" },
+    { label: "저장한 스팟", value: String(savedIds.size), emoji: "⭐" },
+    { label: "작성한 피드", value: "—",  emoji: "📸" },
+    { label: "완성한 일정", value: "—",  emoji: "🗓️" },
   ];
 
-  // 비로그인 상태
   if (!loading && !user) {
     return (
       <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
@@ -46,12 +53,6 @@ export default function MyPage() {
             onClick={signInWithGoogle}
             className="mt-6 flex items-center gap-2 rounded-full bg-brand-navy px-6 py-3 text-sm font-bold text-white shadow-soft hover:bg-brand-navy/90 transition-colors"
           >
-            <svg className="h-5 w-5" viewBox="0 0 24 24">
-              <path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-              <path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
             Google로 시작하기
           </button>
         </div>
@@ -64,7 +65,7 @@ export default function MyPage() {
       <PageHeader title="마이페이지" emoji="👤" />
 
       {/* Profile Card */}
-      <div className="mx-4 mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy to-blue-700 p-5 text-white md:mx-0">
+      <div className="mx-4 mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy to-blue-700 p-5 text-white md:mx-0">
         <div className="flex items-center gap-4">
           <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/20">
             {user?.photoURL ? (
@@ -74,17 +75,31 @@ export default function MyPage() {
               <span className="text-3xl">🗿</span>
             )}
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-lg font-black">{user?.displayName ?? "제주 여행자"}</p>
-            <p className="text-sm text-white/70">{user?.email}</p>
-            <span className="mt-1 inline-block rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">
-              🏝️ 제주 탐험가
-            </span>
+            <p className="truncate text-sm text-white/70">{user?.email}</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {author?.isBusiness && (
+                <span className="rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">
+                  💼 비즈니스
+                </span>
+              )}
+              {isAdmin && (
+                <span className="rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-black text-brand-navy">
+                  👑 관리자
+                </span>
+              )}
+              {!author?.isBusiness && !isAdmin && (
+                <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">
+                  🏝️ 제주 탐험가
+                </span>
+              )}
+            </div>
           </div>
           <button
             type="button"
             onClick={logout}
-            className="ml-auto rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
+            className="shrink-0 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
           >
             로그아웃
           </button>
@@ -102,83 +117,161 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* Mascot CTA */}
-      <div className="mx-4 mb-5 flex items-center gap-3 rounded-2xl border border-brand-yellow/30 bg-brand-yellow/20 px-4 py-3 md:mx-0">
-        <span className="text-3xl">🗿</span>
-        <div>
-          <p className="text-sm font-bold text-text-primary">돌맹이가 일정을 추천해드릴게요!</p>
-          <p className="text-[11px] text-text-secondary">저장한 스팟 {savedIds.size}개로 최적 동선 만들기</p>
-        </div>
-        <Link
-          href="/trip-ai"
-          className="ml-auto shrink-0 rounded-full bg-brand-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-brand-orange/90 transition-colors"
-        >
-          일정 만들기
-        </Link>
-      </div>
-
-      {/* 즐겨찾기 CCTV */}
-      {(() => {
-        const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
-        if (savedCctvs.length === 0) return null;
-        return (
-          <section className="mx-4 mb-5 md:mx-0">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-text-primary">
-                📷 내 즐겨찾기 CCTV
-                <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
-                  {savedCctvs.length}
-                </span>
-              </h2>
-              <Link href="/cctv/multiview" className="text-xs font-medium text-brand-orange">
-                4분할로 보기 →
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-              {savedCctvs.map((cctv) => (
-                <HlsMiniPlayer
-                  key={cctv.id}
-                  id={cctv.id}
-                  proxyUrl={cctv.streamProxyUrl}
-                  name={cctv.name}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })()}
-
-      {/* 비즈니스 CTA 설정 */}
-      <BusinessCtaSettings />
-
-      {/* Menu */}
-      <div className="mx-4 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
-        {menuItems.map((item, i) => (
+      {/* Admin 바로가기 */}
+      {isAdmin && (
+        <div className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-yellow-300/40 bg-yellow-50 px-4 py-3 md:mx-0">
+          <span className="text-2xl">👑</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-text-primary">관리자 패널</p>
+            <p className="text-[11px] text-text-secondary">CCTV 관리, 사용자 비즈니스 승인</p>
+          </div>
           <Link
-            key={item.href}
-            href={item.href}
-            className={["flex items-center gap-3 px-4 py-4 hover:bg-bg-secondary transition-colors", i !== menuItems.length - 1 ? "border-b border-border-soft" : ""].join(" ")}
+            href="/admin/cctv"
+            className="shrink-0 rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white hover:bg-brand-navy/90 transition-colors"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">{item.emoji}</span>
-            <span className="flex-1 text-sm font-semibold text-text-primary">{item.label}</span>
-            <span className="text-text-secondary">›</span>
+            Admin →
           </Link>
-        ))}
-      </div>
-
-      {/* Recent */}
-      <section className="mt-5 px-4 md:px-0">
-        <h2 className="mb-3 text-sm font-bold text-text-primary">최근 활동</h2>
-        <div className="space-y-2">
-          {recentActivity.map((a, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-xl border border-border-soft bg-bg-card px-4 py-3 shadow-card">
-              <span className="text-lg">{a.emoji}</span>
-              <p className="flex-1 text-xs font-medium text-text-primary">{a.text}</p>
-              <span className="text-[10px] text-text-secondary">{a.time}</span>
-            </div>
-          ))}
         </div>
-      </section>
+      )}
+
+      {/* 비즈니스/개인 뷰 토글 — isBusiness일 때만 표시 */}
+      {author?.isBusiness && (
+        <div className="mx-4 mb-4 flex rounded-2xl border border-border-soft bg-bg-card p-1 shadow-card md:mx-0">
+          <button
+            type="button"
+            onClick={() => setViewMode("personal")}
+            className={[
+              "flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors",
+              viewMode === "personal"
+                ? "bg-brand-navy text-white shadow-soft"
+                : "text-text-secondary hover:text-text-primary",
+            ].join(" ")}
+          >
+            👤 개인
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("business")}
+            className={[
+              "flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors",
+              viewMode === "business"
+                ? "bg-brand-orange text-white shadow-soft"
+                : "text-text-secondary hover:text-text-primary",
+            ].join(" ")}
+          >
+            💼 비즈니스
+          </button>
+        </div>
+      )}
+
+      {/* ── 개인 뷰 ── */}
+      {viewMode === "personal" && (
+        <>
+          {/* Mascot CTA */}
+          <div className="mx-4 mb-5 flex items-center gap-3 rounded-2xl border border-brand-yellow/30 bg-brand-yellow/20 px-4 py-3 md:mx-0">
+            <span className="text-3xl">🗿</span>
+            <div>
+              <p className="text-sm font-bold text-text-primary">돌맹이가 일정을 추천해드릴게요!</p>
+              <p className="text-[11px] text-text-secondary">저장한 스팟 {savedIds.size}개로 최적 동선 만들기</p>
+            </div>
+            <Link
+              href="/trip-ai"
+              className="ml-auto shrink-0 rounded-full bg-brand-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-brand-orange/90 transition-colors"
+            >
+              일정 만들기
+            </Link>
+          </div>
+
+          {/* 즐겨찾기 CCTV */}
+          {(() => {
+            const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
+            if (savedCctvs.length === 0) return null;
+            return (
+              <section className="mx-4 mb-5 md:mx-0">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                    📷 내 즐겨찾기 CCTV
+                    <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                      {savedCctvs.length}
+                    </span>
+                  </h2>
+                  <Link href="/cctv/multiview" className="text-xs font-medium text-brand-orange">
+                    4분할로 보기 →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                  {savedCctvs.map((cctv) => (
+                    <HlsMiniPlayer
+                      key={cctv.id}
+                      id={cctv.id}
+                      proxyUrl={cctv.streamProxyUrl}
+                      name={cctv.name}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
+          {/* Menu */}
+          <div className="mx-4 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
+            {menuItems.map((item, i) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={[
+                  "flex items-center gap-3 px-4 py-4 hover:bg-bg-secondary transition-colors",
+                  i !== menuItems.length - 1 ? "border-b border-border-soft" : "",
+                ].join(" ")}
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">
+                  {item.emoji}
+                </span>
+                <span className="flex-1 text-sm font-semibold text-text-primary">{item.label}</span>
+                <span className="text-text-secondary">›</span>
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* ── 비즈니스 뷰 ── */}
+      {viewMode === "business" && author?.isBusiness && (
+        <>
+          {/* 비즈니스 상태 요약 */}
+          <div className="mx-4 mb-4 rounded-2xl border border-brand-orange/20 bg-brand-orange/5 p-4 md:mx-0">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xl">💼</span>
+              <h3 className="text-sm font-bold text-text-primary">비즈니스 계정</h3>
+              <span className="rounded-full bg-jeju-green/10 px-2 py-0.5 text-[10px] font-bold text-jeju-green">
+                ✓ 인증됨
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed text-text-secondary">
+              피드를 올리면 자동으로 CTA 버튼이 노출됩니다.
+              아래에서 버튼 텍스트, 링크, 스타일을 설정하세요.
+            </p>
+          </div>
+
+          {/* CTA 설정 — 비즈니스 전용 */}
+          <BusinessCtaSettings />
+
+          {/* 비즈니스 메뉴 */}
+          <div className="mx-4 mt-2 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
+            <Link href="/feed" className="flex items-center gap-3 border-b border-border-soft px-4 py-4 hover:bg-bg-secondary transition-colors">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">📸</span>
+              <span className="flex-1 text-sm font-semibold text-text-primary">내 피드 관리</span>
+              <span className="text-text-secondary">›</span>
+            </Link>
+            <Link href="/feed" className="flex items-center gap-3 px-4 py-4 hover:bg-bg-secondary transition-colors">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">📊</span>
+              <span className="flex-1 text-sm font-semibold text-text-primary">피드 통계</span>
+              <span className="ml-auto text-[10px] text-text-secondary">준비 중</span>
+              <span className="text-text-secondary">›</span>
+            </Link>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -6,28 +6,8 @@ const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
   { href: "/feed", label: "라이브 피드", emoji: "🖼️", bg: "bg-yellow-50", color: "text-yellow-600" },
   { href: "/chat", label: "AI 도슨트 챗봇", emoji: "🤖", bg: "bg-purple-50", color: "text-purple-600" },
-  { href: "/youtube", label: "유튜브 요약", emoji: "▶️", bg: "bg-red-50", color: "text-red-500" },
   { href: "/trip-ai", label: "AI 여행 일정", emoji: "🗓️", bg: "bg-green-50", color: "text-green-600" },
   { href: "/saved", label: "저장한 스팟", emoji: "⭐", bg: "bg-orange-50", color: "text-orange-500" },
-];
-
-const hotSpots = [
-  { rank: 1, name: "협재 해변", sub: "바다 · 제주시 한림읍", emoji: "🏖️" },
-  { rank: 2, name: "카멜리아힐", sub: "관광지 · 서귀포시 안덕면", emoji: "🌸" },
-  { rank: 3, name: "오설록 티뮤지엄", sub: "카페 · 서귀포시 안덕면", emoji: "🍵" },
-];
-
-const youtubeRecs = [
-  { title: "제주 서쪽 감성 여행", duration: "3:25", spots: 12 },
-  { title: "제주 오름 BEST 5", duration: "4:11", spots: 8 },
-];
-
-const chatSuggestions = [
-  { label: "근처 카페 추천", emoji: "☕" },
-  { label: "노을 맛집 알려줘", emoji: "🌅" },
-  { label: "비 오는 날 코스", emoji: "🌧️" },
-  { label: "아이와 함께", emoji: "👨‍👩‍👧" },
-  { label: "핫플 찾기", emoji: "🔥" },
 ];
 
 export default function HomePage() {
@@ -66,7 +46,7 @@ export default function HomePage() {
 
           {/* Quick Links */}
           <section className="px-4 md:px-0">
-            <div className="grid grid-cols-6 gap-2 md:gap-3">
+            <div className="grid grid-cols-5 gap-2 md:gap-3">
               {quickLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -124,101 +104,19 @@ export default function HomePage() {
               <span className="text-lg">🤖</span>
               <h3 className="text-sm font-bold text-text-primary">AI 도슨트 챗봇</h3>
             </div>
-            <div className="space-y-2">
-              <div className="flex gap-2 text-xs text-text-secondary">
-                <span className="text-xl">🗿</span>
-                <div className="rounded-xl rounded-tl-none bg-bg-secondary p-2.5 text-xs leading-relaxed">
-                  안녕! 나는 제주 여행 친구 &apos;돌맹이&apos;야! 😎<br />
-                  지금 어디야? 내가 딱 맞는 여행을 추천해줄게!
-                </div>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-xl">🗿</span>
+              <div className="rounded-xl rounded-tl-none bg-bg-secondary p-2.5 text-xs leading-relaxed text-text-secondary">
+                안녕! 나는 제주 여행 친구 &apos;돌맹이&apos;야! 😎<br />
+                지금 어디야? 딱 맞는 여행을 추천해줄게!
               </div>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-1.5">
-              {chatSuggestions.map((s) => (
-                <button
-                  key={s.label}
-                  type="button"
-                  className="rounded-lg border border-border-soft bg-bg-primary px-2 py-1.5 text-left text-[11px] font-medium text-text-secondary hover:bg-bg-secondary transition-colors"
-                >
-                  {s.emoji} {s.label}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="mt-3 w-full rounded-xl bg-brand-navy py-2.5 text-xs font-semibold text-white hover:bg-brand-navy/90 transition-colors"
+            <Link
+              href="/chat"
+              className="mt-3 block w-full rounded-xl bg-brand-navy py-2.5 text-center text-xs font-semibold text-white hover:bg-brand-navy/90 transition-colors"
             >
               새로운 대화 시작 💬
-            </button>
-          </div>
-
-          {/* Today's Recommended Course */}
-          <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
-            <div className="mb-1 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary">오늘의 추천 코스</h3>
-            </div>
-            <p className="mb-2 text-[10px] text-brand-orange font-medium">🤖 AI 맞춤 추천</p>
-            <div className="rounded-xl bg-bg-secondary p-3">
-              <p className="text-sm font-bold text-text-primary">한라산 둘레길 힐링 코스</p>
-              <p className="mt-1 text-[11px] text-text-secondary leading-relaxed">
-                난이도 하 · 소요시간 3시간<br />
-                자연을 바라보며 관기 좋은 코스
-              </p>
-              <button
-                type="button"
-                className="mt-2 w-full rounded-lg bg-brand-orange py-1.5 text-xs font-semibold text-white hover:bg-brand-orange/90 transition-colors"
-              >
-                코스 자세히 보기
-              </button>
-            </div>
-          </div>
-
-          {/* Hot Spots TOP 3 */}
-          <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary">찜한 스팟 TOP 3</h3>
-              <Link href="/saved" className="text-[11px] font-medium text-brand-orange">전체보기 →</Link>
-            </div>
-            <div className="space-y-2.5">
-              {hotSpots.map((spot) => (
-                <div key={spot.rank} className="flex items-center gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-orange text-xs font-bold text-white">
-                    {spot.rank}
-                  </span>
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-xl">
-                    {spot.emoji}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-text-primary">{spot.name}</p>
-                    <p className="text-[10px] text-text-secondary truncate">{spot.sub}</p>
-                  </div>
-                  <span className="ml-auto text-sm text-red-400">♡</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* YouTube Recs */}
-          <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-text-primary">유튜브 요약 추천</h3>
-              <Link href="/youtube" className="text-[11px] font-medium text-brand-orange">전체보기 →</Link>
-            </div>
-            <div className="space-y-2.5">
-              {youtubeRecs.map((v) => (
-                <div key={v.title} className="flex gap-3">
-                  <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-xl text-white">
-                    ▶
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-text-primary">{v.title}</p>
-                    <p className="text-[10px] text-text-secondary">
-                      {v.duration} · 스팟 {v.spots}개
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            </Link>
           </div>
 
           {/* AI Trip Planner CTA */}
