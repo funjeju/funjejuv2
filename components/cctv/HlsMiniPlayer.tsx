@@ -22,7 +22,11 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">(
     forcePlay ? "loading" : "idle"
   );
-  const [viewers] = useState(() => Math.floor(Math.random() * 300 + 100));
+  // 하이드레이션 미스매치 방지 — 마운트 후에만 랜덤 viewer 표시
+  const [viewers, setViewers] = useState<number | null>(null);
+  useEffect(() => {
+    setViewers(Math.floor(Math.random() * 300 + 100));
+  }, []);
 
   useEffect(() => {
     if (!activated || !proxyUrl || !videoRef.current) {
@@ -148,7 +152,9 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       {/* 하단 정보 오버레이 */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5">
         <p className="text-xs font-medium text-white truncate">{name}</p>
-        <p className="text-[10px] text-white/70">👥 {viewers}</p>
+        {viewers !== null && (
+          <p className="text-[10px] text-white/70">👥 {viewers}</p>
+        )}
       </div>
     </Link>
   );

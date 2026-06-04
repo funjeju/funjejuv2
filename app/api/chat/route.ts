@@ -84,6 +84,14 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    console.error("[chat] error:", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    // API 키 관련 에러 감지
+    if (msg.includes("API key") || msg.includes("403") || msg.includes("PERMISSION_DENIED")) {
+      return new Response(JSON.stringify({
+        error: "AI 키 인증 실패 — 관리자에게 문의해주세요"
+      }), { status: 500 });
+    }
+    return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 }
