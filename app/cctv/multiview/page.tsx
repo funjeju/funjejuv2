@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { useSaved } from "@/hooks/useSaved";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 import type { Cctv } from "@/types/cctv";
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
@@ -12,7 +13,20 @@ type SlotCount = 1 | 2 | 4 | 6 | 9;
 /** 단일 슬롯 플레이어 - 멀티뷰 전용 */
 function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef   = useRef<import("hls.js").default | null>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
+
+  // 백그라운드 진입 시 HLS 정지, 복귀 시 재개
+  usePageVisibility({
+    onHide: () => {
+      hlsRef.current?.stopLoad();
+      videoRef.current?.pause();
+    },
+    onShow: () => {
+      hlsRef.current?.startLoad();
+      videoRef.current?.play().catch(() => { /* ignore */ });
+    },
+  });
 
   useEffect(() => {
     if (!cctv?.streamProxyUrl || !videoRef.current) {
@@ -40,6 +54,7 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
         maxBufferLength: 10,
         backBufferLength: 0,
       });
+      hlsRef.current = hls;
       hls.loadSource(cctv!.streamProxyUrl!);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -58,6 +73,7 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
     init();
     return () => {
       hls?.destroy();
+      hlsRef.current = null;
       if (video) {
         video.pause();
         video.removeAttribute("src");

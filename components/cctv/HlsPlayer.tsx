@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePageVisibility } from "@/hooks/usePageVisibility";
 
 type Status = "loading" | "playing" | "error" | "offline";
 
@@ -13,8 +14,21 @@ type Props = {
 
 export function HlsPlayer({ proxyUrl, label }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef   = useRef<import("hls.js").default | null>(null);
   const [status, setStatus] = useState<Status>(proxyUrl ? "loading" : "offline");
   const [viewers] = useState(() => Math.floor(Math.random() * 300 + 80));
+
+  // 백그라운드 → 정지 / 복귀 → 재개 (모바일 데이터·배터리 절약)
+  usePageVisibility({
+    onHide: () => {
+      hlsRef.current?.stopLoad();
+      videoRef.current?.pause();
+    },
+    onShow: () => {
+      hlsRef.current?.startLoad();
+      videoRef.current?.play().catch(() => { /* ignore */ });
+    },
+  });
 
   useEffect(() => {
     if (!proxyUrl || !videoRef.current) return;
@@ -40,11 +54,11 @@ export function HlsPlayer({ proxyUrl, label }: Props) {
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
-        // 재시도 정책
         manifestLoadingMaxRetry: 3,
         levelLoadingMaxRetry: 3,
         fragLoadingMaxRetry: 3,
       });
+      hlsRef.current = hls;
 
       hls.loadSource(proxyUrl!);
       hls.attachMedia(video);
@@ -75,6 +89,7 @@ export function HlsPlayer({ proxyUrl, label }: Props) {
 
     return () => {
       hls?.destroy();
+      hlsRef.current = null;
     };
   }, [proxyUrl]);
 
