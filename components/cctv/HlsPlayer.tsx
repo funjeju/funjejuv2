@@ -16,7 +16,6 @@ export function HlsPlayer({ proxyUrl, label }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef   = useRef<import("hls.js").default | null>(null);
   const [status, setStatus] = useState<Status>(proxyUrl ? "loading" : "offline");
-  const [viewers] = useState(() => Math.floor(Math.random() * 300 + 80));
 
   // 백그라운드 → 정지 / 복귀 → 재개 (모바일 데이터·배터리 절약)
   usePageVisibility({
@@ -145,9 +144,6 @@ export function HlsPlayer({ proxyUrl, label }: Props) {
               <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
               LIVE
             </span>
-          </div>
-          <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur">
-            👥 {viewers}명 시청 중
           </div>
           {/* 볼륨 토글 */}
           <button
