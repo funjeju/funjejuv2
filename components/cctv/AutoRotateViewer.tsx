@@ -10,18 +10,13 @@ import { usePageVisibility } from "@/hooks/usePageVisibility";
 const ROTATE_SEC = 7;
 const FADE_MS = 600;
 
-/**
- * 이중 video 엘리먼트로 부드러운 전환
- * active=false면 HLS 로드 안 함 (placeholder 상태)
- */
+/** 이중 video로 부드러운 전환 (mount 시점에 즉시 로드 시작) */
 function CrossfadePlayer({
   proxyUrl,
   cctvName,
-  active,
 }: {
   proxyUrl: string | null;
   cctvName: string;
-  active: boolean;
 }) {
   const videoARef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
@@ -31,7 +26,7 @@ function CrossfadePlayer({
   const [activeLayer, setActiveLayer] = useState<"A" | "B">("A");
   const [status,      setStatus]      = useState<"loading" | "playing" | "error">("loading");
 
-  // 백그라운드 진입 시 양쪽 HLS 정지, 복귀 시 재시작
+  // 백그라운드 진입 시 정지, 복귀 시 재개
   usePageVisibility({
     onHide: () => {
       hlsARef.current?.stopLoad();
@@ -40,26 +35,22 @@ function CrossfadePlayer({
       videoBRef.current?.pause();
     },
     onShow: () => {
-      if (!active) return;
       hlsARef.current?.startLoad();
       hlsBRef.current?.startLoad();
       const v = activeLayer === "A" ? videoARef.current : videoBRef.current;
-      v?.play().catch(() => { /* 자동재생 차단 시 무시 */ });
+      v?.play().catch(() => { /* ignore */ });
     },
   });
 
   useEffect(() => {
-    if (!active || !proxyUrl) {
-      if (!proxyUrl && active) setStatus("error");
-      return;
-    }
+    if (!proxyUrl) { setStatus("error"); return; }
 
     let cancelled = false;
-    const nextLayer    = activeLayer === "A" ? "B" : "A";
-    const nextVideo    = nextLayer === "A" ? videoARef.current : videoBRef.current;
-    const prevVideo    = activeLayer === "A" ? videoARef.current : videoBRef.current;
-    const nextHlsRef   = nextLayer === "A" ? hlsARef : hlsBRef;
-    const prevHlsRef   = activeLayer === "A" ? hlsARef : hlsBRef;
+    const nextLayer  = activeLayer === "A" ? "B" : "A";
+    const nextVideo  = nextLayer === "A" ? videoARef.current : videoBRef.current;
+    const prevVideo  = activeLayer === "A" ? videoARef.current : videoBRef.current;
+    const nextHlsRef = nextLayer === "A" ? hlsARef : hlsBRef;
+    const prevHlsRef = activeLayer === "A" ? hlsARef : hlsBRef;
 
     if (!nextVideo) return;
     setStatus("loading");
@@ -127,7 +118,7 @@ function CrossfadePlayer({
     loadIntoNext();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proxyUrl, active]);
+  }, [proxyUrl]);
 
   useEffect(() => {
     return () => {
@@ -141,37 +132,30 @@ function CrossfadePlayer({
       <video
         ref={videoARef}
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms]"
-        style={{ opacity: active && activeLayer === "A" ? 1 : 0 }}
+        style={{ opacity: activeLayer === "A" ? 1 : 0 }}
         playsInline muted preload="none"
       />
       <video
         ref={videoBRef}
         className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[600ms]"
-        style={{ opacity: active && activeLayer === "B" ? 1 : 0 }}
+        style={{ opacity: activeLayer === "B" ? 1 : 0 }}
         playsInline muted preload="none"
       />
 
-      {/* 비활성 — 플레이스홀더 + 안내 + 재생 버튼은 부모 컴포넌트에서 표시 */}
-      {!active && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-br from-blue-700/60 via-cyan-600/40 to-teal-500/30">
-          {/* 아무것도 안 그림 — 부모가 처리 */}
-        </div>
-      )}
-
-      {active && status === "loading" && (
+      {status === "loading" && (
         <div className="absolute right-3 top-3 z-10">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
         </div>
       )}
 
-      {active && status === "error" && (
+      {status === "error" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
           <span className="text-3xl">📡</span>
           <span className="text-xs">{cctvName} 연결 실패</span>
         </div>
       )}
 
-      {active && status === "playing" && (
+      {status === "playing" && (
         <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-live-red px-2.5 py-1 text-[11px] font-bold text-white shadow">
           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
           LIVE
@@ -181,19 +165,54 @@ function CrossfadePlayer({
   );
 }
 
+/** 비활성 상태 플레이스홀더 — 그라데이션 + 재생 버튼 */
+function PlaceholderPlayer({
+  cctvName,
+  onPlay,
+}: {
+  cctvName: string;
+  onPlay: () => void;
+}) {
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-xl bg-gradient-to-br from-blue-700/60 via-cyan-600/40 to-teal-500/30">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
+        <button
+          type="button"
+          onClick={onPlay}
+          className="group flex h-20 w-20 items-center justify-center rounded-full bg-brand-orange/90 text-white shadow-2xl backdrop-blur-sm transition-all hover:scale-110 hover:bg-brand-orange md:h-24 md:w-24"
+          aria-label="실시간 영상 재생"
+        >
+          <span className="ml-1.5 text-3xl md:text-4xl">▶</span>
+        </button>
+        <div className="text-center">
+          <p className="text-sm font-black text-white drop-shadow-lg md:text-base">
+            📡 실시간 영상 보기
+          </p>
+          <p className="mt-1 text-[11px] text-white/80 drop-shadow md:text-xs">
+            ▶ 클릭하면 7초마다 자동 전환되는 라이브 영상이 시작됩니다
+          </p>
+        </div>
+      </div>
+      <div className="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
+        📍 {cctvName}
+      </div>
+    </div>
+  );
+}
+
 export function AutoRotateViewer() {
   const { savedIds } = useSaved();
   const [index,     setIndex]     = useState(0);
   const [paused,    setPaused]    = useState(false);
   const [progress,  setProgress]  = useState(0);
-  const [activated, setActivated] = useState(false); // ★ 사용자 재생 클릭 여부
+  const [activated, setActivated] = useState(false);
 
   const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
   const cctvs = savedCctvs.length > 0 ? savedCctvs : mockCctvs;
   const isPersonalized = savedCctvs.length > 0;
   const current = cctvs[index % cctvs.length];
 
-  // 자동 전환은 activated && !paused일 때만
+  // 자동 전환: activated && !paused일 때만
   useEffect(() => {
     if (!activated || paused || cctvs.length <= 1) return;
     const TICK = 100;
@@ -246,41 +265,21 @@ export function AutoRotateViewer() {
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
           <div className="flex flex-col gap-2">
-            <div className="relative aspect-video w-full">
-              <CrossfadePlayer
-                proxyUrl={current.streamProxyUrl}
-                cctvName={current.name}
-                active={activated}
-              />
-
-              {/* ── 비활성 상태 오버레이: 재생 버튼 + 안내 ── */}
-              {!activated && (
-                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 px-4">
-                  <button
-                    type="button"
-                    onClick={() => setActivated(true)}
-                    className="group flex h-20 w-20 items-center justify-center rounded-full bg-brand-orange/90 text-white shadow-2xl backdrop-blur-sm transition-all hover:scale-110 hover:bg-brand-orange md:h-24 md:w-24"
-                    aria-label="실시간 영상 재생"
-                  >
-                    <span className="ml-1.5 text-3xl md:text-4xl">▶</span>
-                  </button>
-                  <div className="text-center">
-                    <p className="text-sm font-black text-white drop-shadow-lg md:text-base">
-                      📡 실시간 영상 보기
-                    </p>
-                    <p className="mt-1 text-[11px] text-white/80 drop-shadow md:text-xs">
-                      ▶ 클릭하면 7초마다 자동 전환되는 라이브 영상이 시작됩니다
-                    </p>
-                  </div>
-                  {/* 장소명 표시 (비활성 상태에서도) */}
-                  <div className="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
-                    📍 {current.name}
-                  </div>
-                </div>
+            <div className="aspect-video w-full">
+              {/* ★ activated일 때만 실제 플레이어 mount, 아니면 플레이스홀더 */}
+              {activated ? (
+                <CrossfadePlayer
+                  proxyUrl={current.streamProxyUrl}
+                  cctvName={current.name}
+                />
+              ) : (
+                <PlaceholderPlayer
+                  cctvName={current.name}
+                  onPlay={() => setActivated(true)}
+                />
               )}
             </div>
 
-            {/* CCTV 정보 + 컨트롤 */}
             <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2 shadow-card">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-medium text-ocean-blue">{current.region}</p>
