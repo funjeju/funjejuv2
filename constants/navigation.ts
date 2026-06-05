@@ -1,6 +1,7 @@
 export const sidebarItems = [
   { href: "/",        label: "홈",          icon: "🏠" },
   { href: "/cctv",    label: "실시간 CCTV", icon: "📷" },
+  { href: "/places",  label: "탐색",        icon: "🧭" },
   { href: "/feed",    label: "라이브 피드", icon: "🖼️" },
   { href: "/food",    label: "도민맛집",    icon: "🍽️" },
   { href: "/chat",    label: "AI 도슨트 챗봇", icon: "🤖" },
