@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSaved } from "@/hooks/useSaved";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { LiveChat } from "@/components/cctv/LiveChat";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 
 const ROTATE_SEC = 7;
 const FADE_MS = 600;
@@ -25,22 +24,6 @@ function CrossfadePlayer({
 
   const [activeLayer, setActiveLayer] = useState<"A" | "B">("A");
   const [status,      setStatus]      = useState<"loading" | "playing" | "error">("loading");
-
-  // 백그라운드 진입 시 정지, 복귀 시 재개
-  usePageVisibility({
-    onHide: () => {
-      hlsARef.current?.stopLoad();
-      hlsBRef.current?.stopLoad();
-      videoARef.current?.pause();
-      videoBRef.current?.pause();
-    },
-    onShow: () => {
-      hlsARef.current?.startLoad();
-      hlsBRef.current?.startLoad();
-      const v = activeLayer === "A" ? videoARef.current : videoBRef.current;
-      v?.play().catch(() => { /* ignore */ });
-    },
-  });
 
   useEffect(() => {
     if (!proxyUrl) { setStatus("error"); return; }

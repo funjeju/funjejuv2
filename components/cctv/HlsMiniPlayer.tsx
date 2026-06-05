@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
-import { usePageVisibility } from "@/hooks/usePageVisibility";
 
 type Props = {
   id: string;
@@ -19,21 +18,7 @@ type Props = {
  */
 export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef   = useRef<import("hls.js").default | null>(null);
   const [activated, setActivated] = useState(forcePlay);
-
-  // 백그라운드 → 정지 / 복귀 → 재개
-  usePageVisibility({
-    onHide: () => {
-      hlsRef.current?.stopLoad();
-      videoRef.current?.pause();
-    },
-    onShow: () => {
-      if (!activated) return;
-      hlsRef.current?.startLoad();
-      videoRef.current?.play().catch(() => { /* ignore */ });
-    },
-  });
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">(
     forcePlay ? "loading" : "idle"
   );
@@ -71,7 +56,6 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
         levelLoadingMaxRetry: 2,
         fragLoadingMaxRetry: 2,
       });
-      hlsRef.current = hls;
 
       hls.loadSource(proxyUrl!);
       hls.attachMedia(video);
@@ -94,7 +78,6 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
     return () => {
       hls?.destroy();
-      hlsRef.current = null;
       video.pause();
       video.removeAttribute("src");
       video.load();
