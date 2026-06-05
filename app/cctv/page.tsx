@@ -70,13 +70,9 @@ export default function CctvPage() {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-jeju-green" />
         </span>
         <p className="text-sm font-medium text-text-primary">
-          {loading ? "연결 중..." : (
-            <>
-              <span className="font-bold text-jeju-green">{filtered.length}개</span> CCTV 연결 중
-              {youtubeCount > 0 && (
-                <span className="ml-2 text-xs text-red-500 font-medium">▶ YouTube {youtubeCount}개 포함</span>
-              )}
-            </>
+          <span className="font-bold text-jeju-green">{filtered.length}개</span> CCTV 연결 중
+          {youtubeCount > 0 && (
+            <span className="ml-2 text-xs text-red-500 font-medium">▶ YouTube {youtubeCount}개 포함</span>
           )}
         </p>
         <span className="ml-auto text-xs text-text-secondary">실시간 업데이트</span>
@@ -129,13 +125,7 @@ export default function CctvPage() {
       {/* 그리드 */}
       {viewMode === "grid" && (
         <div className="px-4 md:px-0">
-          {loading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="aspect-video animate-pulse rounded-2xl bg-bg-secondary" />
-              ))}
-            </div>
-          ) : filtered.length > 0 ? (
+          {filtered.length > 0 ? (
             <CctvList cctvs={filtered} />
           ) : (
             <div className="flex flex-col items-center py-16 text-center">

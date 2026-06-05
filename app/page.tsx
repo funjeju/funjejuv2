@@ -99,7 +99,7 @@ export default function HomePage() {
             </div>
             <Link
               href="/chat"
-              className="mt-3 block w-full rounded-xl bg-brand-navy py-2.5 text-center text-xs font-semibold text-white hover:bg-brand-navy/90 transition-colors"
+              className="mt-3 block w-full rounded-xl bg-brand-orange py-2.5 text-center text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
             >
               새로운 대화 시작 💬
             </Link>
@@ -114,8 +114,8 @@ export default function HomePage() {
                   나만의 맞춤 여행 일정을<br />AI가 설계해드려요!
                 </p>
                 <Link href="/trip-ai"
-                  className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-navy hover:bg-white/90 transition-colors">
-                  일정 만들기
+                  className="mt-3 inline-block rounded-lg bg-brand-yellow px-3 py-1.5 text-xs font-bold text-brand-navy hover:bg-brand-yellow/90 transition-colors">
+                  일정 만들기 →
                 </Link>
               </div>
               <DolmangyiIcon size={56} className="shrink-0" />
