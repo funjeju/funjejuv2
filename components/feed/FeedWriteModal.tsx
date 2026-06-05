@@ -31,6 +31,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [region,      setRegion]      = useState<JejuRegion | null>(null);
   const [gps,         setGps]         = useState<{ lat: number; lng: number } | null>(null);
   const [exifMissing, setExifMissing] = useState(false);
+  const [exifMissingReason, setExifMissingReason] = useState<"gps" | "camera" | "both">("both");
   const [status,      setStatus]      = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
   const [error,       setError]       = useState("");
   // 가로 사진 처리
@@ -84,14 +85,27 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
 
       const lat = data?.latitude ?? data?.GPSLatitude;
       const lng = data?.longitude ?? data?.GPSLongitude;
-      if (typeof lat !== "number" || typeof lng !== "number") {
+      const hasGps = typeof lat === "number" && typeof lng === "number";
+
+      // 카메라 EXIF 정보 확인 (1개라도 있는지)
+      const hasCameraExif = !!(
+        data?.Make || data?.Model || data?.LensModel ||
+        data?.FNumber || data?.ISO || data?.ExposureTime ||
+        data?.FocalLength || data?.DateTimeOriginal
+      );
+
+      // 둘 중 하나라도 없으면 차단
+      if (!hasGps || !hasCameraExif) {
+        setExifMissingReason(
+          !hasGps && !hasCameraExif ? "both" : !hasGps ? "gps" : "camera"
+        );
         setExifMissing(true);
         setStatus("idle");
         return;
       }
 
-      setGps({ lat, lng });
-      const matched = findNearestRegion(lat, lng);
+      setGps({ lat: lat as number, lng: lng as number });
+      const matched = findNearestRegion(lat as number, lng as number);
       if (matched) setRegion(matched);
 
       const parsed: ExifData = {};
@@ -137,6 +151,13 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
 
   async function handlePost() {
     if (!user || !file) return;
+
+    // 이중 안전장치 — 어떤 경로로든 EXIF 없으면 차단
+    if (exifMissing || !gps || (!exif.camera && !exif.fStop && !exif.iso && !exif.exposureTime)) {
+      setError("EXIF(GPS·카메라) 정보가 있는 원본 사진만 올릴 수 있어요");
+      return;
+    }
+
     const finalCopy = (userCopy.trim() || aiCopy.trim()).slice(0, 30);
     if (!finalCopy) { setError("카피를 입력해주세요"); return; }
 
@@ -200,8 +221,12 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
             >
               <span className="text-5xl">📷</span>
               <p className="text-sm font-bold text-text-primary">사진 선택하기</p>
-              <p className="text-xs text-text-secondary text-center px-4">
-                GPS가 포함된 카메라·스마트폰 원본 사진만 올릴 수 있어요
+              <p className="text-xs text-text-secondary text-center px-4 leading-5">
+                <span className="font-bold text-brand-orange">EXIF 정보(GPS·카메라)</span>가 있는<br />
+                원본 사진만 올릴 수 있어요
+              </p>
+              <p className="text-[10px] text-text-secondary/70 text-center px-4">
+                스크린샷·카톡 사진·다운로드 이미지 ❌
               </p>
             </button>
 
@@ -211,11 +236,20 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 <Image src={previewUrl} alt="preview" fill className="object-cover opacity-30" unoptimized />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6">
                   <span className="text-5xl">🚫</span>
-                  <p className="text-base font-black text-white">Live Feed는 EXIF 설정이 필수입니다</p>
+                  <p className="text-center text-base font-black text-white">
+                    Live Feed는 EXIF 정보가<br />있는 원본만 올릴 수 있어요
+                  </p>
+                  <div className="rounded-xl bg-black/40 px-3 py-2 text-center">
+                    <p className="text-[11px] font-bold text-white">
+                      {exifMissingReason === "gps"      && "❌ GPS 위치 정보가 없어요"}
+                      {exifMissingReason === "camera"   && "❌ 카메라 정보(기종·조리개 등)가 없어요"}
+                      {exifMissingReason === "both"     && "❌ GPS·카메라 정보 모두 없어요"}
+                    </p>
+                  </div>
                   <p className="text-xs text-white/70 leading-relaxed text-center">
-                    이 사진에는 GPS 위치 정보가 없어요.<br />
-                    카메라·스마트폰 설정에서 위치 정보 저장을 켜고<br />
-                    다시 촬영한 사진을 올려주세요.
+                    스크린샷·카톡 사진·다운로드 이미지는 올릴 수 없어요.<br />
+                    카메라·스마트폰으로 직접 촬영한 원본 사진,<br />
+                    그리고 위치 정보 저장이 켜진 상태여야 해요.
                   </p>
                 </div>
               </div>
