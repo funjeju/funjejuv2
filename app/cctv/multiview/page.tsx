@@ -83,24 +83,24 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
         </div>
       )}
 
+      {/* LIVE — 빨간 점만 */}
       {status === "playing" && (
-        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-live-red px-2 py-0.5 text-[9px] font-bold text-white shadow">
-          <span className="h-1 w-1 rounded-full bg-white animate-pulse" />
-          LIVE
-        </span>
+        <span className="absolute left-1.5 top-1.5 h-2 w-2 rounded-full bg-live-red shadow-sm animate-pulse" />
       )}
 
+      {/* X 버튼 — 1/3 크기 */}
       <button
         type="button"
         onClick={onRemove}
-        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white hover:bg-black/80 transition-colors"
+        className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
         title="제거"
       >
         ✕
       </button>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1">
-        <p className="text-[11px] font-medium text-white truncate">{cctv?.name}</p>
+      {/* 이름 — 절반 크기 */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1">
+        <p className="text-[8px] font-medium leading-tight text-white truncate">{cctv?.name}</p>
       </div>
     </div>
   );
@@ -135,8 +135,8 @@ function EmptySlot({
           : "border-border-soft bg-bg-secondary/40",
       ].join(" ")}
     >
-      <span className="text-3xl opacity-40">📺</span>
-      <p className="text-xs text-text-secondary text-center px-2">
+      <span className="text-xl opacity-30 md:text-3xl">📺</span>
+      <p className="hidden text-xs text-text-secondary md:block">
         CCTV를 끌어다 놓으세요
       </p>
     </div>
@@ -275,9 +275,9 @@ export default function MultiviewPage() {
         </div>
       </div>
 
-      {/* 멀티뷰 그리드 */}
-      <div className="mx-4 mb-5 md:mx-0">
-        <div className={`grid gap-2 ${gridClass}`}>
+      {/* 멀티뷰 그리드 — 모바일 여백·간격 최소화 */}
+      <div className="mb-5 md:mx-0">
+        <div className={`grid gap-0.5 md:gap-2 ${gridClass}`}>
           {Array.from({ length: slotCount }).map((_, idx) => {
             const cctvId = slots[idx];
             const cctv = cctvId ? mockCctvs.find((c) => c.id === cctvId) ?? null : null;
@@ -348,7 +348,7 @@ export default function MultiviewPage() {
       {/* 안내 */}
       <div className="mx-4 mt-4 rounded-2xl bg-brand-yellow/20 border border-brand-yellow/30 p-3 text-center md:mx-0">
         <p className="text-xs font-medium text-text-primary">
-          🗿 향후 멀티뷰는 프리미엄 회원 전용 기능이 될 예정이에요. 지금은 모두 무료!
+          향후 멀티뷰는 프리미엄 회원 전용 기능이 될 예정이에요. 지금은 모두 무료!
         </p>
       </div>
     </div>

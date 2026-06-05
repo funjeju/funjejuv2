@@ -36,27 +36,27 @@ export default function CctvPage() {
         subtitle="지금 제주 현장을 실시간으로 확인하세요"
         emoji="📷"
         right={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Link
               href="/cctv/multiview"
-              className="flex items-center gap-1.5 rounded-full bg-brand-orange px-3 py-2 text-xs font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
+              className="flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
             >
-              📺 멀티뷰
+              📺 <span className="hidden sm:inline">멀티뷰</span>
             </Link>
-            <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-xs font-semibold shadow-card">
+            <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-[11px] font-semibold shadow-card">
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
-                className={["rounded-full px-4 py-2 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
+                className={["rounded-full px-2.5 py-1.5 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
               >
-                목록형
+                목록
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("map")}
-                className={["px-4 py-2 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary hover:text-text-primary"].join(" ")}
+                className={["px-2.5 py-1.5 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
               >
-                지도형
+                지도
               </button>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function CctvPage() {
       </div>
 
       {/* 방향 필터 — 컴퍼스 기반 */}
-      <div className="mx-4 mb-4 grid grid-cols-5 gap-2 md:mx-0">
+      <div className="mx-4 mb-4 grid grid-cols-5 gap-1.5 md:mx-0 md:gap-2">
         {DIR_FILTERS.map((f) => {
           const count = f.id === "전체" ? cctvs.length : cctvs.filter((c) => c.direction === f.id).length;
           return (
@@ -92,19 +92,20 @@ export default function CctvPage() {
               type="button"
               onClick={() => setActiveDir(f.id)}
               className={[
-                "flex flex-col items-center rounded-2xl px-2 py-3 text-center transition-all",
+                "flex flex-col items-center rounded-xl px-1 py-2 text-center transition-all md:rounded-2xl md:px-2 md:py-3",
                 activeDir === f.id
                   ? "bg-brand-navy text-white shadow-soft"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:border-brand-navy/30 hover:bg-bg-secondary",
               ].join(" ")}
             >
-              <span className="text-xl">{f.emoji}</span>
-              <span className="mt-0.5 text-xs font-bold">{f.label}</span>
-              <span className={["text-[9px] leading-tight", activeDir === f.id ? "text-white/70" : "text-text-secondary"].join(" ")}>
+              <span className="text-base md:text-xl">{f.emoji}</span>
+              <span className="mt-0.5 text-[10px] font-bold md:text-xs">{f.label}</span>
+              {/* sub 텍스트: md 이상에서만 표시 */}
+              <span className={["hidden text-[9px] leading-tight md:block", activeDir === f.id ? "text-white/70" : "text-text-secondary"].join(" ")}>
                 {f.sub}
               </span>
               <span className={[
-                "mt-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+                "mt-0.5 rounded-full px-1 py-0.5 text-[9px] font-bold",
                 activeDir === f.id ? "bg-white/20 text-white" : "bg-brand-orange/10 text-brand-orange",
               ].join(" ")}>
                 {count}

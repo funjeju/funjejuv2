@@ -161,21 +161,21 @@ export default async function CctvDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {/* 스트림 상태 표시 */}
-            <div className="mt-3 flex items-center gap-2">
+            {/* 스트림 상태 + 태그 — 모바일 overflow-x-auto */}
+            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
               {cctv.streamProxyUrl ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-jeju-green/10 border border-jeju-green/20 px-3 py-1 text-xs font-semibold text-jeju-green">
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-jeju-green/10 border border-jeju-green/20 px-2.5 py-1 text-[11px] font-semibold text-jeju-green">
                   <span className="h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
-                  스트림 연결됨
+                  연결됨
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 rounded-full bg-gray-100 border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-500">
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  스트림 미설정
+                  미설정
                 </span>
               )}
               {["실시간", cctv.category, cctv.region].map((tag) => (
-                <span key={tag} className="rounded-full bg-bg-secondary px-3 py-1 text-xs font-medium text-text-secondary">
+                <span key={tag} className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
                   {tag}
                 </span>
               ))}
@@ -192,29 +192,29 @@ export default async function CctvDetailPage({ params }: Props) {
             </div>
             {weather ? (
               <>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
-                    <p className="text-[10px] text-text-secondary">날씨</p>
-                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
+                    <p className="text-[9px] text-text-secondary">날씨</p>
+                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
                       {weather.emoji} {weather.description}
                     </p>
-                    <p className="text-[10px] text-text-secondary">
-                      {weather.temperature}°C (체감 {weather.apparentTemp}°)
+                    <p className="text-[9px] text-text-secondary">
+                      {weather.temperature}°C
                     </p>
                   </div>
-                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
-                    <p className="text-[10px] text-text-secondary">예상 혼잡도</p>
-                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
+                    <p className="text-[9px] text-text-secondary">혼잡도</p>
+                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
                       {weather.congestionEmoji} {weather.congestion}
                     </p>
-                    <p className="text-[10px] text-text-secondary">시간·날씨 기반</p>
+                    <p className="text-[9px] text-text-secondary">시간·날씨</p>
                   </div>
-                  <div className="rounded-xl bg-white px-3 py-2.5 shadow-card">
-                    <p className="text-[10px] text-text-secondary">바람</p>
-                    <p className="mt-0.5 text-sm font-bold text-text-primary">
+                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
+                    <p className="text-[9px] text-text-secondary">바람</p>
+                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
                       💨 {weather.windLabel}
                     </p>
-                    <p className="text-[10px] text-text-secondary">{weather.windSpeed}m/s</p>
+                    <p className="text-[9px] text-text-secondary">{weather.windSpeed}m/s</p>
                   </div>
                 </div>
                 {weather.precipitation > 0 && (
