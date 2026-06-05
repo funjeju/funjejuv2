@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 const SUGGESTIONS = [
   { label: "지금 근처 추천해줘",     emoji: "📍" },
@@ -99,7 +100,7 @@ export default function ChatPage() {
     } catch {
       setMessages((prev) => {
         const next = [...prev];
-        next[next.length - 1] = { role: "model", text: "잠깐 문제가 생겼어! 다시 물어봐줄래? 🗿" };
+        next[next.length - 1] = { role: "model", text: "잠깐 문제가 생겼어! 다시 물어봐줄래? 😅" };
         return next;
       });
     } finally {
@@ -113,7 +114,7 @@ export default function ChatPage() {
 
       {/* 헤더 */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border-soft bg-bg-card px-4 py-4 md:rounded-t-2xl">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-yellow/30 text-2xl">🗿</div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={36} /></div>
         <div className="flex-1">
           <p className="text-sm font-bold text-text-primary">AI 도슨트 돌맹이</p>
           <p className="flex items-center gap-1.5 text-[11px]">
@@ -173,7 +174,7 @@ export default function ChatPage() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
             {msg.role === "model" && (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-yellow/30 text-lg">🗿</div>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={28} /></div>
             )}
             <div
               className={[

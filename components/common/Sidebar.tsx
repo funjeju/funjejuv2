@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { sidebarItems } from "@/constants/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
+  const router   = useRouter();
   const { user, loading, signInWithGoogle, logout } = useAuth();
 
   const isActive = (href: string) =>
@@ -16,13 +17,19 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex md:w-52 md:flex-col md:shrink-0">
       <div className="sticky top-0 flex h-screen flex-col border-r border-border-soft bg-bg-card">
+
         {/* Logo */}
         <div className="px-5 py-5">
-          <Link href="/" className="flex items-center gap-1">
-            <span className="text-xl font-black text-brand-orange">Fun</span>
-            <span className="text-xl font-black text-brand-navy">jeju</span>
+          <Link href="/" className="flex items-center gap-2">
+            <DolmangyiIcon size={32} className="shrink-0" />
+            <div>
+              <div className="flex items-center gap-0.5">
+                <span className="text-xl font-black text-brand-orange">Fun</span>
+                <span className="text-xl font-black text-brand-navy">jeju</span>
+              </div>
+              <p className="text-[9px] text-text-secondary leading-none">제주가 더 FUN해지는 여행</p>
+            </div>
           </Link>
-          <p className="mt-0.5 text-[10px] text-text-secondary">제주가 더 FUN해지는 여행</p>
         </div>
 
         {/* Search */}
@@ -103,13 +110,13 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Mascot */}
+        {/* 돌맹이 마스코트 */}
         <div className="px-4 py-5 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-bg-secondary text-3xl">
-            🗿
+          <div className="mx-auto flex h-16 w-16 items-center justify-center">
+            <DolmangyiIcon size={56} />
           </div>
           <p className="mt-2 text-xs font-medium text-text-primary">안녕하세요!</p>
-          <p className="text-[10px] text-text-secondary">제주 여행 도슨트</p>
+          <p className="text-[10px] text-text-secondary">제주 여행 AI 도슨트</p>
           <p className="text-[10px] text-text-secondary">오늘도 즐거운 여행 되세요!</p>
           <Link
             href="/chat"

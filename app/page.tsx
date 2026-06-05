@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
 import { HomeFeedSection } from "@/components/feed/HomeFeedSection";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 const quickLinks = [
   { href: "/cctv", label: "실시간 CCTV", emoji: "📷", bg: "bg-blue-50", color: "text-blue-600" },
