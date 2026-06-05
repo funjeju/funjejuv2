@@ -4,12 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 const SUGGESTIONS = [
-  { label: "지금 근처 추천해줘",     emoji: "📍" },
-  { label: "카페 어디 좋아?",        emoji: "☕" },
-  { label: "아이랑 갈 만한 곳",      emoji: "👨‍👩‍👧" },
-  { label: "오늘 일몰 명소",         emoji: "🌅" },
-  { label: "비 오는 날 가볼 곳",     emoji: "🌧️" },
-  { label: "반려동물 가능한 곳",     emoji: "🐶" },
+  { label: "지금 근처 5km 안에 추천",  emoji: "📍" },
+  { label: "성산 맛집 추천해줘",       emoji: "🍽️" },
+  { label: "협재 근처 카페",          emoji: "☕" },
+  { label: "한라산 근처 가볼 곳",      emoji: "⛰️" },
+  { label: "애월 노을 명소",          emoji: "🌅" },
+  { label: "반려동물 가능한 곳",      emoji: "🐶" },
 ];
 
 type Message = { role: "user" | "model"; text: string };
@@ -18,7 +18,7 @@ type GPS = { lat: number; lng: number } | null;
 const INITIAL: Message[] = [
   {
     role: "model",
-    text: "안녕! 나는 제주 여행 친구 '돌맹이'야! 🗿\n위치 정보를 허용하면 지금 바로 근처 숨은 명소를 추천해줄게!",
+    text: "안녕! 나는 제주 여행 AI 도슨트 '돌맹이'야! 🗿\n\n이렇게 물어봐:\n• \"지금 근처 5km 안에 카페\" (위치 기반)\n• \"성산 맛집 추천\" (지역명)\n• \"한라산 근처 가볼 곳\" (명소 + 반경)\n• \"애월 반려동물 가능한 곳\"",
   },
 ];
 
@@ -235,7 +235,7 @@ export default function ChatPage() {
         {/* 대화 중 빠른 칩 */}
         {messages.length > 1 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-            {["지금 근처는?", "카페 추천", "숨은 명소", "반려동물 OK", "아이와 함께"].map((t) => (
+            {["지금 근처 5km", "성산 맛집", "협재 카페", "한라산 근처", "반려동물 OK"].map((t) => (
               <button
                 key={t}
                 type="button"
