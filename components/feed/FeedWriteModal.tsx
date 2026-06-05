@@ -25,7 +25,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
   const [exif,        setExif]        = useState<ExifData>({});
   const [aiCopy,      setAiCopy]      = useState("");
-  const [userCopy,    setUserCopy]    = useState("");   // 유저 직접 입력 카피
+  const [userCopy,    setUserCopy]    = useState("");
   const [category,    setCategory]    = useState("자연");
   const [filter,      setFilter]      = useState<FeedFilter>("none");
   const [region,      setRegion]      = useState<JejuRegion | null>(null);
@@ -33,12 +33,16 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [exifMissing, setExifMissing] = useState(false);
   const [status,      setStatus]      = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
   const [error,       setError]       = useState("");
+  // 가로 사진 처리
+  const [isLandscape, setIsLandscape] = useState(false);
+  const [cropX,       setCropX]       = useState(50); // 0~100, 좌우 크롭 위치
 
   useEffect(() => {
     if (!open) {
       setFile(null); setPreviewUrl(null); setExif({});
       setAiCopy(""); setUserCopy(""); setFilter("none");
       setRegion(null); setGps(null); setExifMissing(false);
+      setIsLandscape(false); setCropX(50);
       setStatus("idle"); setError("");
     }
   }, [open]);
@@ -52,7 +56,21 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
 
     setError("");
     setFile(selected);
-    setPreviewUrl(URL.createObjectURL(selected));
+    const objectUrl = URL.createObjectURL(selected);
+    setPreviewUrl(objectUrl);
+    setCropX(50);
+
+    // 가로/세로 감지
+    await new Promise<void>((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        setIsLandscape(img.naturalWidth > img.naturalHeight);
+        resolve();
+      };
+      img.onerror = () => resolve();
+      img.src = objectUrl;
+    });
+
     setStatus("analyzing");
 
     try {
@@ -213,72 +231,146 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
           ) : (
             <div className="space-y-4">
 
-              {/* ── 이미지 프리뷰 + 오버레이 ── */}
-              <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-900">
-                <Image
-                  src={previewUrl}
-                  alt="preview"
-                  fill
-                  className="object-cover"
-                  style={{ filter: activeFilterCss }}
-                  unoptimized
-                />
+              {/* ── 이미지 프리뷰 ── */}
+              {isLandscape ? (
+                /* 가로 사진: 검은 상하단 바 + 1:1 이미지 + 크롭 슬라이더 */
+                <div className="overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: "4/5" }}>
+                  <div className="flex h-full flex-col">
 
-                {/* AI 감성 카피 오버레이 — 상단 우측 */}
-                {displayCopy && (
-                  <div className="absolute right-3 top-3 max-w-[65%]">
-                    <p
-                      className="text-right font-black leading-7 text-white"
-                      style={{
-                        fontSize: "clamp(14px, 4vw, 18px)",
-                        textShadow: "0 1px 12px rgba(0,0,0,0.7), 0 0 24px rgba(0,0,0,0.4)",
-                        letterSpacing: "-0.01em",
-                      }}
-                    >
-                      {displayCopy}
-                    </p>
-                  </div>
-                )}
+                    {/* 상단 검은 바 — AI 카피 */}
+                    <div className="flex shrink-0 items-center justify-end px-4 py-3" style={{ height: "22%" }}>
+                      {displayCopy ? (
+                        <p
+                          className="text-right font-black leading-6 text-white"
+                          style={{
+                            fontSize: "clamp(13px, 3.5vw, 17px)",
+                            textShadow: "0 1px 8px rgba(0,0,0,0.5)",
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          {displayCopy}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-white/30 italic">AI 카피가 여기 표시됩니다</p>
+                      )}
+                    </div>
 
-                {/* EXIF 오버레이 — 하단 */}
-                {hasExif && !status && (
-                  <>
-                    {/* 그라데이션 */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-                    {/* 지역 + EXIF 정보 */}
-                    <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
-                      {region && (
-                        <div className="mb-1.5 flex items-center gap-1">
-                          <span className="rounded-full bg-white/20 backdrop-blur-sm px-2 py-0.5 text-[9px] font-bold text-white">
-                            📍 {region.fullName}
-                          </span>
+                    {/* 중앙 1:1 이미지 영역 */}
+                    <div className="relative mx-auto w-full overflow-hidden" style={{ flex: "1 1 0", aspectRatio: "1/1", maxHeight: "56%" }}>
+                      <Image
+                        src={previewUrl}
+                        alt="preview"
+                        fill
+                        className="object-cover"
+                        style={{
+                          filter: activeFilterCss,
+                          objectPosition: `${cropX}% center`,
+                        }}
+                        unoptimized
+                      />
+                      {status === "analyzing" && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
+                          <div className="h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          <p className="text-xs">AI가 사진을 보고 있어요...</p>
                         </div>
                       )}
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                        {exif.camera && (
-                          <span className="flex items-center gap-1 text-[10px] font-medium text-white/90">
-                            <span className="text-xs">📷</span> {exif.camera}
-                          </span>
+                    </div>
+
+                    {/* 하단 검은 바 — EXIF */}
+                    <div className="shrink-0 px-4 py-2" style={{ height: "22%" }}>
+                      {region && (
+                        <div className="mb-1">
+                          <span className="text-[9px] font-bold text-white/60">📍 {region.fullName}</span>
+                        </div>
+                      )}
+                      {hasExif && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {exif.camera && (
+                            <span className="text-[9px] font-medium text-white/80">📷 {exif.camera}</span>
+                          )}
+                          <div className="flex items-center gap-1.5 text-[9px] text-white/60">
+                            {exif.focalLength && <span>{exif.focalLength}</span>}
+                            {exif.fStop        && <span>{exif.fStop}</span>}
+                            {exif.iso          && <span>ISO {exif.iso}</span>}
+                            {exif.exposureTime && <span>{exif.exposureTime}</span>}
+                          </div>
+                        </div>
+                      )}
+                      {!hasExif && !region && (
+                        <p className="text-[9px] text-white/30 italic">EXIF 정보가 여기 표시됩니다</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* 세로/정방형 사진: 기존 방식 */
+                <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-gray-900">
+                  <Image
+                    src={previewUrl}
+                    alt="preview"
+                    fill
+                    className="object-cover"
+                    style={{ filter: activeFilterCss }}
+                    unoptimized
+                  />
+                  {displayCopy && (
+                    <div className="absolute right-3 top-3 max-w-[65%]">
+                      <p className="text-right font-black leading-7 text-white"
+                        style={{ fontSize: "clamp(14px, 4vw, 18px)", textShadow: "0 1px 12px rgba(0,0,0,0.7)", letterSpacing: "-0.01em" }}>
+                        {displayCopy}
+                      </p>
+                    </div>
+                  )}
+                  {hasExif && !status && (
+                    <>
+                      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                      <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+                        {region && (
+                          <div className="mb-1.5">
+                            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold text-white">📍 {region.fullName}</span>
+                          </div>
                         )}
-                        <div className="flex items-center gap-2 text-[10px] font-medium text-white/75">
-                          {exif.focalLength && <span>{exif.focalLength}</span>}
-                          {exif.fStop &&       <span>{exif.fStop}</span>}
-                          {exif.iso &&         <span>ISO {exif.iso}</span>}
-                          {exif.exposureTime && <span>{exif.exposureTime}</span>}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-medium">
+                          {exif.camera      && <span className="text-white/90">📷 {exif.camera}</span>}
+                          {exif.focalLength && <span className="text-white/75">{exif.focalLength}</span>}
+                          {exif.fStop       && <span className="text-white/75">{exif.fStop}</span>}
+                          {exif.iso         && <span className="text-white/75">ISO {exif.iso}</span>}
+                          {exif.exposureTime && <span className="text-white/75">{exif.exposureTime}</span>}
                         </div>
                       </div>
+                    </>
+                  )}
+                  {status === "analyzing" && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <p className="text-sm">AI가 사진을 보고 있어요...</p>
                     </div>
-                  </>
-                )}
+                  )}
+                </div>
+              )}
 
-                {/* AI 분석 중 */}
-                {status === "analyzing" && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/70 text-white">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    <p className="text-sm">🗿 AI가 사진을 보고 있어요...</p>
+              {/* 가로 사진 크롭 슬라이더 */}
+              {isLandscape && (
+                <div className="rounded-xl bg-bg-secondary px-3 py-2.5">
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-text-secondary">↔ 좌우 위치 조정</p>
+                    <span className="text-[9px] text-text-secondary">드래그로 크롭 위치 변경</span>
                   </div>
-                )}
-              </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={cropX}
+                    onChange={(e) => setCropX(Number(e.target.value))}
+                    className="w-full accent-brand-orange"
+                  />
+                  <div className="mt-0.5 flex justify-between text-[9px] text-text-secondary">
+                    <span>← 왼쪽</span>
+                    <span>중앙</span>
+                    <span>오른쪽 →</span>
+                  </div>
+                </div>
+              )}
 
               {/* ── 감성 필터 ── */}
               <div>

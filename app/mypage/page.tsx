@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { getAuthor } from "@/lib/feed";
@@ -45,7 +46,7 @@ export default function MyPage() {
       <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
         <PageHeader title="마이페이지" emoji="👤" />
         <div className="flex flex-col items-center py-20 text-center px-4">
-          <div className="text-6xl">🗿</div>
+          <DolmangyiIcon size={64} />
           <h2 className="mt-4 text-lg font-black text-text-primary">로그인이 필요해요</h2>
           <p className="mt-1 text-sm text-text-secondary">저장한 스팟과 여행 일정을 관리하려면 로그인하세요</p>
           <button
@@ -72,7 +73,7 @@ export default function MyPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-3xl">🗿</span>
+              <DolmangyiIcon size={40} className="shrink-0" />
             )}
           </div>
           <div className="min-w-0 flex-1">

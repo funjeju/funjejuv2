@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useSaved } from "@/hooks/useSaved";
 import { mockCctvs } from "@/constants/mock-cctvs";
@@ -207,7 +208,7 @@ export default function TripAiPage() {
                 : "돌맹이가 알아서 최적 코스 추천"}
             </p>
           </div>
-          <span className="text-5xl">🗿</span>
+          <DolmangyiIcon size={64} className="shrink-0" />
         </div>
 
         <div className="mt-4 space-y-2">
@@ -294,7 +295,7 @@ export default function TripAiPage() {
                       </div>
                     </div>
                     <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-brand-yellow/20 p-2">
-                      <span className="text-sm">🗿</span>
+                      <DolmangyiIcon size={20} className="shrink-0" />
                       <p className="text-[11px] leading-5 text-text-primary">{item.comment}</p>
                     </div>
                   </div>
@@ -314,7 +315,7 @@ export default function TripAiPage() {
         )}
 
         <div className="rounded-2xl bg-brand-yellow/20 p-5 text-center">
-          <span className="text-3xl">🗿</span>
+          <DolmangyiIcon size={48} />
           <p className="mt-2 text-sm font-medium text-text-primary">{plan.closing}</p>
         </div>
 
