@@ -27,6 +27,7 @@ export default function PlacesPage() {
   const [withPets, setWithPets] = useState(false);
   const [withKids, setWithKids] = useState(false);
   const [regionPanelOpen, setRegionPanelOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
 
   // 검색 실행
   const fetchPlaces = useCallback(async () => {
@@ -103,58 +104,72 @@ export default function PlacesPage() {
         </div>
       </div>
 
-      {/* 카테고리 필터 — 그룹별 */}
+      {/* 카테고리 필터 — 그룹 선택 → 하위 카테고리 표시 */}
       <div className="mx-4 mb-3 md:mx-0">
         <p className="mb-1.5 text-[11px] font-bold text-text-secondary">🏷️ 카테고리</p>
-        <div className="space-y-1.5">
-          {/* 전체 + 그룹별 */}
-          <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => setCategory("")}
-              className={["rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
-                !category ? "bg-text-primary text-white" : "border border-border-soft bg-bg-card text-text-secondary"].join(" ")}>
-              전체
-            </button>
-            {CATEGORY_GROUPS.map((group) => {
-              const groupCats = CATEGORIES.filter((c) => c.group === group);
-              const isInGroup = groupCats.some((c) => c.id === category);
-              return (
-                <details key={group} className="inline-block">
-                  <summary className={[
-                    "cursor-pointer list-none rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
-                    isInGroup ? "bg-brand-orange text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:border-brand-orange/40",
-                  ].join(" ")}>
-                    {group} ▾
-                  </summary>
-                  <div className="absolute z-10 mt-1 flex flex-wrap gap-1 rounded-xl border border-border-soft bg-bg-card p-2 shadow-soft max-w-[280px]">
-                    {groupCats.map((c) => (
-                      <button key={c.id} type="button"
-                        onClick={() => setCategory(category === c.id ? "" : c.id)}
-                        className={[
-                          "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-                          category === c.id
-                            ? "bg-brand-orange text-white"
-                            : "bg-bg-secondary text-text-secondary hover:bg-border-soft",
-                        ].join(" ")}>
-                        {c.emoji} {c.label}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              );
-            })}
-          </div>
 
-          {/* 선택된 카테고리 표시 */}
-          {category && (
-            <div className="flex items-center gap-2 text-[11px]">
-              <span className="text-text-secondary">선택:</span>
-              <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 font-bold text-brand-orange">
-                {CATEGORIES.find((c) => c.id === category)?.emoji} {CATEGORIES.find((c) => c.id === category)?.label}
-                <button type="button" onClick={() => setCategory("")} className="ml-1">✕</button>
-              </span>
-            </div>
-          )}
+        {/* 1차: 전체 + 그룹 칩 */}
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button"
+            onClick={() => { setCategory(""); setActiveGroup(null); }}
+            className={[
+              "rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
+              !category && !activeGroup ? "bg-text-primary text-white" : "border border-border-soft bg-bg-card text-text-secondary",
+            ].join(" ")}>
+            전체
+          </button>
+          {CATEGORY_GROUPS.map((group) => {
+            const groupCats = CATEGORIES.filter((c) => c.group === group);
+            const isInGroup = groupCats.some((c) => c.id === category);
+            const isOpen    = activeGroup === group || isInGroup;
+            return (
+              <button key={group} type="button"
+                onClick={() => setActiveGroup(isOpen ? null : group)}
+                className={[
+                  "rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
+                  isOpen
+                    ? "bg-brand-orange text-white"
+                    : "border border-border-soft bg-bg-card text-text-secondary hover:border-brand-orange/40",
+                ].join(" ")}>
+                {group} {isOpen ? "▴" : "▾"}
+              </button>
+            );
+          })}
         </div>
+
+        {/* 2차: 선택된 그룹의 하위 카테고리 (펼쳐서 표시) */}
+        {(() => {
+          const expanded = activeGroup ?? CATEGORIES.find((c) => c.id === category)?.group ?? null;
+          if (!expanded) return null;
+          const groupCats = CATEGORIES.filter((c) => c.group === expanded);
+          return (
+            <div className="mt-2 flex flex-wrap gap-1 rounded-xl border border-brand-orange/20 bg-brand-orange/5 p-2">
+              {groupCats.map((c) => (
+                <button key={c.id} type="button"
+                  onClick={() => setCategory(category === c.id ? "" : c.id)}
+                  className={[
+                    "rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    category === c.id
+                      ? "bg-brand-orange text-white shadow-sm"
+                      : "bg-bg-card border border-border-soft text-text-secondary hover:border-brand-orange/40",
+                  ].join(" ")}>
+                  {c.emoji} {c.label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* 선택된 카테고리 표시 */}
+        {category && (
+          <div className="mt-2 flex items-center gap-2 text-[11px]">
+            <span className="text-text-secondary">선택:</span>
+            <span className="inline-flex items-center rounded-full bg-brand-orange/10 px-2 py-0.5 font-bold text-brand-orange">
+              {CATEGORIES.find((c) => c.id === category)?.emoji} {CATEGORIES.find((c) => c.id === category)?.label}
+              <button type="button" onClick={() => setCategory("")} className="ml-1 text-text-secondary hover:text-live-red">✕</button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 지역 + 속성 필터 */}

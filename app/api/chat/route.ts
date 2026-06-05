@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { matchLocation } from "@/constants/jeju-locations";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -226,11 +227,52 @@ function buildContext(places: Place[], lat: number, lng: number): string {
   return `[현재 위치(${lat.toFixed(4)},${lng.toFixed(4)}) 기준 근처 스팟 — 아래 목록에 있는 장소만 추천할 것]\n\n${lines.join("\n\n")}`;
 }
 
+// 라벨 + 모드 기반 컨텍스트 (의도 추출 결과용)
+function buildContextWithLabel(
+  places: Place[],
+  locationLabel: string,
+  mode: "region" | "geo",
+  radiusKm?: number
+): string {
+  if (places.length === 0) return "";
+
+  const lines = places.map((p, i) => {
+    const dist = p.distKm != null ? ` (${p.distKm.toFixed(1)}km)` : "";
+    const cats = p.categories_kr.length > 0 ? p.categories_kr.join(", ") : p.categories.join(", ");
+    const pets = p.withPets ? "반려동물 가능" : "";
+    const kids = p.withKids ? "아이 동반 가능" : "";
+    const flags = [pets, kids].filter(Boolean).join(" · ");
+    const tip = p.expert_tip ? `   팁: ${p.expert_tip}` : "";
+
+    return [
+      `${i + 1}. ${p.place_name}${dist} — ${cats}`,
+      `   ${p.description || ""}`,
+      tip,
+      flags && `   ${flags}`,
+    ].filter(Boolean).join("\n");
+  });
+
+  const header = mode === "region"
+    ? `[${locationLabel} 지역 스팟 — 아래 목록에 있는 장소만 추천할 것]`
+    : `[${locationLabel} 기준 반경 ${radiusKm}km 내 스팟 — 아래 목록에 있는 장소만 추천할 것]`;
+
+  return `${header}\n\n${lines.join("\n\n")}`;
+}
+
 // ── 시스템 프롬프트 빌더 ──────────────────────────────────────
-function buildSystemPrompt(context: string, hasGps: boolean): string {
-  const locationNote = hasGps
-    ? "유저의 현재 GPS 위치를 기반으로 근처 스팟을 우선 추천해."
-    : "유저의 위치 정보가 없어. 제주 대표 명소 중심으로 답변해.";
+function buildSystemPrompt(context: string, hasGps: boolean, intent?: { mode: string; locationLabel: string; radiusKm: number }): string {
+  let locationNote: string;
+  if (intent?.mode === "region") {
+    locationNote = `유저가 '${intent.locationLabel}' 지역을 물어봤어. 이 지역 내 스팟만 추천해.`;
+  } else if (intent?.mode === "geo" && intent.locationLabel === "현재 위치") {
+    locationNote = `유저의 현재 위치 반경 ${intent.radiusKm}km 내 스팟을 추천해.`;
+  } else if (intent?.mode === "geo") {
+    locationNote = `'${intent.locationLabel}' 기준 반경 ${intent.radiusKm}km 내 스팟을 추천해.`;
+  } else if (hasGps) {
+    locationNote = "유저의 현재 GPS 위치를 기반으로 근처 스팟을 우선 추천해.";
+  } else {
+    locationNote = "유저의 위치 정보가 없어. 제주 대표 명소 중심으로 답변해.";
+  }
 
   return `너는 제주 여행 AI 도슨트 '돌맹이'야. 제주 돌하르방을 의인화한 로컬 친구.
 
@@ -254,6 +296,121 @@ function buildSystemPrompt(context: string, hasGps: boolean): string {
 ${context ? `\n${context}` : "[스팟 DB 없음 — 위치 정보 없거나 DB 비어있음]"}`;
 }
 
+// ── 의도 추출 ───────────────────────────────────────────────
+type Intent = {
+  mode: "region" | "geo" | "none";
+  region?: string;          // Firestore region 필드 정확 매칭값
+  centerLat?: number;       // 좌표 기반 검색 중심
+  centerLng?: number;
+  radiusKm: number;
+  locationLabel: string;    // 사용자에게 보여줄 위치 설명
+  hints: string[];          // 카테고리 힌트
+};
+
+function extractRadius(text: string): number | null {
+  // "10km", "5 km", "10키로", "10킬로", "10키로미터"
+  const m = text.match(/(\d{1,3})\s*(km|키로|킬로)/i);
+  if (m) return Math.min(Number(m[1]), 50); // 최대 50km
+  return null;
+}
+
+function isNearbyKeyword(text: string): boolean {
+  return /내\s*주변|내\s*근처|근처|주변|근방|이근방|여기\s*근방|지금\s*근처/.test(text);
+}
+
+function extractIntent(text: string, userLat?: number, userLng?: number): Intent {
+  const hints       = extractCategoryHint(text);
+  const explicitKm  = extractRadius(text);
+  const nearby      = isNearbyKeyword(text);
+  const matched     = matchLocation(text);
+  const hasGps      = typeof userLat === "number" && typeof userLng === "number";
+
+  // 1) 지역명 매칭 우선
+  if (matched) {
+    return {
+      mode: matched.region ? "region" : "geo",
+      region: matched.region,
+      centerLat: matched.lat,
+      centerLng: matched.lng,
+      radiusKm: explicitKm ?? matched.defaultRadius ?? 5,
+      locationLabel: matched.keywords[0],
+      hints,
+    };
+  }
+
+  // 2) GPS + (근처 키워드 or 거리 명시)
+  if (hasGps && (nearby || explicitKm)) {
+    return {
+      mode: "geo",
+      centerLat: userLat,
+      centerLng: userLng,
+      radiusKm: explicitKm ?? 5,
+      locationLabel: "현재 위치",
+      hints,
+    };
+  }
+
+  // 3) GPS만 있고 명시적 단서 없음 → 기본 5km
+  if (hasGps) {
+    return {
+      mode: "geo",
+      centerLat: userLat,
+      centerLng: userLng,
+      radiusKm: 5,
+      locationLabel: "현재 위치",
+      hints,
+    };
+  }
+
+  // 4) 정보 없음
+  return { mode: "none", radiusKm: 5, locationLabel: "", hints };
+}
+
+// ── region 필드 기반 쿼리 ───────────────────────────────────
+async function queryByRegion(region: string, hints: string[]): Promise<Place[]> {
+  const cacheKey = `region_${region}`;
+  const cached = geoCache.get(cacheKey);
+  let places: Place[];
+
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    places = cached.places;
+  } else {
+    const query = {
+      structuredQuery: {
+        from: [{ collectionId: "places" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "region" },
+            op: "EQUAL",
+            value: { stringValue: region },
+          },
+        },
+        limit: 100,
+      },
+    };
+    const url = `${FS_BASE}:runQuery?key=${API_KEY}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+
+    const rows = (await res.json()) as { document?: { fields?: Record<string, Record<string, unknown>> } }[];
+    places = [];
+    for (const row of rows) {
+      if (!row.document) continue;
+      const p = docToPlace(row.document);
+      if (p) places.push(p);
+    }
+    geoCache.set(cacheKey, { places, ts: Date.now() });
+  }
+
+  // 카테고리 힌트로 필터/정렬
+  return filterAndSort(places, places[0]?.lat ?? 33.4, places[0]?.lng ?? 126.5, hints);
+}
+
 // ── 메인 핸들러 ───────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -267,28 +424,37 @@ export async function POST(req: NextRequest) {
 
   const hasGps = typeof lat === "number" && typeof lng === "number";
 
-  // 마지막 유저 메시지에서 카테고리 힌트 추출
+  // 마지막 유저 메시지에서 의도 추출
   const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
-  const hints        = extractCategoryHint(lastUserText);
+  const intent       = extractIntent(lastUserText, lat, lng);
 
-  // 근처 장소 조회 (GPS 있을 때만)
+  // 의도 기반 장소 조회
   let context = "";
-  if (hasGps) {
-    try {
-      // 1차: 3km 이내
-      let places = await queryNearbyPlaces(lat!, lng!, 3, hints);
-      // 3km 이내 결과 5개 미만이면 10km로 확대
+  let queryInfo = "";
+
+  try {
+    if (intent.mode === "region" && intent.region) {
+      // ① 지역명 매칭 → region 필드로 정확 매칭
+      const places = await queryByRegion(intent.region, intent.hints);
+      context = buildContextWithLabel(places, intent.locationLabel, "region");
+      queryInfo = `[지역 매칭: ${intent.region}, ${places.length}곳]`;
+    } else if (intent.mode === "geo" && intent.centerLat && intent.centerLng) {
+      // ② 좌표 + 반경 쿼리
+      let places = await queryNearbyPlaces(intent.centerLat, intent.centerLng, intent.radiusKm, intent.hints);
+      // 결과 5개 미만이면 반경 2배 확대
       if (places.length < 5) {
-        places = await queryNearbyPlaces(lat!, lng!, 10, hints);
+        places = await queryNearbyPlaces(intent.centerLat, intent.centerLng, intent.radiusKm * 2, intent.hints);
       }
-      context = buildContext(places, lat!, lng!);
-    } catch (e) {
-      console.error("[chat] place query failed:", e);
-      // 쿼리 실패해도 챗봇은 계속 동작
+      context = buildContextWithLabel(places, intent.locationLabel, "geo", intent.radiusKm);
+      queryInfo = `[좌표 검색: ${intent.locationLabel} 반경 ${intent.radiusKm}km, ${places.length}곳]`;
     }
+  } catch (e) {
+    console.error("[chat] place query failed:", e);
   }
 
-  const systemPrompt = buildSystemPrompt(context, hasGps);
+  console.log("[chat]", queryInfo, "| msg:", lastUserText.slice(0, 50));
+
+  const systemPrompt = buildSystemPrompt(context, hasGps, intent);
 
   const ai = new GoogleGenAI({ apiKey });
 
