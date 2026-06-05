@@ -26,6 +26,16 @@ type Place = {
   distKm?: number;
 };
 
+// ── 위치 기반 캐시 (서버 인스턴스 내 5분 유효) ──────────────
+// 같은 지역 반복 쿼리 시 Firestore 재호출 없이 캐시 사용
+const geoCache = new Map<string, { places: Place[]; ts: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5분
+
+function geoCacheKey(lat: number, lng: number): string {
+  // 소수점 2자리로 반올림 → 약 1km 격자
+  return `${lat.toFixed(2)},${lng.toFixed(2)}`;
+}
+
 // ── Firestore REST 헬퍼 ───────────────────────────────────────
 const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!;
 const API_KEY    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY!;
@@ -106,8 +116,14 @@ function extractCategoryHint(text: string): string[] {
   return hints;
 }
 
-// Firestore 반경 쿼리 (lat bounding box → lng 필터 → 거리 정렬)
+// Firestore 반경 쿼리 (lat bounding box → lng 필터 → 거리 정렬) + 캐시
 async function queryNearbyPlaces(lat: number, lng: number, radiusKm: number, hints: string[]): Promise<Place[]> {
+  // 캐시 확인 (5분 이내 같은 위치 → 재사용)
+  const cacheKey = `${geoCacheKey(lat, lng)}_${radiusKm}`;
+  const cached = geoCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return filterAndSort(cached.places, lat, lng, hints);
+  }
   const R = radiusKm / 111; // degrees per km (roughly)
   const minLat = lat - R;
   const maxLat = lat + R;
@@ -156,34 +172,34 @@ async function queryNearbyPlaces(lat: number, lng: number, radiusKm: number, hin
     places.push(p);
   }
 
-  // 카테고리 힌트로 보정 정렬: 힌트 매칭 우선
+  // 캐시 저장
+  geoCache.set(cacheKey, { places, ts: Date.now() });
+
+  return filterAndSort(places, lat, lng, hints);
+}
+
+// 캐시 히트 시에도 사용하는 정렬/필터 함수
+function filterAndSort(places: Place[], lat: number, lng: number, hints: string[]): Place[] {
   const withPetsHint = hints.includes("_withPets");
   const withKidsHint = hints.includes("_withKids");
   const catHints     = hints.filter((h) => !h.startsWith("_"));
 
-  places.sort((a, b) => {
-    let scoreA = 0, scoreB = 0;
-
-    // 특수 필터
-    if (withPetsHint && a.withPets) scoreA += 5;
-    if (withPetsHint && b.withPets) scoreB += 5;
-    if (withKidsHint && a.withKids) scoreA += 5;
-    if (withKidsHint && b.withKids) scoreB += 5;
-
-    // 카테고리 매칭
-    if (catHints.length > 0) {
-      if (a.categories.some((c) => catHints.includes(c))) scoreA += 10;
-      if (b.categories.some((c) => catHints.includes(c))) scoreB += 10;
-    }
-
-    // 거리 보정 (가까울수록 +)
-    scoreA += Math.max(0, 5 - (a.distKm ?? 99));
-    scoreB += Math.max(0, 5 - (b.distKm ?? 99));
-
-    return scoreB - scoreA;
-  });
-
-  return places.slice(0, 20);
+  return [...places]
+    .sort((a, b) => {
+      let scoreA = 0, scoreB = 0;
+      if (withPetsHint && a.withPets) scoreA += 5;
+      if (withPetsHint && b.withPets) scoreB += 5;
+      if (withKidsHint && a.withKids) scoreA += 5;
+      if (withKidsHint && b.withKids) scoreB += 5;
+      if (catHints.length > 0) {
+        if (a.categories.some((c) => catHints.includes(c))) scoreA += 10;
+        if (b.categories.some((c) => catHints.includes(c))) scoreB += 10;
+      }
+      scoreA += Math.max(0, 5 - (a.distKm ?? 99));
+      scoreB += Math.max(0, 5 - (b.distKm ?? 99));
+      return scoreB - scoreA;
+    })
+    .slice(0, 20);
 }
 
 // 장소 목록 → 프롬프트 컨텍스트 문자열
