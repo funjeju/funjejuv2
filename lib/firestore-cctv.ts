@@ -2,16 +2,10 @@
 
 import {
   collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  getDocs,
   onSnapshot,
   query,
   where,
   orderBy,
-  serverTimestamp,
-  updateDoc,
   type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -57,48 +51,41 @@ export function subscribeCctvs(callback: (entries: CctvEntry[]) => void) {
   });
 }
 
+// ── 어드민 작업은 서버 API(/api/admin/cctv) 호출 → Admin SDK가 Firestore 쓰기
+//    Firestore 보안 규칙이 잠겨있어도 작동함
+
+async function apiCall(method: string, body?: unknown): Promise<unknown> {
+  const res = await fetch("/api/admin/cctv", {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || data.hint || `${res.status} 오류`);
+  }
+  return data;
+}
+
 /** 어드민 전체 목록 (비활성 포함) */
 export async function adminListCctvs(): Promise<CctvEntry[]> {
-  const db = getFirebaseDb();
-  const snap = await getDocs(
-    query(collection(db, "cctvs"), orderBy("name"))
-  );
-  return snap.docs.map((d) => toEntry(d.id, d.data()));
+  const data = await apiCall("GET") as { entries: CctvEntry[] };
+  return data.entries ?? [];
 }
 
 /** 어드민 저장/업데이트 */
 export async function adminSetCctv(entry: Omit<CctvEntry, "addedAt">): Promise<void> {
-  const db = getFirebaseDb();
-  const ref = doc(db, "cctvs", entry.id);
-  await setDoc(
-    ref,
-    {
-      name: entry.name,
-      region: entry.region,
-      direction: entry.direction,
-      category: entry.category,
-      originUrl: entry.originUrl,
-      youtubeId: entry.youtubeId ?? null,
-      active: entry.active,
-      description: entry.description,
-      lat: entry.lat ?? null,
-      lng: entry.lng ?? null,
-      addedAt: serverTimestamp(),
-    },
-    { merge: true }
-  );
+  await apiCall("POST", entry);
 }
 
 /** 어드민 활성화 토글 */
 export async function adminToggleCctv(id: string, active: boolean): Promise<void> {
-  const db = getFirebaseDb();
-  await updateDoc(doc(db, "cctvs", id), { active });
+  await apiCall("PATCH", { id, active });
 }
 
 /** 어드민 삭제 */
 export async function adminDeleteCctv(id: string): Promise<void> {
-  const db = getFirebaseDb();
-  await deleteDoc(doc(db, "cctvs", id));
+  await apiCall("DELETE", { id });
 }
 
 /** 프록시 URL 계산 */

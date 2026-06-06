@@ -1,21 +1,16 @@
 /**
  * 서버사이드 CCTV 시딩 API
- * admin 쿠키 인증 후 Firestore REST API로 mock + originURL 데이터 일괄 저장
- *
- * Firestore 규칙 설정 필요 (cctvs 컬렉션):
- *   allow write: if true;  — 마이그레이션 완료 후 더 엄격한 규칙으로 변경
+ * admin 쿠키 인증 + Firebase Admin SDK 사용
+ * → Firestore 보안 규칙 우회하므로 클라이언트 규칙은 항상 잠궈둘 수 있음
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { getDirection } from "@/constants/cctv-directions";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!;
-const API_KEY    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY!;
-const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // ── mock 메타 + 원본 URL 통합 시드 데이터 ────────────────────
 const SEED: {
@@ -64,24 +59,6 @@ const SEED: {
   { id:"seogwipo_hang2", name:"서귀포항2",     region:"서귀포시",        category:"항구",  description:"서귀포항 추가 앵글입니다.",                         lat:33.241, lng:126.563, originUrl:"http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8" },
 ];
 
-// Firestore REST API용 문서 포맷
-function toFs(val: unknown): unknown {
-  if (typeof val === "string")  return { stringValue: val };
-  if (typeof val === "number")  return { doubleValue: val };
-  if (typeof val === "boolean") return { booleanValue: val };
-  if (Array.isArray(val))       return { arrayValue: { values: val.map(toFs) } };
-  return { nullValue: null };
-}
-
-function buildWrite(id: string, fields: Record<string, unknown>) {
-  return {
-    update: {
-      name: `projects/${PROJECT_ID}/databases/(default)/documents/cctvs/${id}`,
-      fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, toFs(v)])),
-    },
-  };
-}
-
 export async function POST(req: NextRequest) {
   // Admin 인증
   const cookieStore = await cookies();
@@ -90,42 +67,41 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const writes = SEED.map((c) =>
-    buildWrite(c.id, {
-      id:          c.id,
-      name:        c.name,
-      region:      c.region,
-      direction:   getDirection(c.region),
-      category:    c.category,
-      originUrl:   c.originUrl,
-      youtubeId:   null,
-      active:      true,
-      description: c.description,
-      lat:         c.lat,
-      lng:         c.lng,
-    })
-  );
+  try {
+    const db = getAdminDb();
+    const batch = db.batch();
 
-  // Firestore batchWrite (최대 500건)
-  const url = `${FS_BASE}:batchWrite?key=${API_KEY}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ writes }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    // 권한 오류 시 Firestore 규칙 안내 포함
-    if (res.status === 403) {
-      return NextResponse.json({
-        error: "Firestore 쓰기 권한 없음",
-        hint: "Firebase 콘솔 → Firestore → 규칙에서 cctvs 컬렉션 write 허용 필요",
-        rule: 'match /cctvs/{doc} { allow read, write: if true; }',
-      }, { status: 403 });
+    for (const c of SEED) {
+      const ref = db.collection("cctvs").doc(c.id);
+      batch.set(ref, {
+        id:          c.id,
+        name:        c.name,
+        region:      c.region,
+        direction:   getDirection(c.region),
+        category:    c.category,
+        originUrl:   c.originUrl,
+        youtubeId:   null,
+        active:      true,
+        description: c.description,
+        lat:         c.lat,
+        lng:         c.lng,
+        addedAt:     new Date(),
+      }, { merge: true });
     }
-    return NextResponse.json({ error: err.slice(0, 300) }, { status: 500 });
-  }
 
-  return NextResponse.json({ ok: true, count: SEED.length });
+    await batch.commit();
+
+    return NextResponse.json({ ok: true, count: SEED.length });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Admin SDK 설정 문제
+    if (msg.includes("FIREBASE_SERVICE_ACCOUNT")) {
+      return NextResponse.json({
+        error: "Firebase Admin SDK 미설정",
+        hint: "Vercel 환경변수 FIREBASE_SERVICE_ACCOUNT에 서비스 계정 JSON을 등록해주세요.",
+        guide: "Firebase 콘솔 → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성 → JSON 다운로드 → 내용 전체를 Vercel 환경변수 FIREBASE_SERVICE_ACCOUNT 에 복사",
+      }, { status: 500 });
+    }
+    return NextResponse.json({ error: msg.slice(0, 300) }, { status: 500 });
+  }
 }

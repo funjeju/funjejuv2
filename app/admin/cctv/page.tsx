@@ -147,17 +147,14 @@ export default function AdminCctvPage() {
   }
 
   async function handleSeedFromMock() {
-    if (!confirm(`기존 CCTV ${mockCctvs.length}개를 Firestore에 시딩할까요?\n\n⚠️ 주의: Firebase 콘솔 → Firestore → 규칙에서\ncctvs 컬렉션 write 허용이 필요합니다.`)) return;
+    if (!confirm(`기존 CCTV ${mockCctvs.length}개를 Firestore에 시딩할까요?`)) return;
     setSeeding(true);
     try {
       const res = await fetch("/api/admin/seed-cctvs", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
-        if (data.hint) {
-          notify("err", `${data.error}\n\n${data.hint}\n규칙: ${data.rule}`);
-        } else {
-          notify("err", data.error ?? "시딩 실패");
-        }
+        const detail = [data.error, data.hint, data.guide].filter(Boolean).join("\n\n");
+        notify("err", detail || "시딩 실패");
       } else {
         notify("ok", `${data.count}개 시딩 완료!`);
         load();
@@ -197,7 +194,7 @@ export default function AdminCctvPage() {
 
       {msg && (
         <div className={[
-          "mb-4 rounded-xl px-4 py-3 text-sm font-semibold border",
+          "mb-4 rounded-xl px-4 py-3 text-sm font-semibold border whitespace-pre-line",
           msg.type === "ok"
             ? "bg-jeju-green/10 text-jeju-green border-jeju-green/20"
             : "bg-live-red/10 text-live-red border-live-red/20",
