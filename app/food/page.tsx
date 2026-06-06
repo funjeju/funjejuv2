@@ -1,27 +1,27 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/common/PageHeader";
 import { RestaurantGallery } from "@/components/restaurant/RestaurantGallery";
-import { loadRestaurantSummaries, getFilters } from "@/lib/restaurants";
+import { loadMergedRestaurants, getMergedFilters } from "@/lib/restaurants-merged";
 
 export const metadata: Metadata = {
   title: "도민맛집 | FunJeju",
   description:
-    "제주 도민이 추천하는 진짜 맛집! 지역별·메뉴별로 검색하고 펀제주 인증 맛집을 만나보세요. 589곳의 도민 맛집 정보.",
+    "제주 도민이 추천하는 진짜 맛집! 지역별·메뉴별로 검색하고 펀제주 인증 맛집을 만나보세요.",
   openGraph: {
     title: "도민맛집 - FunJeju",
-    description: "제주 도민이 추천하는 589곳의 진짜 맛집",
+    description: "제주 도민이 추천하는 진짜 맛집",
     type: "website",
     url: "https://funjeju.com/food",
   },
 };
 
-// 정적 생성 (24시간마다 재생성)
-export const revalidate = 86400;
+// 신규 맛집 반영 위해 60초마다 재생성
+export const revalidate = 60;
 
 export default async function FoodPage() {
   const [restaurants, filters] = await Promise.all([
-    loadRestaurantSummaries(),
-    getFilters(),
+    loadMergedRestaurants(),
+    getMergedFilters(),
   ]);
 
   return (
