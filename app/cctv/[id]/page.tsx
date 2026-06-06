@@ -1,83 +1,100 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { mockCctvs } from "@/constants/mock-cctvs";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
+import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { fetchWeather } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { getCctvSeo } from "@/constants/cctv-seo";
+import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
+import { mockCctvs } from "@/constants/mock-cctvs";
 
 type Props = { params: Promise<{ id: string }> };
 
-const SITE_URL = "https://funjeju.com";
+const SITE_URL    = "https://funjeju.com";
+const PROXY_BASE  = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
 
-// SSG — 빌드 시 모든 CCTV 정적 생성 (SEO 최적화)
+// 빌드 시 mockCctvs 기반으로 정적 생성 + 새 ID는 ISR로 동적 처리
 export async function generateStaticParams() {
   return mockCctvs.map((c) => ({ id: c.id }));
 }
 
-// 10분마다 재생성 (날씨 갱신)
-export const revalidate = 600;
+// 새 ID 동적 생성 허용 (404 안 나게)
+export const dynamicParams = true;
+// 60초마다 재검증 (Firestore 변경 반영)
+export const revalidate = 60;
 
-// 동적 SEO 메타데이터
+// Firestore → fallback mock 순서로 조회
+async function loadCctv(id: string) {
+  const fromFirestore = await getCctvById(id);
+  if (fromFirestore) return fromFirestore;
+  // Firestore에 없으면 mock에서 fallback
+  const mock = mockCctvs.find((c) => c.id === id);
+  if (mock) {
+    return {
+      id: mock.id, name: mock.name, region: mock.region,
+      direction: mock.direction, category: mock.category,
+      originUrl: "", youtubeId: mock.youtubeId,
+      active: true, description: mock.description,
+      lat: mock.latitude, lng: mock.longitude,
+    };
+  }
+  return null;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const cctv = mockCctvs.find((c) => c.id === id);
+  const cctv = await loadCctv(id);
   if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
 
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
   const cleanName = cctv.name.replace(/\s+/g, "");
-
-  // 핵심 SEO 타이틀 (60자 이내 권장)
   const title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
-
-  // 메타 디스크립션 (155자 이내)
-  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 혼잡도를 라이브로 확인하세요. 제주 ${cctv.region} ${cctv.category} 실시간 CCTV.`;
-
+  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 혼잡도를 라이브로 확인하세요.`;
   const url = `${SITE_URL}/cctv/${id}`;
 
   return {
-    title,
-    description,
+    title, description,
     alternates: { canonical: url },
     openGraph: {
-      title,
-      description,
-      url,
-      siteName: "FunJeju",
-      locale: "ko_KR",
-      type: "website",
-      images: [{
-        url: `${SITE_URL}/og-cctv.png`,
-        width: 1200,
-        height: 630,
-        alt: `${cctv.name} 실시간 CCTV`,
-      }],
+      title, description, url, siteName: "FunJeju", locale: "ko_KR", type: "website",
+      images: [{ url: `${SITE_URL}/og-cctv.png`, width: 1200, height: 630, alt: `${cctv.name} 실시간 CCTV` }],
     },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
+    twitter: { card: "summary_large_image", title, description },
     keywords: [...seo.keywords, ...seo.longTailKeywords],
   };
 }
 
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
-  const cctv = mockCctvs.find((c) => c.id === id);
+  const cctv = await loadCctv(id);
   if (!cctv) notFound();
 
+  const streamProxyUrl = cctv.youtubeId
+    ? null
+    : (PROXY_BASE ? `${PROXY_BASE}/cctv/${cctv.id}` : null);
+
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
-  const nearby = mockCctvs.filter((c) => c.id !== id && c.region === cctv.region).slice(0, 3);
-  // 같은 지역에 다른 CCTV가 없으면 전체에서 가져옴
-  const finalNearby = nearby.length >= 3
-    ? nearby
-    : [...nearby, ...mockCctvs.filter((c) => c.id !== id && !nearby.includes(c)).slice(0, 3 - nearby.length)];
 
-  const weather = await fetchWeather(cctv.latitude, cctv.longitude);
+  // 같은 지역 + 부족하면 mock에서 보충
+  const nearbyFromDb = await getNearbyCctvs(cctv.region, cctv.id, 3);
+  let finalNearby: typeof nearbyFromDb = nearbyFromDb;
+  if (nearbyFromDb.length < 3) {
+    const extra = mockCctvs
+      .filter((c) => c.id !== id && c.region === cctv.region && !nearbyFromDb.some((n) => n.id === c.id))
+      .slice(0, 3 - nearbyFromDb.length)
+      .map((m) => ({
+        id: m.id, name: m.name, region: m.region,
+        direction: m.direction, category: m.category,
+        originUrl: "", youtubeId: m.youtubeId,
+        active: true, description: m.description,
+        lat: m.latitude, lng: m.longitude,
+      }));
+    finalNearby = [...nearbyFromDb, ...extra];
+  }
 
-  // JSON-LD: TouristAttraction (관광지 구조화 데이터)
+  const weather = cctv.lat && cctv.lng ? await fetchWeather(cctv.lat, cctv.lng) : null;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "TouristAttraction",
@@ -90,16 +107,15 @@ export default async function CctvDetailPage({ params }: Props) {
       addressRegion: "제주특별자치도",
       addressCountry: "KR",
     },
-    geo: {
+    geo: cctv.lat && cctv.lng ? {
       "@type": "GeoCoordinates",
-      latitude: cctv.latitude,
-      longitude: cctv.longitude,
-    },
+      latitude: cctv.lat,
+      longitude: cctv.lng,
+    } : undefined,
     url: `${SITE_URL}/cctv/${id}`,
     isAccessibleForFree: true,
   };
 
-  // 브레드크럼 (검색 결과에 경로 표시)
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -113,17 +129,9 @@ export default async function CctvDetailPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      {/* JSON-LD 구조화 데이터 (SEO) */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
-      {/* Breadcrumb 시각적 표시 */}
       <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
         <ol className="flex flex-wrap items-center gap-1 text-xs text-text-secondary">
           <li><Link href="/" className="hover:text-text-primary">홈</Link></li>
@@ -141,13 +149,15 @@ export default async function CctvDetailPage({ params }: Props) {
       </nav>
 
       <div className="flex flex-col gap-5 lg:flex-row">
-        {/* ── 왼쪽: 플레이어 + 정보 ── */}
         <div className="min-w-0 flex-1 space-y-4">
 
-          {/* HLS 플레이어 */}
-          <HlsPlayer proxyUrl={cctv.streamProxyUrl} label={cctv.name} />
+          {/* 플레이어 — YouTube 또는 HLS */}
+          {cctv.youtubeId ? (
+            <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
+          ) : (
+            <HlsPlayer proxyUrl={streamProxyUrl} label={cctv.name} />
+          )}
 
-          {/* Info */}
           <div className="px-4 md:px-0">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -161,9 +171,13 @@ export default async function CctvDetailPage({ params }: Props) {
               </div>
             </div>
 
-            {/* 스트림 상태 + 태그 — 모바일 overflow-x-auto */}
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
-              {cctv.streamProxyUrl ? (
+              {cctv.youtubeId ? (
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
+                  YouTube 라이브
+                </span>
+              ) : streamProxyUrl ? (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-jeju-green/10 border border-jeju-green/20 px-2.5 py-1 text-[11px] font-semibold text-jeju-green">
                   <span className="h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
                   연결됨
@@ -186,9 +200,7 @@ export default async function CctvDetailPage({ params }: Props) {
           <div className="mx-4 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-4 md:mx-0">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-xs font-bold text-brand-navy">🌡️ 현장 실시간 정보</p>
-              <p className="text-[10px] text-text-secondary">
-                Open-Meteo · 10분마다 갱신
-              </p>
+              <p className="text-[10px] text-text-secondary">Open-Meteo · 10분마다 갱신</p>
             </div>
             {weather ? (
               <>
@@ -198,9 +210,7 @@ export default async function CctvDetailPage({ params }: Props) {
                     <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
                       {weather.emoji} {weather.description}
                     </p>
-                    <p className="text-[9px] text-text-secondary">
-                      {weather.temperature}°C
-                    </p>
+                    <p className="text-[9px] text-text-secondary">{weather.temperature}°C</p>
                   </div>
                   <div className="rounded-xl bg-white px-2 py-2 shadow-card">
                     <p className="text-[9px] text-text-secondary">혼잡도</p>
@@ -230,11 +240,9 @@ export default async function CctvDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* ─── SEO 본문 콘텐츠 (검색 엔진 최적화) ─── */}
+          {/* SEO 콘텐츠 */}
           <article className="mx-4 space-y-4 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
-            <h2 className="text-base font-black text-text-primary">
-              {cctv.name} 실시간 라이브캠 안내
-            </h2>
+            <h2 className="text-base font-black text-text-primary">{cctv.name} 실시간 라이브캠 안내</h2>
             <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
 
             {seo.bestTime && (
@@ -249,9 +257,7 @@ export default async function CctvDetailPage({ params }: Props) {
                 <p className="mb-2 text-xs font-bold text-text-secondary">💡 방문 팁</p>
                 <ul className="space-y-1">
                   {seo.tips.map((tip, i) => (
-                    <li key={i} className="text-xs leading-6 text-text-primary">
-                      • {tip}
-                    </li>
+                    <li key={i} className="text-xs leading-6 text-text-primary">• {tip}</li>
                   ))}
                 </ul>
               </div>
@@ -262,10 +268,7 @@ export default async function CctvDetailPage({ params }: Props) {
                 <p className="mb-2 text-xs font-bold text-text-secondary">📍 주변 명소</p>
                 <div className="flex flex-wrap gap-1.5">
                   {seo.nearby.map((place) => (
-                    <span
-                      key={place}
-                      className="rounded-full bg-brand-orange/10 px-2.5 py-1 text-[11px] font-medium text-brand-orange"
-                    >
+                    <span key={place} className="rounded-full bg-brand-orange/10 px-2.5 py-1 text-[11px] font-medium text-brand-orange">
                       {place}
                     </span>
                   ))}
@@ -273,29 +276,23 @@ export default async function CctvDetailPage({ params }: Props) {
               </div>
             )}
 
-            {/* 키워드 푸터 (SEO 보강용, 자연스럽게 배치) */}
             <div className="border-t border-border-soft pt-3">
               <p className="text-[10px] text-text-secondary leading-5">
                 <strong>이 페이지에서 확인 가능한 정보:</strong>{" "}
                 {cctv.name} 실시간 영상, {cctv.region} 날씨, {cctv.category} 혼잡도,
                 파도·바람 상태, 일출·일몰 시간대 풍경.{" "}
-                <Link
-                  href={`/cctv/region/${encodeURIComponent(cctv.region)}`}
-                  className="text-brand-orange hover:underline"
-                >
+                <Link href={`/cctv/region/${encodeURIComponent(cctv.region)}`} className="text-brand-orange hover:underline">
                   {cctv.region} 다른 CCTV 보기 →
                 </Link>
               </p>
             </div>
           </article>
 
-          {/* Live Chat (Firestore 실시간) */}
           <div className="mx-4 md:mx-0">
             <LiveChat cctvId={cctv.id} cctvName={cctv.name} />
           </div>
         </div>
 
-        {/* ── 오른쪽: 근처 CCTV ── */}
         <aside className="w-full space-y-3 lg:w-72 lg:shrink-0">
           <p className="px-4 text-sm font-bold text-text-primary md:px-0">📷 {cctv.region} CCTV</p>
           {finalNearby.map((c) => (
@@ -305,48 +302,34 @@ export default async function CctvDetailPage({ params }: Props) {
               className="flex gap-3 overflow-hidden rounded-2xl border border-border-soft bg-bg-card p-3 shadow-card hover:border-brand-orange/30 transition-colors mx-4 md:mx-0"
             >
               <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-2xl">
-                🏝️
+                {c.youtubeId ? "▶" : "🏝️"}
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-ocean-blue">{c.region}</p>
                 <p className="text-xs font-bold text-text-primary">{c.name}</p>
                 <div className="mt-1 flex items-center gap-1.5">
-                  {c.streamProxyUrl ? (
+                  {c.youtubeId ? (
+                    <span className="flex items-center gap-1 text-[10px] text-red-600 font-semibold">
+                      ▶ YouTube
+                    </span>
+                  ) : (
                     <span className="flex items-center gap-1 text-[10px] text-live-red font-semibold">
                       <span className="h-1.5 w-1.5 rounded-full bg-live-red animate-pulse" />
                       LIVE
                     </span>
-                  ) : (
-                    <span className="text-[10px] text-gray-400">준비 중</span>
                   )}
                 </div>
               </div>
             </Link>
           ))}
 
-          {/* AI 챗봇 CTA */}
           <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
             <p className="text-xs font-bold">🗿 돌맹이에게 물어보기</p>
             <p className="mt-1 text-[11px] text-white/80">이 장소 주변 맛집·카페·코스를 AI가 추천해드려요</p>
-            <Link
-              href="/chat"
-              className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors"
-            >
+            <Link href="/chat" className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors">
               채팅 시작하기 →
             </Link>
           </div>
-
-          {/* Worker 설정 안내 (스트림 미설정 시) */}
-          {!cctv.streamProxyUrl && (
-            <div className="mx-4 rounded-2xl border border-dashed border-border-soft bg-bg-secondary p-4 md:mx-0">
-              <p className="text-xs font-bold text-text-primary">📡 스트림 연결 방법</p>
-              <ol className="mt-2 space-y-1 text-[11px] text-text-secondary list-decimal list-inside">
-                <li>Cloudflare Worker 배포</li>
-                <li>KV에 CCTV 원본 URL 등록</li>
-                <li>.env에 WORKER_URL 설정</li>
-              </ol>
-            </div>
-          )}
         </aside>
       </div>
     </div>
