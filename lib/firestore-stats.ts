@@ -168,6 +168,77 @@ export async function getTodayViews(): Promise<ViewLog[]> {
   });
 }
 
+// ── 페이지뷰 기록 ─────────────────────────────────────
+export type PageViewLog = {
+  path: string;
+  userId: string;
+  userTier: UserTier;
+  userAgent: string;
+  referer: string;
+  visitedAt: Date;
+  date: string;
+};
+
+export async function logPageView(input: {
+  path: string;
+  userId: string;
+  userTier: UserTier;
+  userAgent?: string;
+  referer?: string;
+}): Promise<void> {
+  const db = getAdminDb();
+  await db.collection("stats_pageviews").add({
+    path: input.path,
+    userId: input.userId,
+    userTier: input.userTier,
+    userAgent: input.userAgent ?? "",
+    referer: input.referer ?? "",
+    visitedAt: new Date(),
+    date: todayDate(),
+  });
+}
+
+export async function getRecentPageViews(limit = 200): Promise<PageViewLog[]> {
+  const db = getAdminDb();
+  const snap = await db.collection("stats_pageviews")
+    .orderBy("visitedAt", "desc")
+    .limit(limit)
+    .get();
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      path: data.path,
+      userId: data.userId,
+      userTier: data.userTier,
+      userAgent: data.userAgent ?? "",
+      referer: data.referer ?? "",
+      visitedAt: (data.visitedAt as Timestamp).toDate(),
+      date: data.date,
+    };
+  });
+}
+
+export async function getRecentViewLogs(limit = 200): Promise<ViewLog[]> {
+  const db = getAdminDb();
+  const snap = await db.collection("stats_views")
+    .orderBy("endedAt", "desc")
+    .limit(limit)
+    .get();
+  return snap.docs.map((d) => {
+    const data = d.data();
+    return {
+      userId: data.userId,
+      userTier: data.userTier,
+      cctvId: data.cctvId,
+      cctvName: data.cctvName,
+      startedAt: (data.startedAt as Timestamp).toDate(),
+      endedAt: (data.endedAt as Timestamp).toDate(),
+      durationSec: data.durationSec,
+      date: data.date,
+    };
+  });
+}
+
 // ── 최근 N일 시청 로그 ────────────────────────────────
 export async function getRecentViews(days = 7): Promise<ViewLog[]> {
   const db = getAdminDb();
