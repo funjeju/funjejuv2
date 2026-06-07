@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCctvSession } from "@/hooks/useCctvSession";
 
 type Status = "loading" | "playing" | "error" | "offline";
 
@@ -9,11 +10,21 @@ type Props = {
   proxyUrl: string | null;
   /** 스트림이 없을 때 표시할 CCTV 이름 */
   label?: string;
+  /** 통계용 cctv ID (있으면 시청 세션 추적) */
+  cctvId?: string;
+  /** 통계용 cctv 이름 */
+  cctvName?: string;
 };
 
-export function HlsPlayer({ proxyUrl, label }: Props) {
+export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<Status>(proxyUrl ? "loading" : "offline");
+
+  // 시청 세션 추적 (status가 playing일 때만)
+  useCctvSession({
+    cctvId: cctvId && status === "playing" ? cctvId : null,
+    cctvName,
+  });
 
   useEffect(() => {
     if (!proxyUrl || !videoRef.current) return;

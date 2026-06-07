@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
+  { href: "/admin/stats", label: "📊 통계",     short: "통계"  },
   { href: "/admin/cctv",  label: "📡 CCTV",    short: "CCTV"  },
   { href: "/admin/food",  label: "🍽️ 도민맛집", short: "맛집"  },
   { href: "/admin/feed",  label: "📸 라이브피드",short: "피드"  },

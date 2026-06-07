@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSaved } from "@/hooks/useSaved";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { LiveChat } from "@/components/cctv/LiveChat";
+import { useCctvSession } from "@/hooks/useCctvSession";
 
 const ROTATE_SEC = 7;
 const FADE_MS = 600;
@@ -13,9 +14,11 @@ const FADE_MS = 600;
 function CrossfadePlayer({
   proxyUrl,
   cctvName,
+  cctvId,
 }: {
   proxyUrl: string | null;
   cctvName: string;
+  cctvId?: string;
 }) {
   const videoARef = useRef<HTMLVideoElement>(null);
   const videoBRef = useRef<HTMLVideoElement>(null);
@@ -24,6 +27,12 @@ function CrossfadePlayer({
 
   const [activeLayer, setActiveLayer] = useState<"A" | "B">("A");
   const [status,      setStatus]      = useState<"loading" | "playing" | "error">("loading");
+
+  // 시청 세션 추적 (재생 중인 CCTV만)
+  useCctvSession({
+    cctvId: cctvId && status === "playing" ? cctvId : null,
+    cctvName,
+  });
 
   useEffect(() => {
     if (!proxyUrl) { setStatus("error"); return; }
@@ -254,6 +263,7 @@ export function AutoRotateViewer() {
                 <CrossfadePlayer
                   proxyUrl={current.streamProxyUrl}
                   cctvName={current.name}
+                  cctvId={current.id}
                 />
               ) : (
                 <PlaceholderPlayer

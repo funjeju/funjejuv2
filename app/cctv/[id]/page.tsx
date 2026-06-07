@@ -155,7 +155,12 @@ export default async function CctvDetailPage({ params }: Props) {
           {cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
           ) : (
-            <HlsPlayer proxyUrl={streamProxyUrl} label={cctv.name} />
+            <HlsPlayer
+              proxyUrl={streamProxyUrl}
+              label={cctv.name}
+              cctvId={cctv.id}
+              cctvName={cctv.name}
+            />
           )}
 
           <div className="px-4 md:px-0">
