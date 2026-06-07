@@ -104,16 +104,47 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     };
   }, [proxyUrl]);
 
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => { /* ignore */ });
+    } else {
+      v.pause();
+    }
+  }
+
   return (
-    <div className="relative w-full overflow-hidden rounded-none bg-gray-950 aspect-video md:rounded-2xl">
-      {/* 실제 비디오 */}
+    <div className="group relative w-full overflow-hidden rounded-none bg-gray-950 aspect-video md:rounded-2xl">
+      {/* 실제 비디오 — 클릭 시 정지/재생 */}
       <video
         ref={videoRef}
-        className="h-full w-full object-cover"
+        onClick={togglePlay}
+        className="h-full w-full object-cover cursor-pointer"
         playsInline
         muted
         autoPlay
       />
+
+      {/* 정지 상태 안내 (페이지 위에 ▶ 보여줌) */}
+      {status === "playing" && !isPlaying && (
+        <button type="button" onClick={togglePlay}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 transition-colors hover:bg-black/50">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-brand-orange/90 shadow-2xl">
+            <span className="ml-1 text-3xl text-white">▶</span>
+          </div>
+        </button>
+      )}
+
+      {/* 재생 중 클릭 안내 (호버 시) */}
+      {status === "playing" && isPlaying && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="flex flex-col items-center gap-1 rounded-2xl bg-black/60 px-4 py-3 backdrop-blur-sm">
+            <span className="text-3xl">⏸</span>
+            <span className="text-xs font-bold text-white">클릭하면 정지</span>
+          </div>
+        </div>
+      )}
 
       {/* 로딩 오버레이 */}
       {status === "loading" && (
@@ -160,10 +191,11 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
           {/* 볼륨 토글 */}
           <button
             type="button"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               if (videoRef.current) videoRef.current.muted = !videoRef.current.muted;
             }}
-            className="absolute bottom-3 left-3 rounded-full bg-black/50 p-2 text-white backdrop-blur hover:bg-black/70 transition-colors"
+            className="absolute bottom-3 left-3 z-20 rounded-full bg-black/50 p-2 text-white backdrop-blur hover:bg-black/70 transition-colors"
           >
             🔊
           </button>

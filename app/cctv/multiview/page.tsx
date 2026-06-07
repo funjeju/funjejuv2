@@ -13,6 +13,19 @@ type SlotCount = 1 | 2 | 4 | 6 | 9;
 function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
+  const [paused, setPaused] = useState(false);
+
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      v.play().catch(() => { /* ignore */ });
+      setPaused(false);
+    } else {
+      v.pause();
+      setPaused(true);
+    }
+  }
 
   useEffect(() => {
     if (!cctv?.streamProxyUrl || !videoRef.current) {
@@ -67,8 +80,19 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
   }, [cctv?.streamProxyUrl]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
-      <video ref={videoRef} className="h-full w-full object-cover" playsInline muted preload="none" />
+    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
+      <video ref={videoRef}
+        onClick={togglePlay}
+        className="h-full w-full object-cover cursor-pointer"
+        playsInline muted preload="none" />
+
+      {/* 정지 상태 — ▶ 표시 */}
+      {paused && status === "playing" && (
+        <button type="button" onClick={togglePlay}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 hover:bg-black/60 transition-colors">
+          <span className="text-3xl text-white">▶</span>
+        </button>
+      )}
 
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
@@ -91,8 +115,8 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
       {/* X 버튼 — 1/3 크기 */}
       <button
         type="button"
-        onClick={onRemove}
-        className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
         title="제거"
       >
         ✕
