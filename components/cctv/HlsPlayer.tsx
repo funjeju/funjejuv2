@@ -18,12 +18,14 @@ type Props = {
 
 export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<Status>(proxyUrl ? "loading" : "offline");
+  const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
+  const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
 
-  // 시청 세션 추적 (status가 playing일 때만)
+  // 시청 세션 추적: 비디오가 실제 재생 중일 때만
   useCctvSession({
-    cctvId: cctvId && status === "playing" ? cctvId : null,
+    cctvId: cctvId && isPlaying ? cctvId : null,
     cctvName,
+    isPlaying,
   });
 
   useEffect(() => {
@@ -32,10 +34,18 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
 
+    // video element 자체의 재생 상태 추적
+    const handlePlay  = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnd   = () => setIsPlaying(false);
+    video.addEventListener("playing", handlePlay);
+    video.addEventListener("pause",   handlePause);
+    video.addEventListener("ended",   handleEnd);
+    video.addEventListener("waiting", handlePause); // 버퍼링 시작
+
     async function init() {
       const Hls = (await import("hls.js")).default;
 
-      // Safari는 네이티브 HLS 지원 → Hls.js 불필요
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl!;
@@ -61,7 +71,6 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setStatus("playing");
         video.play().catch(() => {
-          // 자동재생 정책 → muted로 재시도
           video.muted = true;
           video.play().catch(() => setStatus("error"));
         });
@@ -70,7 +79,6 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-            // 네트워크 오류 → 재시도
             hls!.startLoad();
           } else {
             setStatus("error");
@@ -83,7 +91,16 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     init();
 
     return () => {
+      // 강제 정리: HLS destroy + video 완전 해제 → origin 다운로드 즉시 중단
       hls?.destroy();
+      video.removeEventListener("playing", handlePlay);
+      video.removeEventListener("pause",   handlePause);
+      video.removeEventListener("ended",   handleEnd);
+      video.removeEventListener("waiting", handlePause);
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      setIsPlaying(false);
     };
   }, [proxyUrl]);
 

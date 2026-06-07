@@ -27,12 +27,32 @@ function CrossfadePlayer({
 
   const [activeLayer, setActiveLayer] = useState<"A" | "B">("A");
   const [status,      setStatus]      = useState<"loading" | "playing" | "error">("loading");
+  const [isPlaying,   setIsPlaying]   = useState(false); // 실제 비디오 재생 중
 
-  // 시청 세션 추적 (재생 중인 CCTV만)
+  // 시청 세션 추적: 비디오가 실제 재생 중일 때만
   useCctvSession({
-    cctvId: cctvId && status === "playing" ? cctvId : null,
+    cctvId: cctvId && isPlaying ? cctvId : null,
     cctvName,
+    isPlaying,
   });
+
+  // 활성 video의 재생 상태 추적
+  useEffect(() => {
+    const video = activeLayer === "A" ? videoARef.current : videoBRef.current;
+    if (!video) return;
+    const onPlay  = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    video.addEventListener("playing", onPlay);
+    video.addEventListener("pause",   onPause);
+    video.addEventListener("waiting", onPause);
+    // 현재 상태 즉시 반영
+    setIsPlaying(!video.paused);
+    return () => {
+      video.removeEventListener("playing", onPlay);
+      video.removeEventListener("pause",   onPause);
+      video.removeEventListener("waiting", onPause);
+    };
+  }, [activeLayer]);
 
   useEffect(() => {
     if (!proxyUrl) { setStatus("error"); return; }
@@ -112,10 +132,20 @@ function CrossfadePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proxyUrl]);
 
+  // 언마운트 시 두 비디오 + HLS 완전 정리
   useEffect(() => {
     return () => {
       hlsARef.current?.destroy();
       hlsBRef.current?.destroy();
+      hlsARef.current = null;
+      hlsBRef.current = null;
+      [videoARef.current, videoBRef.current].forEach((v) => {
+        if (!v) return;
+        v.pause();
+        v.removeAttribute("src");
+        v.load();
+      });
+      setIsPlaying(false);
     };
   }, []);
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { useCctvSession } from "@/hooks/useCctvSession";
 
 type Props = {
   id: string;
@@ -22,6 +23,14 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
   const [status, setStatus] = useState<"idle" | "loading" | "playing" | "error">(
     forcePlay ? "loading" : "idle"
   );
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // 시청 세션 추적
+  useCctvSession({
+    cctvId: isPlaying ? id : null,
+    cctvName: name,
+    isPlaying,
+  });
   useEffect(() => {
     if (!activated || !proxyUrl || !videoRef.current) {
       if (activated && !proxyUrl) setStatus("error");
@@ -31,6 +40,12 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
     setStatus("loading");
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
+
+    const onPlay  = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    video.addEventListener("playing", onPlay);
+    video.addEventListener("pause",   onPause);
+    video.addEventListener("waiting", onPause);
 
     async function init() {
       const Hls = (await import("hls.js")).default;
@@ -78,9 +93,13 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
     return () => {
       hls?.destroy();
+      video.removeEventListener("playing", onPlay);
+      video.removeEventListener("pause",   onPause);
+      video.removeEventListener("waiting", onPause);
       video.pause();
       video.removeAttribute("src");
       video.load();
+      setIsPlaying(false);
     };
   }, [proxyUrl, activated]);
 
