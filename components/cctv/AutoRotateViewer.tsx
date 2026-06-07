@@ -288,13 +288,28 @@ export function AutoRotateViewer() {
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
           <div className="flex flex-col gap-2">
             <div className="aspect-video w-full">
-              {/* ★ activated일 때만 실제 플레이어 mount, 아니면 플레이스홀더 */}
+              {/* ★ activated일 때만 실제 플레이어 mount, 아니면 플레이스홀더
+                  클릭하면 정지 (다시 ▶ 누르면 재생) */}
               {activated ? (
-                <CrossfadePlayer
-                  proxyUrl={current.streamProxyUrl}
-                  cctvName={current.name}
-                  cctvId={current.id}
-                />
+                <button
+                  type="button"
+                  onClick={() => setActivated(false)}
+                  className="group relative block h-full w-full overflow-hidden rounded-xl"
+                  title="클릭하면 정지"
+                >
+                  <CrossfadePlayer
+                    proxyUrl={current.streamProxyUrl}
+                    cctvName={current.name}
+                    cctvId={current.id}
+                  />
+                  {/* hover 시 정지 안내 */}
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all group-hover:bg-black/30 group-hover:opacity-100">
+                    <div className="flex flex-col items-center gap-1 rounded-2xl bg-black/60 px-4 py-3 backdrop-blur-sm">
+                      <span className="text-3xl">⏸</span>
+                      <span className="text-xs font-bold text-white">클릭하면 정지</span>
+                    </div>
+                  </div>
+                </button>
               ) : (
                 <PlaceholderPlayer
                   cctvName={current.name}
