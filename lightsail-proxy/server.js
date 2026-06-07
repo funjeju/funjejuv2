@@ -104,11 +104,20 @@ app.get("/cctv/:id", async (req, res) => {
   const origin = CCTVS[req.params.id];
   if (!origin) return res.status(404).json({ error: "not found" });
 
+  // 클라이언트 끊김 + timeout 둘 다 처리
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  res.on("close", () => controller.abort());
+
   try {
     const r = await fetch(origin, {
       headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" },
+      signal: controller.signal,
     });
-    if (!r.ok) return res.status(r.status).json({ error: `origin ${r.status}` });
+    if (!r.ok) {
+      if (!res.headersSent) res.status(r.status).json({ error: `origin ${r.status}` });
+      return;
+    }
 
     const text = await r.text();
     const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
@@ -122,12 +131,17 @@ app.get("/cctv/:id", async (req, res) => {
       })
       .join("\n");
 
-    res.set("Content-Type", "application/vnd.apple.mpegurl");
-    res.set("Cache-Control", "no-cache");
-    res.send(rewritten);
+    if (!res.headersSent) {
+      res.set("Content-Type", "application/vnd.apple.mpegurl");
+      res.set("Cache-Control", "no-cache");
+      res.send(rewritten);
+    }
   } catch (e) {
-    console.error("[m3u8]", e);
-    res.status(502).json({ error: String(e) });
+    if (e.name === "AbortError") return; // 클라이언트 끊김 또는 timeout — 정상
+    console.error("[m3u8]", e.message);
+    if (!res.headersSent) res.status(502).json({ error: String(e) });
+  } finally {
+    clearTimeout(timeoutId);
   }
 });
 
@@ -136,11 +150,20 @@ app.get("/cctv/:id/seg", async (req, res) => {
   const segUrl = req.query.path;
   if (!segUrl) return res.status(400).json({ error: "missing path" });
 
+  // 클라이언트 끊김 감지 + 8초 timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  let nodeStream = null;
+  res.on("close", () => {
+    controller.abort();
+    if (nodeStream) nodeStream.destroy();
+  });
+
   try {
     const headers = { "User-Agent": "Mozilla/5.0 FunJeju/1.0" };
     if (req.headers.range) headers.Range = req.headers.range;
 
-    const r = await fetch(segUrl, { headers });
+    const r = await fetch(segUrl, { headers, signal: controller.signal });
 
     // 서브 m3u8(chunklist) — 재귀 재작성
     if (segUrl.includes(".m3u8")) {
@@ -154,16 +177,21 @@ app.get("/cctv/:id/seg", async (req, res) => {
           return proxyBase + encodeURIComponent(resolveUrl(t, segUrl));
         })
         .join("\n");
-      res.set("Content-Type", "application/vnd.apple.mpegurl");
-      res.set("Cache-Control", "no-cache");
-      return res.send(rewritten);
+      if (!res.headersSent) {
+        res.set("Content-Type", "application/vnd.apple.mpegurl");
+        res.set("Cache-Control", "no-cache");
+        return res.send(rewritten);
+      }
+      return;
     }
 
-    // .ts 세그먼트 — Web ReadableStream을 Node Stream으로 변환해서 pipe
+    // .ts 세그먼트
     if (!r.ok && r.status !== 206) {
-      return res.status(r.status).json({ error: `seg ${r.status}` });
+      if (!res.headersSent) res.status(r.status).json({ error: `seg ${r.status}` });
+      return;
     }
 
+    if (res.headersSent || res.destroyed) return; // 이미 끊긴 상태
     res.status(r.status);
     res.set("Content-Type", r.headers.get("content-type") || "video/MP2T");
     res.set("Cache-Control", "public, max-age=10");
@@ -172,25 +200,44 @@ app.get("/cctv/:id/seg", async (req, res) => {
     const cr = r.headers.get("content-range");
     if (cr) res.set("Content-Range", cr);
 
-    // ★ 핵심: Web ReadableStream → Node Stream
+    // ★ Web ReadableStream → Node Stream + cleanup
     if (r.body) {
-      const nodeStream = Readable.fromWeb(r.body);
+      nodeStream = Readable.fromWeb(r.body);
       nodeStream.on("error", (err) => {
-        console.error("[seg stream]", err);
+        if (err.name === "AbortError") return; // 정상 종료
+        console.error("[seg stream]", err.message);
         if (!res.headersSent) res.status(502).end();
         else res.destroy();
       });
+      // ts 다운로드 자체에도 timeout (15초 — ts는 좀 더 큼)
+      const tsTimeoutId = setTimeout(() => {
+        if (nodeStream) nodeStream.destroy();
+        controller.abort();
+      }, 15000);
+      nodeStream.on("end", () => clearTimeout(tsTimeoutId));
+      nodeStream.on("close", () => clearTimeout(tsTimeoutId));
       nodeStream.pipe(res);
     } else {
       // fallback
       const buf = Buffer.from(await r.arrayBuffer());
-      res.send(buf);
+      if (!res.headersSent) res.send(buf);
     }
   } catch (e) {
-    console.error("[seg]", segUrl, e);
+    if (e.name === "AbortError") return; // 클라이언트 끊김 또는 timeout — 정상
+    console.error("[seg]", e.message);
     if (!res.headersSent) res.status(502).json({ error: String(e) });
-    else res.destroy();
+    else if (!res.destroyed) res.destroy();
+  } finally {
+    clearTimeout(timeoutId);
   }
+});
+
+// uncaught exception 안전망 (프로세스 죽지 않게)
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err.message);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", String(reason).slice(0, 200));
 });
 
 app.get("/", (req, res) => res.send("FunJeju CCTV Proxy"));
