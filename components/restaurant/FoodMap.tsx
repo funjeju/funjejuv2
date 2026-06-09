@@ -159,15 +159,33 @@ export function FoodMap({ restaurants }: Props) {
       setProgress({ loaded: 0, total: restaurants.length, failed: 0 });
 
       // 좌표가 데이터에 들어있으면 즉시 표시. 없는 것만 키워드 검색 폴백.
+      // 진단: 첫 식당 데이터 확인
+      if (restaurants.length > 0) {
+        console.log("[FoodMap] sample:", {
+          id:   restaurants[0].id,
+          title: restaurants[0].title,
+          lat:  restaurants[0].lat,
+          lng:  restaurants[0].lng,
+          latType: typeof restaurants[0].lat,
+          lngType: typeof restaurants[0].lng,
+        });
+      }
+
       const queue = [...restaurants];
       const workers = Array.from({ length: 6 }).map(async () => {
         while (queue.length > 0 && !cancelled) {
           const r = queue.shift()!;
           let coord: { lat: number; lng: number } | null = null;
-          if (typeof r.lat === "number" && typeof r.lng === "number") {
-            coord = { lat: r.lat, lng: r.lng };
+          // 숫자 또는 문자열 모두 처리
+          const lat = typeof r.lat === "number" ? r.lat : r.lat ? Number(r.lat) : NaN;
+          const lng = typeof r.lng === "number" ? r.lng : r.lng ? Number(r.lng) : NaN;
+          if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            coord = { lat, lng };
           } else {
-            coord = await geocode(r);
+            // 좌표 없으면 표시 안 함 (카카오 호출 차단)
+            failed++;
+            setProgress((p) => ({ ...p, failed }));
+            continue;
           }
           if (cancelled) return;
           if (!coord) {
