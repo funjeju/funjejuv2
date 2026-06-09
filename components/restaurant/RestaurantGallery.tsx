@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { RestaurantSummary } from "@/types/restaurant";
+import { FoodMap } from "@/components/restaurant/FoodMap";
 
 type Props = {
   restaurants: RestaurantSummary[];
@@ -18,6 +19,7 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
   const [activeMenu, setActiveMenu] = useState<string>("전체");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const filtered = useMemo(() => {
     return restaurants.filter((r) => {
@@ -58,6 +60,22 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
           {search && (
             <button type="button" onClick={() => setSearch("")} className="text-text-secondary">✕</button>
           )}
+          <div className="ml-2 flex overflow-hidden rounded-full border border-border-soft bg-bg-secondary text-[11px] font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={["px-2.5 py-1 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
+            >
+              목록
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("map")}
+              className={["px-2.5 py-1 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
+            >
+              지도
+            </button>
+          </div>
         </div>
 
         {/* 메뉴 필터 */}
@@ -121,8 +139,16 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
         </div>
       </div>
 
+      {/* 지도 뷰 */}
+      {viewMode === "map" && (
+        <div className="px-4 md:px-0">
+          <FoodMap restaurants={filtered} />
+        </div>
+      )}
+
       {/* 갤러리 그리드 */}
-      {pageItems.length === 0 ? (
+      {viewMode === "grid" && (
+      pageItems.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
           <p className="text-4xl">🍽️</p>
           <p className="mt-3 text-sm font-bold text-text-primary">해당 조건의 맛집이 없어요</p>
@@ -172,10 +198,10 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
             </Link>
           ))}
         </div>
-      )}
+      ))}
 
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
+      {/* 페이지네이션 (목록 뷰에서만) */}
+      {viewMode === "grid" && totalPages > 1 && (
         <div className="mt-6 flex items-center justify-center gap-2 px-4 md:px-0">
           <button
             type="button"
