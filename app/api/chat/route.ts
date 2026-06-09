@@ -1,7 +1,24 @@
 import { NextRequest } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { matchLocation } from "@/constants/jeju-locations";
+import { matchLocation, JEJU_LOCATIONS } from "@/constants/jeju-locations";
 import { findRelevantRestaurants, type ChatRestaurant } from "@/lib/restaurants-for-chat";
+
+// 좌표 → 가장 가까운 region 매핑
+function nearestRegion(lat: number, lng: number): { region?: string; label: string; distanceKm: number } {
+  let best: { region?: string; label: string; distance: number } | null = null;
+  for (const loc of JEJU_LOCATIONS) {
+    if (!loc.region) continue; // region 없는 명소 제외
+    const dLat = lat - loc.lat;
+    const dLng = lng - loc.lng;
+    const distance = Math.sqrt(dLat * dLat + dLng * dLng) * 111; // 대략 km
+    if (!best || distance < best.distance) {
+      best = { region: loc.region, label: loc.keywords[0], distance };
+    }
+  }
+  return best
+    ? { region: best.region, label: best.label, distanceKm: best.distance }
+    : { label: "제주", distanceKm: 0 };
+}
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -94,14 +111,17 @@ function buildSystemPrompt(opts: {
   restaurantCtx: string;
   intent: Intent;
   hasGps: boolean;
+  gpsInfo: { region?: string; label: string; distanceKm: number } | null;
 }): string {
-  const { restaurantCtx, intent, hasGps } = opts;
+  const { restaurantCtx, intent, hasGps, gpsInfo } = opts;
 
-  const locationNote = intent.region
-    ? `유저가 '${intent.locationLabel}' 지역을 물어봤어.`
-    : intent.isNearby && hasGps
-      ? `유저가 '현재 위치 근처' 추천을 원해.`
-      : `지역 명시 없음 — 제주 전 지역 대표 명소·맛집 위주로 답해.`;
+  const locationNote = gpsInfo
+    ? `유저의 현재 GPS 위치는 '${gpsInfo.label}' 부근 (${gpsInfo.region ?? "제주"}). 이 지역 기준으로 추천해.`
+    : intent.region
+      ? `유저가 '${intent.locationLabel}' 지역을 물어봤어.`
+      : hasGps
+        ? `유저 위치 좌표는 받았지만 매핑 실패. 제주 전 지역으로 답해.`
+        : `위치 정보 없음 — 제주 전 지역 대표 명소·맛집 위주로 답해.`;
 
   return `너는 제주 여행 AI 도슨트 '돌맹이'야. 제주 돌하르방을 의인화한 친근한 로컬 친구.
 
@@ -154,6 +174,14 @@ export async function POST(req: NextRequest) {
   const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
   const intent = extractIntent(lastUserText);
 
+  // ★ GPS 좌표 → 가장 가까운 region 자동 매핑 (사용자가 지역 명시 안 했을 때만)
+  let gpsInfo: { region?: string; label: string; distanceKm: number } | null = null;
+  if (hasGps && !intent.region) {
+    gpsInfo = nearestRegion(lat!, lng!);
+    intent.region = gpsInfo.region;
+    intent.locationLabel = gpsInfo.label;
+  }
+
   // 도민맛집 조회
   let restaurants: ChatRestaurant[] = [];
   if (intent.wantsFood || intent.region) {
@@ -168,7 +196,7 @@ export async function POST(req: NextRequest) {
   }
 
   const restaurantCtx = buildRestaurantContext(restaurants);
-  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps });
+  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo });
 
   console.log("[chat]",
     `region=${intent.region ?? "-"}`,
