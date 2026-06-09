@@ -34,10 +34,24 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
 
+    // ★ 프록시 origin 추출 → /event 호출용
+    // proxyUrl: https://proxy.tuberecipe.co.kr/cctv/hagwi → proxyBase: https://proxy...
+    const proxyBase = (() => {
+      try { return new URL(proxyUrl!).origin; } catch { return ""; }
+    })();
+    const sendEvent = (action: "start" | "stop" | "leave") => {
+      if (!proxyBase || !cctvId) return;
+      const url = `${proxyBase}/event?cctv=${encodeURIComponent(cctvId)}&action=${action}`;
+      try {
+        if (navigator.sendBeacon) navigator.sendBeacon(url, "");
+        else fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+      } catch { /* ignore */ }
+    };
+
     // video element 자체의 재생 상태 추적
-    const handlePlay  = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnd   = () => setIsPlaying(false);
+    const handlePlay  = () => { setIsPlaying(true); sendEvent("start"); };
+    const handlePause = () => { setIsPlaying(false); sendEvent("stop"); };
+    const handleEnd   = () => { setIsPlaying(false); sendEvent("stop"); };
     video.addEventListener("playing", handlePlay);
     video.addEventListener("pause",   handlePause);
     video.addEventListener("ended",   handleEnd);
@@ -90,13 +104,19 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
 
     init();
 
+    // 페이지 이탈 시 leave 이벤트
+    const handleUnload = () => sendEvent("leave");
+    window.addEventListener("pagehide", handleUnload);
+
     return () => {
       // 강제 정리: HLS destroy + video 완전 해제 → origin 다운로드 즉시 중단
+      sendEvent("leave"); // 슬롯 제거/페이지 이동
       hls?.destroy();
       video.removeEventListener("playing", handlePlay);
       video.removeEventListener("pause",   handlePause);
       video.removeEventListener("ended",   handleEnd);
       video.removeEventListener("waiting", handlePause);
+      window.removeEventListener("pagehide", handleUnload);
       video.pause();
       video.removeAttribute("src");
       video.load();

@@ -6,8 +6,8 @@ type Event = {
   t: number;
   ip: string;
   cctvId: string;
-  type: "m3u8" | "chunklist" | "ts";
-  result: "origin" | "hit";
+  type: "m3u8" | "chunklist" | "ts" | "start" | "stop" | "leave";
+  result: "origin" | "hit" | "client";
 };
 
 type CctvStats = {
@@ -214,9 +214,15 @@ export default function AdminOriginPage() {
                   <span className="text-gray-400 shrink-0">[{ev.type}]</span>
                   <span className={[
                     "shrink-0 font-bold",
-                    ev.result === "origin" ? "text-orange-400" : "text-green-400",
+                    ev.result === "origin" ? "text-orange-400"
+                      : ev.result === "hit" ? "text-green-400"
+                      : "text-purple-300",
                   ].join(" ")}>
-                    {ev.result === "origin" ? "● ORIGIN 호출" : "○ 캐시 HIT"}
+                    {ev.result === "origin" ? "● ORIGIN 호출"
+                      : ev.result === "hit" ? "○ 캐시 HIT"
+                      : ev.type === "start" ? "▶ 재생 시작"
+                      : ev.type === "stop"  ? "⏸ 일시정지"
+                      : "✕ 이탈"}
                   </span>
                 </div>
               ))}

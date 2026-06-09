@@ -204,8 +204,19 @@ app.get("/cctv/:id/seg", async (req, res) => {
   if (!segUrl) return res.status(400).json({ error: "missing path" });
   const isM3u8 = segUrl.includes(".m3u8");
 
+  // ★ 캐시 키 정규화
+  // chunklist: cctv id 기반 (origin이 매번 새 timestamp 박아도 같은 cctv면 같은 키)
+  // ts: chunk 번호만 추출 (사용자/세션별 prefix 무시)
+  const cacheKey = isM3u8
+    ? `chunklist:${req.params.id}`
+    : (() => {
+        // ts URL에서 chunk 번호 추출 (예: media_w123_140284.ts → 140284)
+        const m = String(segUrl).match(/_(\d+)\.ts/);
+        return m ? `ts:${req.params.id}:${m[1]}` : `ts:${segUrl}`;
+      })();
+
   if (isM3u8) {
-    const cached = getCache(m3u8Cache, segUrl, M3U8_TTL);
+    const cached = getCache(m3u8Cache, cacheKey, M3U8_TTL);
     if (cached) {
       logEvent(req, req.params.id, "chunklist", "hit");
       res.set("Content-Type", "application/vnd.apple.mpegurl");
@@ -213,7 +224,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
       return res.send(cached);
     }
   } else {
-    const cached = getCache(tsCache, segUrl, TS_TTL);
+    const cached = getCache(tsCache, cacheKey, TS_TTL);
     if (cached) {
       logEvent(req, req.params.id, "ts", "hit");
       res.set("Content-Type", "video/MP2T");
@@ -243,7 +254,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
         if (!t || t.startsWith("#")) return line;
         return proxyBase + encodeURIComponent(resolveUrl(t, segUrl));
       }).join("\n");
-      setCache(m3u8Cache, segUrl, rewritten);
+      setCache(m3u8Cache, cacheKey, rewritten); // ← cacheKey 사용
       logEvent(req, req.params.id, "chunklist", "origin");
       if (!res.headersSent) {
         res.set("Content-Type", "application/vnd.apple.mpegurl");
@@ -261,7 +272,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
 
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length < 5 * 1024 * 1024) {
-      setCache(tsCache, segUrl, buf, TS_MAX);
+      setCache(tsCache, cacheKey, buf, TS_MAX); // ← cacheKey 사용 (정규화된 ts:cctvId:chunkNum)
     }
     logEvent(req, req.params.id, "ts", "origin");
 
@@ -319,7 +330,21 @@ process.on("unhandledRejection", (reason) => {
   console.error("[unhandledRejection]", String(reason).slice(0, 200));
 });
 
-app.get("/", (req, res) => res.send("FunJeju CCTV Proxy v3 (cache + stats)"));
+// ★ 클라이언트 라이프사이클 이벤트 (sendBeacon 호환 — text/plain POST)
+// /event?cctv=xxx&action=start|stop|leave
+app.post("/event", express.text({ type: "*/*" }), (req, res) => {
+  const cctvId = String(req.query.cctv || "").trim();
+  const action = String(req.query.action || "").trim();
+  if (!cctvId || !["start", "stop", "leave"].includes(action)) {
+    return res.status(400).end();
+  }
+  const ip = shortIp(getIp(req));
+  events.push({ t: Date.now(), ip, cctvId, type: action, result: "client" });
+  if (events.length > EVENT_MAX) events.shift();
+  res.status(204).end();
+});
+
+app.get("/", (req, res) => res.send("FunJeju CCTV Proxy v3.1 (cache fix + leave events)"));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Proxy v3 listening on port ${PORT} — cache + event tracking enabled`);
