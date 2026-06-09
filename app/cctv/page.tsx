@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CctvList } from "@/components/cctv/CctvList";
+import { CctvMap } from "@/components/cctv/CctvMap";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { DIRECTION_META } from "@/constants/cctv-directions";
@@ -113,14 +114,10 @@ export default function CctvPage() {
         })}
       </div>
 
-      {/* 지도 플레이스홀더 */}
+      {/* CCTV 지도 — Kakao Maps */}
       {viewMode === "map" && (
-        <div className="mx-4 mb-4 flex h-64 items-center justify-center rounded-2xl border border-border-soft bg-bg-secondary text-center md:mx-0">
-          <div>
-            <p className="text-3xl">🗺️</p>
-            <p className="mt-2 text-sm font-bold text-text-primary">지도 연동 준비 중</p>
-            <p className="text-xs text-text-secondary">Kakao Maps API 연결 예정</p>
-          </div>
+        <div className="mx-4 mb-4 md:mx-0">
+          <CctvMap cctvs={filtered} />
         </div>
       )}
 
