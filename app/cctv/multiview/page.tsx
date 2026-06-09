@@ -305,14 +305,26 @@ export default function MultiviewPage() {
           {Array.from({ length: slotCount }).map((_, idx) => {
             const cctvId = slots[idx];
             const cctv = cctvId ? mockCctvs.find((c) => c.id === cctvId) ?? null : null;
+            const isDragOver = dragOverIdx === idx;
             return (
-              <div key={idx} className={aspectClass}>
+              <div
+                key={idx}
+                className={`${aspectClass} relative transition-all ${isDragOver ? "ring-4 ring-brand-orange ring-offset-2" : ""}`}
+                onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
+                onDragLeave={() => setDragOverIdx(null)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const id = e.dataTransfer.getData("cctv-id");
+                  if (id) handleDrop(idx, id);
+                  setDragOverIdx(null);
+                }}
+              >
                 {cctv ? (
                   <SlotPlayer cctv={cctv} onRemove={() => removeSlot(idx)} />
                 ) : (
                   <EmptySlot
                     onDrop={(id) => handleDrop(idx, id)}
-                    isDragOver={dragOverIdx === idx}
+                    isDragOver={isDragOver}
                     setDragOver={(v) => setDragOverIdx(v ? idx : null)}
                   />
                 )}
