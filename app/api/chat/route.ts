@@ -107,12 +107,14 @@ function buildRestaurantContext(restaurants: ChatRestaurant[]): string {
   if (restaurants.length === 0) return "";
   const lines = restaurants.slice(0, 8).map((r, i) => {
     const meta  = [r.region, r.menu].filter(Boolean).join(" · ");
+    const dist  = typeof r.distanceKm === "number" ? ` 📍${r.distanceKm.toFixed(1)}km` : "";
+    const addr  = r.address ? ` @${r.address}` : "";
     const tags  = r.options ? ` [${r.options.split(",").slice(0, 3).join(", ")}]` : "";
     const desc  = r.shortDesc ? ` — ${r.shortDesc.replace(/\s+/g, " ").trim()}` : "";
     const phone = r.phone ? ` ☎${r.phone}` : "";
-    return `${i + 1}. ${r.name} (${meta})${tags}${desc}${phone}`;
+    return `${i + 1}. ${r.name} (${meta})${dist}${addr}${tags}${desc}${phone}`;
   });
-  return `[펀제주 인증 도민맛집 — 아래 목록에 있는 음식점만 추천할 것]\n${lines.join("\n")}`;
+  return `[펀제주 인증 도민맛집 — 아래 목록에 있는 음식점만 추천. 거리(📍) 가까운 순 정렬됨]\n${lines.join("\n")}`;
 }
 
 // ── 시스템 프롬프트 ─────────────────────────────────────
@@ -202,13 +204,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 도민맛집 조회
+  // 도민맛집 조회 — GPS 있으면 거리순 정렬 우선
   let restaurants: ChatRestaurant[] = [];
   if (intent.wantsFood || intent.region) {
     try {
       restaurants = await findRelevantRestaurants({
         region:       intent.region,
         menuKeywords: intent.menuKeywords,
+        userLat:      hasGps && !gpsOutsideJeju ? lat : undefined,
+        userLng:      hasGps && !gpsOutsideJeju ? lng : undefined,
+        radiusKm:     intent.radiusKm,
       });
     } catch (e) {
       console.error("[chat] restaurant query failed:", e);

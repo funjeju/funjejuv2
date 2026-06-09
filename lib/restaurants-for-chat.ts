@@ -14,10 +14,16 @@ export type ChatRestaurant = {
   source:      "json" | "firestore";
   phone?:      string;
   hours?:      string;
+  address?:    string;
+  lat?:        number;
+  lng?:        number;
+  distanceKm?: number;  // GPS 기반 정렬 시 채움
 };
 
 type FSField = {
   stringValue?: string;
+  doubleValue?: number;
+  integerValue?: string;
   arrayValue?: { values?: Array<{ stringValue?: string }> };
 };
 type FSDoc = { name?: string; fields?: Record<string, FSField> };
@@ -49,6 +55,8 @@ async function getFirestoreNew(): Promise<ChatRestaurant[]> {
     const items: ChatRestaurant[] = [];
     for (const doc of data.documents ?? []) {
       const f = doc.fields ?? {};
+      const fsLat = f.lat?.doubleValue ?? (f.lat?.integerValue ? Number(f.lat.integerValue) : undefined);
+      const fsLng = f.lng?.doubleValue ?? (f.lng?.integerValue ? Number(f.lng.integerValue) : undefined);
       items.push({
         name:      f.title?.stringValue ?? "",
         region:    f.region?.stringValue ?? "",
@@ -57,6 +65,9 @@ async function getFirestoreNew(): Promise<ChatRestaurant[]> {
         options:   (f.options?.arrayValue?.values ?? []).map((v) => v.stringValue).join(", "),
         phone:     f.phone?.stringValue ?? "",
         hours:     f.hours?.stringValue ?? "",
+        address:   f.address?.stringValue,
+        lat:       fsLat,
+        lng:       fsLng,
         source:    "firestore",
       });
     }
@@ -82,22 +93,34 @@ export async function loadAllChatRestaurants(): Promise<ChatRestaurant[]> {
       menu:      r.menu,
       shortDesc: stripHtml(r.content, 100),
       options:   r.options.replace(/\|/g, " "),
+      address:   r.address,
+      lat:       r.lat,
+      lng:       r.lng,
       source:    "json",
     }));
   return [...fsNew, ...jsonItems];
 }
 
-/** 키워드 기반 도민맛집 매칭 (지역·메뉴·이름) */
+// 거리 계산 (Haversine 근사 — 제주 규모에선 충분히 정확)
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLat = (lat1 - lat2) * 111;
+  const dLng = (lng1 - lng2) * 111 * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
+  return Math.sqrt(dLat * dLat + dLng * dLng);
+}
+
+/** 키워드 기반 도민맛집 매칭 (지역·메뉴·이름·GPS) */
 export async function findRelevantRestaurants(
-  query: { region?: string; menuKeywords?: string[]; nameKeywords?: string[] }
+  query: {
+    region?: string;
+    menuKeywords?: string[];
+    nameKeywords?: string[];
+    userLat?: number;
+    userLng?: number;
+    radiusKm?: number;
+  }
 ): Promise<ChatRestaurant[]> {
   const all = await loadAllChatRestaurants();
   let results = all;
-
-  if (query.region) {
-    const r = query.region;
-    results = results.filter((x) => x.region.includes(r) || r.includes(x.region));
-  }
 
   if (query.menuKeywords && query.menuKeywords.length > 0) {
     results = results.filter((x) =>
@@ -115,6 +138,46 @@ export async function findRelevantRestaurants(
     results = matched.length > 0 ? matched : before;
   }
 
-  // 신규(firestore) 우선
+  // GPS가 있으면 거리 계산 후 가까운 순 정렬 (region 필터보다 우선)
+  if (typeof query.userLat === "number" && typeof query.userLng === "number") {
+    const radius = query.radiusKm ?? 7; // 기본 7km
+    results = results
+      .map((x) => {
+        if (typeof x.lat !== "number" || typeof x.lng !== "number") return null;
+        const d = distanceKm(query.userLat!, query.userLng!, x.lat, x.lng);
+        return { ...x, distanceKm: d };
+      })
+      .filter((x): x is ChatRestaurant => x !== null)
+      .filter((x) => x.distanceKm! <= radius)
+      .sort((a, b) => a.distanceKm! - b.distanceKm!);
+
+    // 반경 안 결과가 너무 적으면 반경 확장
+    if (results.length < 3) {
+      results = all
+        .map((x) => {
+          if (typeof x.lat !== "number" || typeof x.lng !== "number") return null;
+          const d = distanceKm(query.userLat!, query.userLng!, x.lat, x.lng);
+          return { ...x, distanceKm: d };
+        })
+        .filter((x): x is ChatRestaurant => x !== null)
+        .sort((a, b) => a.distanceKm! - b.distanceKm!);
+      // 메뉴 필터 재적용 (있다면)
+      if (query.menuKeywords && query.menuKeywords.length > 0) {
+        results = results.filter((x) =>
+          query.menuKeywords!.some((kw) =>
+            x.menu.includes(kw) || x.name.includes(kw) || x.shortDesc.includes(kw)
+          )
+        );
+      }
+    }
+    return results.slice(0, 8);
+  }
+
+  // GPS 없으면 region 필터 (기존 동작)
+  if (query.region) {
+    const r = query.region;
+    results = results.filter((x) => x.region.includes(r) || r.includes(x.region));
+  }
+
   return results.sort((a, b) => (a.source === "firestore" ? -1 : 1)).slice(0, 8);
 }
