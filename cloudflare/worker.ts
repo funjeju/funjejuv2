@@ -216,7 +216,7 @@ async function cachedFetch(opts: {
 // KV 조회 (isolate 메모리 캐시로 read 비용 절감)
 // ─────────────────────────────────────────────────────────────
 const metaCache: Map<string, { data: { originUrl: string; active: boolean } | null; ts: number }> = new Map();
-const META_CACHE_TTL = 60_000; // 60초
+const META_CACHE_TTL = 10_000; // 10초 — 어드민 수정 반영 지연 최소화
 
 async function getCctvMeta(env: Env, id: string): Promise<{ originUrl: string; active: boolean } | null> {
   const cached = metaCache.get(id);

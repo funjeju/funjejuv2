@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { syncCctvToKV, deleteCctvFromKV } from "@/lib/cloudflare-kv-sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -72,7 +73,8 @@ export async function POST(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
 
     const db = getAdminDb();
-    await db.collection("cctvs").doc(id).set(
+    const docRef = db.collection("cctvs").doc(id);
+    await docRef.set(
       {
         ...data,
         youtubeId: data.youtubeId ?? null,
@@ -80,7 +82,18 @@ export async function POST(req: NextRequest) {
       },
       { merge: true }
     );
-    return NextResponse.json({ ok: true });
+
+    // ★ Cloudflare KV 동기화 (Worker가 즉시 사용 가능하게)
+    const fresh = (await docRef.get()).data();
+    const kvOk = await syncCctvToKV(id, {
+      name:     fresh?.name,
+      region:   fresh?.region,
+      category: fresh?.category,
+      originUrl: fresh?.originUrl ?? "",
+      active:   !!fresh?.active,
+    });
+
+    return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);
   }
@@ -96,8 +109,20 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: "id 필수" }, { status: 400 });
 
     const db = getAdminDb();
-    await db.collection("cctvs").doc(id).update({ active });
-    return NextResponse.json({ ok: true });
+    const docRef = db.collection("cctvs").doc(id);
+    await docRef.update({ active });
+
+    // ★ KV에도 active 상태 반영
+    const fresh = (await docRef.get()).data();
+    const kvOk = await syncCctvToKV(id, {
+      name:     fresh?.name,
+      region:   fresh?.region,
+      category: fresh?.category,
+      originUrl: fresh?.originUrl ?? "",
+      active:   !!fresh?.active,
+    });
+
+    return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);
   }
@@ -114,7 +139,11 @@ export async function DELETE(req: NextRequest) {
 
     const db = getAdminDb();
     await db.collection("cctvs").doc(id).delete();
-    return NextResponse.json({ ok: true });
+
+    // ★ KV에서도 삭제
+    const kvOk = await deleteCctvFromKV(id);
+
+    return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);
   }
