@@ -9,11 +9,14 @@ import type { Cctv } from "@/types/cctv";
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
 
-/** 단일 슬롯 플레이어 - 멀티뷰 전용 */
-function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => void }) {
+/** 단일 슬롯 플레이어 - 멀티뷰 전용
+ *  initDelay: 봇 탐지 회피용 초기 지연 (0~3000ms 랜덤 권장)
+ */
+function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRemove: () => void; initDelay?: number }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "playing" | "error" | "waiting">(initDelay > 0 ? "waiting" : "loading");
   const [paused, setPaused] = useState(false);
+  const [countdown, setCountdown] = useState(Math.ceil(initDelay / 1000));
 
   function togglePlay() {
     const v = videoRef.current;
@@ -27,18 +30,34 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
     }
   }
 
+  // 카운트다운 (대기 중일 때)
+  useEffect(() => {
+    if (status !== "waiting") return;
+    const id = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(id);
+  }, [status]);
+
   useEffect(() => {
     if (!cctv?.streamProxyUrl || !videoRef.current) {
       if (cctv && !cctv.streamProxyUrl) setStatus("error");
       return;
     }
 
-    setStatus("loading");
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
+    let cancelled = false;
+    let delayTimerId: ReturnType<typeof setTimeout> | null = null;
+
+    // 초기 지연 후 init 시작 (봇 탐지 회피)
+    delayTimerId = setTimeout(() => {
+      if (cancelled) return;
+      setStatus("loading");
+      init();
+    }, initDelay);
 
     async function init() {
       const Hls = (await import("hls.js")).default;
+      if (cancelled) return;
 
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -68,8 +87,9 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
       });
     }
 
-    init();
     return () => {
+      cancelled = true;
+      if (delayTimerId) clearTimeout(delayTimerId);
       hls?.destroy();
       if (video) {
         video.pause();
@@ -77,7 +97,7 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
         video.load();
       }
     };
-  }, [cctv?.streamProxyUrl]);
+  }, [cctv?.streamProxyUrl, initDelay]);
 
   return (
     <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
@@ -97,6 +117,12 @@ function SlotPlayer({ cctv, onRemove }: { cctv: Cctv | null; onRemove: () => voi
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        </div>
+      )}
+
+      {status === "waiting" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900/80 text-white/70">
+          <span className="text-xs">⏳ {countdown}초 후 시작</span>
         </div>
       )}
 
@@ -172,6 +198,24 @@ export default function MultiviewPage() {
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  // 봇 탐지 회피: 같은 IP에서 9개 동시 연결 피하기 위해 슬롯별 지연
+  // 한 번 init 완료된 CCTV는 다음 번 즉시 로드 (재이동 시 사용자 답답함 방지)
+  const initDelaysRef = useRef<Set<string>>(new Set());
+  const sessionStartRef = useRef<number>(Date.now());
+
+  function getInitDelay(cctvId: string, slotIndex: number): number {
+    if (initDelaysRef.current.has(cctvId)) return 0; // 이미 본 영상 → 즉시
+    initDelaysRef.current.add(cctvId);
+
+    const sinceStart = Date.now() - sessionStartRef.current;
+    if (sinceStart < 2000) {
+      // 첫 페이지 진입 = 슬롯 인덱스 기반 (0초, 0.8초, 1.6초, ... 사람처럼)
+      return slotIndex * 800 + Math.floor(Math.random() * 500);
+    }
+    // 추후 드래그로 추가 = 0~1초 랜덤
+    return Math.floor(Math.random() * 1000);
+  }
 
   // 저장된 CCTV 우선, 없으면 전체
   const availableCctvs = savedIds.size > 0
@@ -320,7 +364,11 @@ export default function MultiviewPage() {
                 }}
               >
                 {cctv ? (
-                  <SlotPlayer cctv={cctv} onRemove={() => removeSlot(idx)} />
+                  <SlotPlayer
+                    cctv={cctv}
+                    onRemove={() => removeSlot(idx)}
+                    initDelay={cctv ? getInitDelay(cctv.id, idx) : 0}
+                  />
                 ) : (
                   <EmptySlot
                     onDrop={(id) => handleDrop(idx, id)}
