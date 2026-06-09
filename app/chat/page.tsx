@@ -42,11 +42,17 @@ export default function ChatPage() {
     setGpsState("asking");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        const { latitude, longitude, accuracy } = pos.coords;
+        // 정확도 너무 떨어지면 (IP 기반 추정 등) 무시
+        if (accuracy > 10000) {
+          setGpsState("denied");
+          return;
+        }
+        setGps({ lat: latitude, lng: longitude });
         setGpsState("ok");
       },
       () => setGpsState("denied"),
-      { timeout: 8000, maximumAge: 60000 }
+      { timeout: 8000, maximumAge: 0, enableHighAccuracy: true }
     );
   }, []);
 
@@ -157,9 +163,14 @@ export default function ChatPage() {
             onClick={() => {
               setGpsState("asking");
               navigator.geolocation.getCurrentPosition(
-                (pos) => { setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGpsState("ok"); },
+                (pos) => {
+                  const { latitude, longitude, accuracy } = pos.coords;
+                  if (accuracy > 10000) { setGpsState("denied"); return; }
+                  setGps({ lat: latitude, lng: longitude });
+                  setGpsState("ok");
+                },
                 () => setGpsState("denied"),
-                { timeout: 8000 }
+                { timeout: 8000, maximumAge: 0, enableHighAccuracy: true }
               );
             }}
             className="rounded-full bg-yellow-500 px-2.5 py-1 text-[10px] font-bold text-white"
