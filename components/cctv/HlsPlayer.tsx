@@ -33,6 +33,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
 
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
+    let stallTimerId: ReturnType<typeof setInterval> | null = null;
 
     // ★ 프록시 origin 추출 → /event 호출용
     // proxyUrl: https://proxy.tuberecipe.co.kr/cctv/hagwi → proxyBase: https://proxy...
@@ -94,12 +95,33 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             hls!.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            try { hls!.recoverMediaError(); } catch { setStatus("error"); }
           } else {
             setStatus("error");
             hls!.destroy();
           }
         }
       });
+
+      // ★ stalled 감지 — 8초간 currentTime 안 움직이면 재시작
+      let lastTime = -1;
+      let lastTick = Date.now();
+      stallTimerId = setInterval(() => {
+        if (!video || video.paused) return;
+        const now = Date.now();
+        const t = video.currentTime;
+        if (t !== lastTime) {
+          lastTime = t;
+          lastTick = now;
+          return;
+        }
+        if (now - lastTick > 8000) {
+          console.log(`[HlsPlayer] stalled, restart`);
+          try { hls?.startLoad(); } catch { /* ignore */ }
+          lastTick = now;
+        }
+      }, 2000);
     }
 
     init();
@@ -111,6 +133,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     return () => {
       // 강제 정리: HLS destroy + video 완전 해제 → origin 다운로드 즉시 중단
       sendEvent("leave"); // 슬롯 제거/페이지 이동
+      if (stallTimerId) clearInterval(stallTimerId);
       hls?.destroy();
       video.removeEventListener("playing", handlePlay);
       video.removeEventListener("pause",   handlePause);

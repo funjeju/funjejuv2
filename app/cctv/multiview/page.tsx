@@ -53,6 +53,10 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
     let hls: import("hls.js").default | null = null;
     let cancelled = false;
     let delayTimerId: ReturnType<typeof setTimeout> | null = null;
+    let stallTimerId: ReturnType<typeof setInterval> | null = null;
+    let restartCount = 0;
+    const MAX_RESTARTS = 5;
+    const STALL_THRESHOLD = 8000; // 8초 동안 currentTime 변화 없으면 = 죽음
 
     // 초기 상태 설정
     setStatus(initDelay > 0 ? "waiting" : "loading");
@@ -64,6 +68,21 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       setStatus("loading");
       init();
     }, initDelay);
+
+    function hardRestart(reason: string) {
+      if (cancelled) return;
+      if (restartCount >= MAX_RESTARTS) {
+        console.warn(`[SlotPlayer ${cctv?.id}] 재시도 한도 초과 (${reason})`);
+        setStatus("error");
+        return;
+      }
+      restartCount++;
+      console.log(`[SlotPlayer ${cctv?.id}] 자동 재시작 #${restartCount} (${reason})`);
+      setStatus("loading");
+      try { hls?.destroy(); } catch { /* ignore */ }
+      hls = null;
+      setTimeout(() => { if (!cancelled) init(); }, 1500 + Math.random() * 1000);
+    }
 
     async function init() {
       const Hls = (await import("hls.js")).default;
@@ -81,25 +100,55 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         enableWorker: true,
         maxBufferLength: 10,
         backBufferLength: 0,
+        manifestLoadingMaxRetry: 6,
+        levelLoadingMaxRetry: 6,
+        fragLoadingMaxRetry: 6,
       });
       hls.loadSource(cctv!.streamProxyUrl!);
       hls.attachMedia(video);
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setStatus("playing");
         video.muted = true;
         video.play().catch(() => setStatus("error"));
       });
+
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal) {
-          setStatus("error");
-          hls?.destroy();
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          // 네트워크 에러 → HLS.js 내장 재시도 + 재시작
+          hardRestart("HLS NETWORK_ERROR");
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          try { hls?.recoverMediaError(); } catch { hardRestart("MEDIA recover failed"); }
+        } else {
+          hardRestart("HLS fatal");
         }
       });
+
+      // ★ stalled 감지 — currentTime 8초간 변화 없으면 죽었다고 판단
+      let lastTime = -1;
+      let lastTick = Date.now();
+      stallTimerId = setInterval(() => {
+        if (cancelled || !video) return;
+        if (video.paused) return; // 사용자가 일부러 정지한 거면 무시
+        const now = Date.now();
+        const t = video.currentTime;
+        if (t !== lastTime) {
+          lastTime = t;
+          lastTick = now;
+          return;
+        }
+        if (now - lastTick > STALL_THRESHOLD) {
+          hardRestart(`stalled ${Math.floor((now - lastTick) / 1000)}s`);
+          lastTick = now;
+        }
+      }, 2000);
     }
 
     return () => {
       cancelled = true;
       if (delayTimerId) clearTimeout(delayTimerId);
+      if (stallTimerId) clearInterval(stallTimerId);
       hls?.destroy();
       if (video) {
         video.pause();
