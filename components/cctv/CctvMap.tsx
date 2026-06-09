@@ -14,32 +14,23 @@ type CctvLike = {
 
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
-declare global {
-  interface Window {
-    kakao: {
-      maps: {
-        load: (cb: () => void) => void;
-        LatLng: new (lat: number, lng: number) => unknown;
-        LatLngBounds: new () => { extend: (latlng: unknown) => void };
-        Map: new (container: HTMLElement, options: { center: unknown; level: number }) => {
-          setBounds: (bounds: unknown) => void;
-        };
-        Marker: new (opts: { position: unknown; title?: string }) => {
-          setMap: (map: unknown) => void;
-        };
-        CustomOverlay: new (opts: {
-          position: unknown;
-          content: HTMLElement;
-          yAnchor?: number;
-          clickable?: boolean;
-        }) => { setMap: (map: unknown) => void };
-        event: {
-          addListener: (target: unknown, type: string, fn: (...args: unknown[]) => void) => void;
-        };
-      };
+// Window.kakao 타입은 PlacesMap에서 이미 global declare됨 → 여기선 재선언 X
+type KakaoNS = {
+  maps: {
+    load: (cb: () => void) => void;
+    LatLng: new (lat: number, lng: number) => unknown;
+    LatLngBounds: new () => { extend: (latlng: unknown) => void };
+    Map: new (container: HTMLElement, options: { center: unknown; level: number }) => {
+      setBounds: (bounds: unknown) => void;
     };
-  }
-}
+    CustomOverlay: new (opts: {
+      position: unknown;
+      content: HTMLElement;
+      yAnchor?: number;
+      clickable?: boolean;
+    }) => { setMap: (map: unknown) => void };
+  };
+};
 
 type Props = { cctvs: CctvLike[] };
 
@@ -65,7 +56,7 @@ export function CctvMap({ cctvs }: Props) {
     if (valid.length === 0) return;
 
     function loadMap() {
-      const kakao = window.kakao;
+      const kakao = (window as unknown as { kakao: KakaoNS }).kakao;
       const container = containerRef.current!;
       container.innerHTML = "";
 
@@ -102,22 +93,25 @@ export function CctvMap({ cctvs }: Props) {
     }
 
     // 이미 로드된 경우 바로 실행
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(loadMap);
+    const w = window as unknown as { kakao?: KakaoNS };
+    if (w.kakao?.maps) {
+      w.kakao.maps.load(loadMap);
       return;
     }
 
     // 스크립트 동적 로드
     const existing = document.getElementById("kakao-map-sdk") as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener("load", () => window.kakao.maps.load(loadMap));
+      existing.addEventListener("load", () =>
+        (window as unknown as { kakao: KakaoNS }).kakao.maps.load(loadMap)
+      );
       return;
     }
     const script = document.createElement("script");
     script.id = "kakao-map-sdk";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&autoload=false`;
     script.async = true;
-    script.onload = () => window.kakao.maps.load(loadMap);
+    script.onload = () => (window as unknown as { kakao: KakaoNS }).kakao.maps.load(loadMap);
     script.onerror = () => console.error("Kakao Maps SDK 로드 실패");
     document.head.appendChild(script);
   }, [cctvs, router]);
