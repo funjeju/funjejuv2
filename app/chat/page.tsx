@@ -27,7 +27,7 @@ export default function ChatPage() {
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);
   const [gps,      setGps]      = useState<GPS>(null);
-  const [gpsState, setGpsState] = useState<"idle" | "asking" | "ok" | "denied">("idle");
+  const [gpsState, setGpsState] = useState<"idle" | "asking" | "ok" | "outside" | "denied">("idle");
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -36,6 +36,10 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // 제주 바운딩 박스
+  const isInJeju = (lat: number, lng: number) =>
+    lat >= 33.10 && lat <= 33.65 && lng >= 126.10 && lng <= 127.00;
+
   // 마운트 시 GPS 요청
   useEffect(() => {
     if (!navigator.geolocation) { setGpsState("denied"); return; }
@@ -43,7 +47,7 @@ export default function ChatPage() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude, accuracy } = pos.coords;
-        // 정확도 너무 떨어지면 (IP 기반 추정 등) 무시
+        console.log("[GPS]", { lat: latitude, lng: longitude, accuracy });
         if (accuracy > 10000) {
           setGpsState("denied");
           return;
@@ -129,7 +133,7 @@ export default function ChatPage() {
             {/* GPS 상태 표시 */}
             {gpsState === "ok" && gps && (
               <span className="ml-1 rounded-full bg-jeju-green/10 px-2 py-0.5 text-[10px] font-bold text-jeju-green">
-                📍 위치 연결됨
+                📍 {gps.lat.toFixed(4)}, {gps.lng.toFixed(4)}
               </span>
             )}
             {gpsState === "asking" && (
@@ -165,6 +169,7 @@ export default function ChatPage() {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
                   const { latitude, longitude, accuracy } = pos.coords;
+                  console.log("[GPS]", { lat: latitude, lng: longitude, accuracy });
                   if (accuracy > 10000) { setGpsState("denied"); return; }
                   setGps({ lat: latitude, lng: longitude });
                   setGpsState("ok");

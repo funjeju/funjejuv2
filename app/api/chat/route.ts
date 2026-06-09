@@ -20,6 +20,15 @@ function nearestRegion(lat: number, lng: number): { region?: string; label: stri
     : { label: "제주", distanceKm: 0 };
 }
 
+// 제주 바운딩 박스
+const JEJU_BBOX = { latMin: 33.10, latMax: 33.65, lngMin: 126.10, lngMax: 127.00 };
+function isInJeju(lat: number, lng: number): boolean {
+  return (
+    lat >= JEJU_BBOX.latMin && lat <= JEJU_BBOX.latMax &&
+    lng >= JEJU_BBOX.lngMin && lng <= JEJU_BBOX.lngMax
+  );
+}
+
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
@@ -112,16 +121,19 @@ function buildSystemPrompt(opts: {
   intent: Intent;
   hasGps: boolean;
   gpsInfo: { region?: string; label: string; distanceKm: number } | null;
+  gpsOutsideJeju: boolean;
 }): string {
-  const { restaurantCtx, intent, hasGps, gpsInfo } = opts;
+  const { restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju } = opts;
 
-  const locationNote = gpsInfo
-    ? `유저의 현재 GPS 위치는 '${gpsInfo.label}' 부근 (${gpsInfo.region ?? "제주"}). 이 지역 기준으로 추천해.`
-    : intent.region
-      ? `유저가 '${intent.locationLabel}' 지역을 물어봤어.`
-      : hasGps
-        ? `유저 위치 좌표는 받았지만 매핑 실패. 제주 전 지역으로 답해.`
-        : `위치 정보 없음 — 제주 전 지역 대표 명소·맛집 위주로 답해.`;
+  const locationNote = gpsOutsideJeju
+    ? `유저는 현재 제주가 아닌 곳에 있어. "지금 제주 밖에 계시네요!" 한 줄 언급하고 제주 전 지역 대표 명소/맛집 추천해.`
+    : gpsInfo
+      ? `유저의 현재 GPS 위치는 '${gpsInfo.label}' 부근 (${gpsInfo.region ?? "제주"}). 이 지역 기준으로 추천해.`
+      : intent.region
+        ? `유저가 '${intent.locationLabel}' 지역을 물어봤어.`
+        : hasGps
+          ? `유저 위치 좌표는 받았지만 매핑 실패. 제주 전 지역으로 답해.`
+          : `위치 정보 없음 — 제주 전 지역 대표 명소·맛집 위주로 답해.`;
 
   return `너는 제주 여행 AI 도슨트 '돌맹이'야. 제주 돌하르방을 의인화한 친근한 로컬 친구.
 
@@ -174,12 +186,20 @@ export async function POST(req: NextRequest) {
   const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
   const intent = extractIntent(lastUserText);
 
-  // ★ GPS 좌표 → 가장 가까운 region 자동 매핑 (사용자가 지역 명시 안 했을 때만)
+  // ★ GPS 좌표 → region 매핑 (제주 안에 있을 때만)
   let gpsInfo: { region?: string; label: string; distanceKm: number } | null = null;
-  if (hasGps && !intent.region) {
-    gpsInfo = nearestRegion(lat!, lng!);
-    intent.region = gpsInfo.region;
-    intent.locationLabel = gpsInfo.label;
+  let gpsOutsideJeju = false;
+  if (hasGps) {
+    if (isInJeju(lat!, lng!)) {
+      if (!intent.region) {
+        gpsInfo = nearestRegion(lat!, lng!);
+        intent.region = gpsInfo.region;
+        intent.locationLabel = gpsInfo.label;
+      }
+    } else {
+      // 제주 밖 → region 매핑 안 함, 모델에게 안내만
+      gpsOutsideJeju = true;
+    }
   }
 
   // 도민맛집 조회
@@ -196,10 +216,13 @@ export async function POST(req: NextRequest) {
   }
 
   const restaurantCtx = buildRestaurantContext(restaurants);
-  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo });
+  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju });
 
   console.log("[chat]",
+    `gps=${hasGps ? `${lat?.toFixed(4)},${lng?.toFixed(4)}` : "none"}`,
+    `inJeju=${hasGps ? isInJeju(lat!, lng!) : "-"}`,
     `region=${intent.region ?? "-"}`,
+    `label=${intent.locationLabel ?? "-"}`,
     `menu=${intent.menuKeywords.join(",") || "-"}`,
     `restaurants=${restaurants.length}`,
     `| ${lastUserText.slice(0, 40)}`
