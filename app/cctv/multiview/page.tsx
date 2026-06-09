@@ -12,9 +12,11 @@ type SlotCount = 1 | 2 | 4 | 6 | 9;
 /** 단일 슬롯 플레이어 - 멀티뷰 전용
  *  initDelay: 봇 탐지 회피용 초기 지연 (0~3000ms 랜덤 권장)
  */
-function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRemove: () => void; initDelay?: number }) {
+function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: Cctv | null; onRemove: () => void; initDelay?: number; enabled?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [status, setStatus] = useState<"loading" | "playing" | "error" | "waiting">(initDelay > 0 ? "waiting" : "loading");
+  const [status, setStatus] = useState<"loading" | "playing" | "error" | "waiting" | "idle">(
+    !enabled ? "idle" : (initDelay > 0 ? "waiting" : "loading")
+  );
   const [paused, setPaused] = useState(false);
   const [countdown, setCountdown] = useState(Math.ceil(initDelay / 1000));
 
@@ -38,6 +40,10 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRe
   }, [status]);
 
   useEffect(() => {
+    if (!enabled) {
+      setStatus("idle");
+      return;
+    }
     if (!cctv?.streamProxyUrl || !videoRef.current) {
       if (cctv && !cctv.streamProxyUrl) setStatus("error");
       return;
@@ -47,6 +53,10 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRe
     let hls: import("hls.js").default | null = null;
     let cancelled = false;
     let delayTimerId: ReturnType<typeof setTimeout> | null = null;
+
+    // 초기 상태 설정
+    setStatus(initDelay > 0 ? "waiting" : "loading");
+    setCountdown(Math.ceil(initDelay / 1000));
 
     // 초기 지연 후 init 시작 (봇 탐지 회피)
     delayTimerId = setTimeout(() => {
@@ -97,7 +107,7 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRe
         video.load();
       }
     };
-  }, [cctv?.streamProxyUrl, initDelay]);
+  }, [cctv?.streamProxyUrl, initDelay, enabled]);
 
   return (
     <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
@@ -123,6 +133,13 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0 }: { cctv: Cctv | null; onRe
       {status === "waiting" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900/80 text-white/70">
           <span className="text-xs">⏳ {countdown}초 후 시작</span>
+        </div>
+      )}
+
+      {status === "idle" && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/50">
+          <span className="text-2xl">▶</span>
+          <span className="text-[10px]">일괄 재생 대기 중</span>
         </div>
       )}
 
@@ -198,6 +215,7 @@ export default function MultiviewPage() {
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false); // 일괄 재생 토글
 
   // 봇 탐지 회피: 같은 IP에서 9개 동시 연결 피하기 위해 슬롯별 지연
   // 한 번 init 완료된 CCTV는 다음 번 즉시 로드 (재이동 시 사용자 답답함 방지)
@@ -210,11 +228,20 @@ export default function MultiviewPage() {
 
     const sinceStart = Date.now() - sessionStartRef.current;
     if (sinceStart < 2000) {
-      // 첫 페이지 진입 = 슬롯 인덱스 기반 (0초, 0.8초, 1.6초, ... 사람처럼)
+      // 일괄 재생 직후 = 슬롯 인덱스 기반 (0초, 0.8초, 1.6초, ... 사람처럼)
       return slotIndex * 800 + Math.floor(Math.random() * 500);
     }
     // 추후 드래그로 추가 = 0~1초 랜덤
     return Math.floor(Math.random() * 1000);
+  }
+
+  function togglePlayAll() {
+    if (!playing) {
+      // 재생 시작 → sessionStart 리셋 + delay 캐시 리셋 → 순차 로딩
+      sessionStartRef.current = Date.now();
+      initDelaysRef.current = new Set();
+    }
+    setPlaying(!playing);
   }
 
   // 저장된 CCTV 우선, 없으면 전체
@@ -328,6 +355,18 @@ export default function MultiviewPage() {
         <div className="ml-auto flex gap-2">
           <button
             type="button"
+            onClick={togglePlayAll}
+            className={[
+              "rounded-full px-3 py-1.5 text-xs font-bold text-white transition-colors",
+              playing
+                ? "bg-live-red hover:bg-live-red/90"
+                : "bg-jeju-green hover:bg-jeju-green/90",
+            ].join(" ")}
+          >
+            {playing ? "⏸ 전체 정지" : "▶ 일괄 재생"}
+          </button>
+          <button
+            type="button"
             onClick={autoFill}
             className="rounded-full bg-brand-orange px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
           >
@@ -367,7 +406,8 @@ export default function MultiviewPage() {
                   <SlotPlayer
                     cctv={cctv}
                     onRemove={() => removeSlot(idx)}
-                    initDelay={cctv ? getInitDelay(cctv.id, idx) : 0}
+                    initDelay={playing && cctv ? getInitDelay(cctv.id, idx) : 0}
+                    enabled={playing}
                   />
                 ) : (
                   <EmptySlot
