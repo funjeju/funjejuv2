@@ -41,46 +41,68 @@ function categoryColor(menu: string): { bg: string; emoji: string } {
   return { bg: "#555555", emoji: "🍽️" };
 }
 
-// ── 카카오 키워드 검색으로 좌표 얻기 (localStorage 캐시) ──
+// 검색용 region 정규화: "제주시 동(洞) 지역" → "제주시"
+function normalizeRegion(region: string): string {
+  if (!region) return "";
+  return region
+    .replace(/\s*동\s*\(\s*洞\s*\)\s*지역/g, "")
+    .replace(/\s*동\s*지역/g, "")
+    .trim();
+}
+
+// 제주 BBOX 체크 (엉뚱한 좌표 거르기)
+function inJeju(lat: number, lng: number): boolean {
+  return lat >= 33.10 && lat <= 33.65 && lng >= 126.10 && lng <= 127.00;
+}
+
+// ── 카카오 키워드 검색으로 좌표 얻기 (단계적 폴백) ──
 async function geocode(restaurant: RestaurantSummary): Promise<{ lat: number; lng: number } | null> {
   if (!KAKAO_REST_KEY) return null;
-  const cacheKey = "foodGeo:v1";
+  const cacheKey = "foodGeo:v2"; // v2: 폴백 로직 + 정규화
   let cache: GeoCache = {};
   try { cache = JSON.parse(localStorage.getItem(cacheKey) || "{}"); } catch { /* ignore */ }
 
   const hit = cache[restaurant.id];
+  // fail 캐시는 3일만 (영구 X — 카카오 데이터 추가될 수 있음)
   if (hit === "fail") return null;
-  if (hit && Date.now() - hit.ts < 30 * 24 * 60 * 60 * 1000) {
+  if (hit && hit !== "fail" && Date.now() - hit.ts < 30 * 24 * 60 * 60 * 1000) {
     return { lat: hit.lat, lng: hit.lng };
   }
 
-  // 검색어: "지역 + 식당명"
-  const query = `${restaurant.region} ${restaurant.title}`.trim();
-  try {
-    const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=1`,
-      { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-    );
-    if (!res.ok) {
-      cache[restaurant.id] = "fail";
-      localStorage.setItem(cacheKey, JSON.stringify(cache));
-      return null;
-    }
-    const data = await res.json() as { documents?: Array<{ x: string; y: string }> };
-    const first = data.documents?.[0];
-    if (!first) {
-      cache[restaurant.id] = "fail";
-      localStorage.setItem(cacheKey, JSON.stringify(cache));
-      return null;
-    }
-    const lat = Number(first.y);
-    const lng = Number(first.x);
-    cache[restaurant.id] = { lat, lng, ts: Date.now() };
-    localStorage.setItem(cacheKey, JSON.stringify(cache));
-    return { lat, lng };
-  } catch {
-    return null;
+  // 검색어 우선순위: 좁은 → 넓은
+  const region = normalizeRegion(restaurant.region);
+  const queries = [
+    `${region} ${restaurant.title}`,
+    `${restaurant.title} 제주`,
+    `제주 ${restaurant.title}`,
+    restaurant.title,
+  ].map((q) => q.trim()).filter((q, i, arr) => q && arr.indexOf(q) === i);
+
+  for (const query of queries) {
+    try {
+      const res = await fetch(
+        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
+        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
+      );
+      if (!res.ok) continue;
+      const data = await res.json() as { documents?: Array<{ x: string; y: string; place_name?: string }> };
+      // 제주 좌표 + 가능한 한 첫번째 결과
+      for (const doc of data.documents ?? []) {
+        const lat = Number(doc.y);
+        const lng = Number(doc.x);
+        if (inJeju(lat, lng)) {
+          cache[restaurant.id] = { lat, lng, ts: Date.now() };
+          localStorage.setItem(cacheKey, JSON.stringify(cache));
+          return { lat, lng };
+        }
+      }
+    } catch { /* try next query */ }
   }
+
+  // 4단계 모두 실패 → fail로 마킹 (3일 뒤 재시도)
+  cache[restaurant.id] = "fail";
+  localStorage.setItem(cacheKey, JSON.stringify(cache));
+  return null;
 }
 
 type Props = { restaurants: RestaurantSummary[] };
