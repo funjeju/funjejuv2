@@ -22,10 +22,12 @@ async function fetchFirestoreData(): Promise<{
 
   const newRestaurants: RestaurantSummary[] = [];
   if (newRes.ok) {
-    const data = (await newRes.json()) as { documents?: Array<{ name?: string; fields?: Record<string, { stringValue?: string; arrayValue?: { values?: Array<{ stringValue?: string }> } }> }> };
+    const data = (await newRes.json()) as { documents?: Array<{ name?: string; fields?: Record<string, { stringValue?: string; doubleValue?: number; integerValue?: string; arrayValue?: { values?: Array<{ stringValue?: string }> } }> }> };
     for (const docu of data.documents ?? []) {
       const id = docu.name?.split("/").pop() ?? "";
       const f = docu.fields ?? {};
+      const fsLat = f.lat?.doubleValue ?? (f.lat?.integerValue ? Number(f.lat.integerValue) : undefined);
+      const fsLng = f.lng?.doubleValue ?? (f.lng?.integerValue ? Number(f.lng.integerValue) : undefined);
       newRestaurants.push({
         id,
         title: f.title?.stringValue ?? "",
@@ -36,6 +38,9 @@ async function fetchFirestoreData(): Promise<{
           .join("|"),
         thumbnail: f.imageUrl?.stringValue || null,
         shortDescription: stripHtml(f.description?.stringValue ?? "", 80),
+        address: f.address?.stringValue || undefined,
+        lat: fsLat,
+        lng: fsLng,
       });
     }
   }
@@ -67,6 +72,9 @@ export async function loadMergedRestaurants(): Promise<RestaurantSummary[]> {
       options: r.options,
       thumbnail: r.images?.[0] ? `/restaurant-images/${r.images[0]}` : null,
       shortDescription: stripHtml(r.content, 80),
+      address: r.address,
+      lat: r.lat,
+      lng: r.lng,
     }));
 
   // 신규를 위로 (최신순)

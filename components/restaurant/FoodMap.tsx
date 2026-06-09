@@ -159,12 +159,17 @@ export function FoodMap({ restaurants }: Props) {
       let failed = 0;
       setProgress({ loaded: 0, total: restaurants.length, failed: 0 });
 
-      // 2) 지오코딩 (동시 6개씩 처리)
+      // 좌표가 데이터에 들어있으면 즉시 표시. 없는 것만 키워드 검색 폴백.
       const queue = [...restaurants];
       const workers = Array.from({ length: 6 }).map(async () => {
         while (queue.length > 0 && !cancelled) {
           const r = queue.shift()!;
-          const coord = await geocode(r);
+          let coord: { lat: number; lng: number } | null = null;
+          if (typeof r.lat === "number" && typeof r.lng === "number") {
+            coord = { lat: r.lat, lng: r.lng };
+          } else {
+            coord = await geocode(r);
+          }
           if (cancelled) return;
           if (!coord) {
             failed++;

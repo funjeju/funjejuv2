@@ -8,7 +8,8 @@ let cache: Restaurant[] | null = null;
 /** restaurants.json 전체 로드 (서버에서만 캐시) */
 export async function loadAllRestaurants(): Promise<Restaurant[]> {
   if (cache) return cache;
-  const filePath = path.join(process.cwd(), "data", "restaurants.json");
+  // domin_food.json: address + lat/lng 포함된 신버전 (구버전 restaurants.json은 좌표 X)
+  const filePath = path.join(process.cwd(), "data", "domin_food.json");
   const raw = await readFile(filePath, "utf-8");
   cache = JSON.parse(raw) as Restaurant[];
   return cache;

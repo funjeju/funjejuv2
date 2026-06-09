@@ -8,6 +8,9 @@ export type Restaurant = {
   hours: string;          // "09|30|18|50" 형태
   prices: string;
   images: string[];       // 파일명 배열
+  address?: string;       // 도로명/지번 주소
+  lat?: number;
+  lng?: number;
 };
 
 export type RestaurantSummary = Pick<
@@ -16,4 +19,7 @@ export type RestaurantSummary = Pick<
 > & {
   thumbnail: string | null;
   shortDescription: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
 };
