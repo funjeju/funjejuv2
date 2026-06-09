@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 
 type CctvLike = {
   id: string;
   name: string;
+  region?: string;
+  category?: string;
   lat?: number;
   lng?: number;
   latitude?: number;
@@ -13,8 +16,8 @@ type CctvLike = {
 };
 
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
+const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
 
-// Window.kakao 타입은 PlacesMap에서 이미 global declare됨 → 여기선 재선언 X
 type KakaoNS = {
   maps: {
     load: (cb: () => void) => void;
@@ -27,6 +30,7 @@ type KakaoNS = {
       position: unknown;
       content: HTMLElement;
       yAnchor?: number;
+      xAnchor?: number;
       clickable?: boolean;
     }) => { setMap: (map: unknown) => void };
   };
@@ -36,7 +40,7 @@ type Props = { cctvs: CctvLike[] };
 
 export function CctvMap({ cctvs }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
+  const [selected, setSelected] = useState<CctvLike | null>(null);
 
   useEffect(() => {
     if (!KAKAO_KEY) {
@@ -45,7 +49,6 @@ export function CctvMap({ cctvs }: Props) {
     }
     if (!containerRef.current) return;
 
-    // lat/lng 와 latitude/longitude 둘 다 지원
     const valid = cctvs
       .map((c) => ({
         ...c,
@@ -70,21 +73,47 @@ export function CctvMap({ cctvs }: Props) {
         const pos = new kakao.maps.LatLng(c._lat!, c._lng!);
         bounds.extend(pos);
 
-        // 핀 오버레이
+        // ★ 핀: 작은 점 + 호버 시 라벨 표시. xAnchor 0.5, yAnchor 0.5 → 점 중심이 정확히 좌표.
         const el = document.createElement("div");
-        el.className = "cursor-pointer flex flex-col items-center -translate-y-full";
+        el.style.cssText = "position:relative;cursor:pointer;";
         el.innerHTML = `
-          <div class="rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-bold text-white shadow-lg whitespace-nowrap">
-            📷 ${c.name}
-          </div>
-          <div class="h-2 w-2 rounded-full bg-brand-orange shadow"></div>
+          <div style="
+            width:14px;height:14px;border-radius:9999px;
+            background:#1e3a5f;
+            border:3px solid white;
+            box-shadow:0 2px 6px rgba(0,0,0,0.35);
+            transition:transform .15s;
+          "></div>
+          <div class="cctv-label" style="
+            position:absolute;left:50%;bottom:calc(100% + 6px);
+            transform:translateX(-50%);
+            background:rgba(30,58,95,0.95);
+            color:white;
+            padding:3px 8px;border-radius:9999px;
+            font-size:11px;font-weight:700;
+            white-space:nowrap;
+            pointer-events:none;
+            opacity:0;transition:opacity .15s;
+            box-shadow:0 2px 8px rgba(0,0,0,0.25);
+          ">📷 ${c.name}</div>
         `;
-        el.onclick = () => router.push(`/cctv/${c.id}`);
+        const dot = el.firstElementChild as HTMLDivElement;
+        const label = el.querySelector(".cctv-label") as HTMLDivElement;
+        el.onmouseenter = () => {
+          dot.style.transform = "scale(1.3)";
+          label.style.opacity = "1";
+        };
+        el.onmouseleave = () => {
+          dot.style.transform = "scale(1)";
+          label.style.opacity = "0";
+        };
+        el.onclick = () => setSelected(c);
 
         new kakao.maps.CustomOverlay({
           position: pos,
           content: el,
-          yAnchor: 1,
+          xAnchor: 0.5,
+          yAnchor: 0.5, // ★ 좌표가 점 중심
           clickable: true,
         }).setMap(map);
       });
@@ -92,14 +121,12 @@ export function CctvMap({ cctvs }: Props) {
       map.setBounds(bounds);
     }
 
-    // 이미 로드된 경우 바로 실행
     const w = window as unknown as { kakao?: KakaoNS };
     if (w.kakao?.maps) {
       w.kakao.maps.load(loadMap);
       return;
     }
 
-    // 스크립트 동적 로드
     const existing = document.getElementById("kakao-map-sdk") as HTMLScriptElement | null;
     if (existing) {
       existing.addEventListener("load", () =>
@@ -114,12 +141,71 @@ export function CctvMap({ cctvs }: Props) {
     script.onload = () => (window as unknown as { kakao: KakaoNS }).kakao.maps.load(loadMap);
     script.onerror = () => console.error("Kakao Maps SDK 로드 실패");
     document.head.appendChild(script);
-  }, [cctvs, router]);
+  }, [cctvs]);
+
+  const proxyUrl = selected && PROXY_URL ? `${PROXY_URL}/cctv/${selected.id}` : null;
 
   return (
-    <div
-      ref={containerRef}
-      className="h-[60vh] w-full rounded-2xl border border-border-soft bg-bg-secondary overflow-hidden"
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="h-[60vh] w-full rounded-2xl border border-border-soft bg-bg-secondary overflow-hidden"
+      />
+
+      {/* CCTV 미리보기 모달 */}
+      {selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setSelected(null)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-2xl bg-bg-card shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+              <div>
+                <h3 className="text-base font-bold text-text-primary">📷 {selected.name}</h3>
+                <p className="text-xs text-text-secondary">
+                  {selected.region}
+                  {selected.category && ` · ${selected.category}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-full bg-bg-secondary p-2 text-text-secondary hover:bg-bg-primary transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-black">
+              <HlsPlayer
+                proxyUrl={proxyUrl}
+                label={selected.name}
+                cctvId={selected.id}
+                cctvName={selected.name}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-2 border-t border-border-soft px-4 py-3">
+              <Link
+                href={`/cctv/${selected.id}`}
+                className="flex-1 rounded-full bg-brand-orange px-4 py-2 text-center text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
+              >
+                자세히 보기 →
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-xs font-semibold text-text-secondary hover:bg-bg-primary transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
