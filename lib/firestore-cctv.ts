@@ -12,6 +12,8 @@ import { getFirebaseDb } from "@/lib/firebase";
 import type { CctvEntry } from "@/types/cctv";
 import { getDirection } from "@/constants/cctv-directions";
 
+// 우선순위: Worker > Lightsail
+const WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? "";
 const PROXY_BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
 
 function toEntry(id: string, data: DocumentData): CctvEntry {
@@ -88,8 +90,9 @@ export async function adminDeleteCctv(id: string): Promise<void> {
   await apiCall("DELETE", { id });
 }
 
-/** 프록시 URL 계산 */
+/** 프록시 URL 계산 — Worker 우선 */
 export function getStreamProxyUrl(id: string): string | null {
-  if (!PROXY_BASE) return null;
-  return `${PROXY_BASE}/cctv/${id}`;
+  if (WORKER_URL) return `${WORKER_URL}/cctv/${id}`;
+  if (PROXY_BASE) return `${PROXY_BASE}/cctv/${id}`;
+  return null;
 }

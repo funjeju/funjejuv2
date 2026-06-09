@@ -16,7 +16,7 @@ type CctvLike = {
 };
 
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
-const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
+const PROXY_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 type KakaoNS = {
   maps: {

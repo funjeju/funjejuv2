@@ -28,7 +28,8 @@ type Stats = {
   perCctv: Record<string, CctvStats>;
 };
 
-const PROXY_URL = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
+// Worker가 있으면 Worker 통계, 없으면 Lightsail 통계
+const PROXY_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 function formatTime(t: number) {
   return new Date(t).toLocaleTimeString("ko-KR", {

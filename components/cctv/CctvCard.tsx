@@ -6,7 +6,7 @@ import { SaveButton } from "@/components/common/SaveButton";
 import { DIRECTION_META } from "@/constants/cctv-directions";
 import type { CctvEntry } from "@/types/cctv";
 
-const PROXY_BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
+const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 export function CctvCard({ cctv }: { cctv: CctvEntry }) {
   const streamUrl = !cctv.youtubeId && PROXY_BASE ? `${PROXY_BASE}/cctv/${cctv.id}` : null;

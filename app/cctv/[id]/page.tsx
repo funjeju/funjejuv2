@@ -12,7 +12,8 @@ import { mockCctvs } from "@/constants/mock-cctvs";
 type Props = { params: Promise<{ id: string }> };
 
 const SITE_URL    = "https://funjeju.com";
-const PROXY_BASE  = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
+// Worker 우선, 없으면 Lightsail fallback
+const PROXY_BASE  = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 // 빌드 시 mockCctvs 기반으로 정적 생성 + 새 ID는 ISR로 동적 처리
 export async function generateStaticParams() {
