@@ -265,6 +265,23 @@ export default function MultiviewPage() {
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (!gridRef.current) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      gridRef.current.requestFullscreen().catch(() => {});
+    }
+  }
 
   // 봇 탐지 회피: 같은 IP에서 9개 동시 연결 피하기 위해 슬롯별 지연
   // 한 번 init 완료된 CCTV는 다음 번 즉시 로드 (재이동 시 사용자 답답함 방지)
@@ -428,12 +445,27 @@ export default function MultiviewPage() {
           >
             전체 비우기
           </button>
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-navy/90 transition-colors"
+            title="전체화면"
+          >
+            {isFullscreen ? "⛶ 종료" : "⛶ 전체화면"}
+          </button>
         </div>
       </div>
 
       {/* 멀티뷰 그리드 — 모바일 여백·간격 최소화 */}
       <div className="mb-5 md:mx-0">
-        <div className={`grid gap-0.5 md:gap-2 ${gridClass}`}>
+        <div
+          ref={gridRef}
+          className={[
+            "grid gap-0.5 md:gap-2",
+            gridClass,
+            isFullscreen ? "h-screen w-screen bg-black p-1" : "",
+          ].join(" ")}
+        >
           {Array.from({ length: slotCount }).map((_, idx) => {
             const cctvId = slots[idx];
             const cctv = cctvId ? mockCctvs.find((c) => c.id === cctvId) ?? null : null;
