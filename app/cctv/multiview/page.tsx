@@ -339,7 +339,8 @@ export default function MultiviewPage() {
         </div>
         <div className="grid grid-cols-3 gap-2 md:grid-cols-4 lg:grid-cols-6">
           {availableCctvs.map((cctv) => {
-            const inUse = slots.includes(cctv.id);
+            // 현재 활성 슬롯 수까지만 체크 (9분할→2분할 변경 시 옛 슬롯 무시)
+            const inUse = slots.slice(0, slotCount).includes(cctv.id);
             return (
               <div
                 key={cctv.id}
