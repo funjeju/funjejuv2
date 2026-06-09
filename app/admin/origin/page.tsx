@@ -81,7 +81,8 @@ export default function AdminOriginPage() {
     );
   }
 
-  if (error || !data) {
+  // 데이터가 한 번도 없을 때만 전체 에러 화면
+  if (!data) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="rounded-2xl bg-live-red/10 border border-live-red/20 p-5 text-center">
@@ -114,7 +115,10 @@ export default function AdminOriginPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black text-text-primary">📡 Origin 호출 실시간</h1>
-          <p className="text-sm text-text-secondary">3초마다 자동 갱신 · 프록시 서버 uptime {formatDuration(data.uptime)}</p>
+          <p className="text-sm text-text-secondary">
+            3초마다 자동 갱신 · 프록시 서버 uptime {formatDuration(data.uptime)}
+            {error && <span className="ml-2 text-live-red">⚠️ 최근 폴링 실패 ({error})</span>}
+          </p>
         </div>
         <button type="button" onClick={load}
           className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white">

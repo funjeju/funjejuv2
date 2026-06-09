@@ -290,36 +290,55 @@ app.get("/cctv/:id/seg", async (req, res) => {
   }
 });
 
-// ★ 통계 엔드포인트 — 어드민이 fetch
+// ★ 통계 엔드포인트 — 어드민이 fetch (절대 throw 안 함)
 app.get("/stats", (req, res) => {
-  const now = Date.now();
-  const oneMinAgo = now - 60000;
+  try {
+    const now = Date.now();
+    const oneMinAgo = now - 60000;
 
-  // 영상별 최근 1분 통계
-  const perCctv = {};
-  for (const [cctvId, c] of Object.entries(counters)) {
-    const recentEvents = events.filter((e) => e.cctvId === cctvId && e.t >= oneMinAgo);
-    perCctv[cctvId] = {
-      totalOrigin: c.origin,
-      totalHit: c.hit,
-      uniqueIps: c.uniqueIps.size,
-      recent1min: {
-        origin: recentEvents.filter((e) => e.result === "origin").length,
-        hit: recentEvents.filter((e) => e.result === "hit").length,
-      },
-      lastAccess: c.lastAccess,
-    };
+    // 영상별 최근 1분 통계 — events 한 번만 순회
+    const recentByCctv = new Map();
+    for (const e of events) {
+      if (e.t < oneMinAgo) continue;
+      if (!recentByCctv.has(e.cctvId)) recentByCctv.set(e.cctvId, { origin: 0, hit: 0 });
+      const bucket = recentByCctv.get(e.cctvId);
+      if (e.result === "origin") bucket.origin++;
+      else if (e.result === "hit") bucket.hit++;
+    }
+
+    const perCctv = {};
+    for (const [cctvId, c] of Object.entries(counters)) {
+      const recent = recentByCctv.get(cctvId) || { origin: 0, hit: 0 };
+      perCctv[cctvId] = {
+        totalOrigin: c.origin || 0,
+        totalHit: c.hit || 0,
+        uniqueIps: c.uniqueIps?.size || 0,
+        recent1min: recent,
+        lastAccess: c.lastAccess || 0,
+      };
+    }
+
+    // CORS 헤더 명시적으로 한 번 더 (CF 에러 시에도 보존)
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Cache-Control", "no-store");
+    res.json({
+      uptime: now - startedAt,
+      memory: process.memoryUsage().rss,
+      m3u8CacheSize: m3u8Cache.size,
+      tsCacheSize: tsCache.size,
+      eventCount: events.length,
+      events: events.slice(-200).reverse(),
+      perCctv,
+    });
+  } catch (e) {
+    console.error("[stats]", e.message);
+    res.set("Access-Control-Allow-Origin", "*");
+    res.status(200).json({
+      uptime: 0, memory: 0, m3u8CacheSize: 0, tsCacheSize: 0,
+      eventCount: 0, events: [], perCctv: {},
+      _error: e.message,
+    });
   }
-
-  res.json({
-    uptime: now - startedAt,
-    memory: process.memoryUsage().rss,
-    m3u8CacheSize: m3u8Cache.size,
-    tsCacheSize: tsCache.size,
-    eventCount: events.length,
-    events: events.slice(-200).reverse(), // 최근 200개 (최신순)
-    perCctv,
-  });
 });
 
 // uncaught exception 안전망
