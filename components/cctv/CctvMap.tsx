@@ -2,7 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Cctv } from "@/types/cctv";
+
+type CctvLike = {
+  id: string;
+  name: string;
+  lat?: number;
+  lng?: number;
+  latitude?: number;
+  longitude?: number;
+};
 
 const KAKAO_KEY = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
 
@@ -33,7 +41,7 @@ declare global {
   }
 }
 
-type Props = { cctvs: Cctv[] };
+type Props = { cctvs: CctvLike[] };
 
 export function CctvMap({ cctvs }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,7 +54,14 @@ export function CctvMap({ cctvs }: Props) {
     }
     if (!containerRef.current) return;
 
-    const valid = cctvs.filter((c) => c.latitude && c.longitude);
+    // lat/lng 와 latitude/longitude 둘 다 지원
+    const valid = cctvs
+      .map((c) => ({
+        ...c,
+        _lat: c.lat ?? c.latitude,
+        _lng: c.lng ?? c.longitude,
+      }))
+      .filter((c) => typeof c._lat === "number" && typeof c._lng === "number");
     if (valid.length === 0) return;
 
     function loadMap() {
@@ -61,7 +76,7 @@ export function CctvMap({ cctvs }: Props) {
       });
 
       valid.forEach((c) => {
-        const pos = new kakao.maps.LatLng(c.latitude!, c.longitude!);
+        const pos = new kakao.maps.LatLng(c._lat!, c._lng!);
         bounds.extend(pos);
 
         // 핀 오버레이
