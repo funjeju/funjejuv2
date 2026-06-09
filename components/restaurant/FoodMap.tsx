@@ -63,9 +63,8 @@ async function geocode(restaurant: RestaurantSummary): Promise<{ lat: number; ln
   try { cache = JSON.parse(localStorage.getItem(cacheKey) || "{}"); } catch { /* ignore */ }
 
   const hit = cache[restaurant.id];
-  // fail 캐시는 3일만 (영구 X — 카카오 데이터 추가될 수 있음)
   if (hit === "fail") return null;
-  if (hit && hit !== "fail" && Date.now() - hit.ts < 30 * 24 * 60 * 60 * 1000) {
+  if (hit && Date.now() - hit.ts < 30 * 24 * 60 * 60 * 1000) {
     return { lat: hit.lat, lng: hit.lng };
   }
 
