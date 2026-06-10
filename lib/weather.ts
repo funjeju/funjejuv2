@@ -13,9 +13,12 @@ export type Weather = {
   isDay: boolean;
   description: string;         // 한글 날씨 설명
   emoji: string;               // 날씨 이모지
-  congestion: "한산" | "보통" | "혼잡"; // 혼잡도 (날씨/시간 기반 추정)
+  congestion: "한산" | "보통" | "혼잡"; // (deprecated — UI에서 미사용)
   congestionEmoji: string;
   windLabel: string;           // 약풍/적당/강풍
+  tide: string;                // 물때 (예: "7물", "조금", "사리")
+  tideEmoji: string;
+  tideDetail: string;          // 짧은 설명 (물살 세기)
 };
 
 // WMO Weather interpretation codes
@@ -42,6 +45,38 @@ function getWindLabel(windSpeed: number): string {
   if (windSpeed < 5) return "적당";
   if (windSpeed < 10) return "강풍";
   return "매우 강함";
+}
+
+/**
+ * 물때 계산 (음력 기반 — 제주 7물때식)
+ * 기준 합삭(신월): 2000-01-06 18:14 KST / 삭망월 29.530589일
+ * 음력일 1일 = 7물 (제주·서해안식)
+ */
+function calcTide(now: Date): { tide: string; emoji: string; detail: string } {
+  const epoch = Date.UTC(2000, 0, 6, 9, 14); // 2000-01-06 18:14 KST = 09:14 UTC
+  const synodic = 29.530589;
+  const days = (now.getTime() - epoch) / 86400000;
+  const lunarAge = ((days % synodic) + synodic) % synodic;
+  const lunarDay = Math.floor(lunarAge) + 1; // 음력일 (1~30)
+
+  // 제주 7물때식: 음력 1일 = 7물
+  const mul = ((lunarDay - 1 + 6) % 15) + 1; // 1~15
+
+  // 이름 매핑: 15물때 체계 (1~13물, 조금, 무시)
+  let name: string;
+  let emoji: string;
+  let detail: string;
+  if (mul === 14) {
+    name = "조금"; emoji = "🌗"; detail = "물살 가장 약함";
+  } else if (mul === 15) {
+    name = "무시"; emoji = "🌗"; detail = "물살 약함";
+  } else {
+    name = `${mul}물`;
+    if (mul >= 6 && mul <= 9) { emoji = "🌊"; detail = "물살 강함 (사리)"; }
+    else if (mul >= 4 && mul <= 11) { emoji = "🌊"; detail = "물살 보통"; }
+    else { emoji = "🌙"; detail = "물살 약함"; }
+  }
+  return { tide: name, emoji, detail };
 }
 
 function estimateCongestion(
@@ -103,6 +138,7 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
     const dow = now.getDay();
     const isWeekend = dow === 0 || dow === 6;
     const cong = estimateCongestion(c.weather_code, now.getHours(), isWeekend);
+    const tideInfo = calcTide(now);
 
     return {
       temperature: Math.round(c.temperature_2m),
@@ -117,6 +153,9 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
       congestion: cong.level,
       congestionEmoji: cong.emoji,
       windLabel: getWindLabel(c.wind_speed_10m),
+      tide: tideInfo.tide,
+      tideEmoji: tideInfo.emoji,
+      tideDetail: tideInfo.detail,
     };
   } catch {
     return null;

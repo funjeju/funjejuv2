@@ -50,13 +50,13 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     };
 
     // video element 자체의 재생 상태 추적
+    // waiting(버퍼링)은 일시정지가 아니므로 ▶ 오버레이 안 띄움
     const handlePlay  = () => { setIsPlaying(true); sendEvent("start"); };
-    const handlePause = () => { setIsPlaying(false); sendEvent("stop"); };
+    const handlePause = () => { if (video.paused) { setIsPlaying(false); sendEvent("stop"); } };
     const handleEnd   = () => { setIsPlaying(false); sendEvent("stop"); };
     video.addEventListener("playing", handlePlay);
     video.addEventListener("pause",   handlePause);
     video.addEventListener("ended",   handleEnd);
-    video.addEventListener("waiting", handlePause); // 버퍼링 시작
 
     async function init() {
       const Hls = (await import("hls.js")).default;
@@ -138,7 +138,6 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       video.removeEventListener("playing", handlePlay);
       video.removeEventListener("pause",   handlePause);
       video.removeEventListener("ended",   handleEnd);
-      video.removeEventListener("waiting", handlePause);
       window.removeEventListener("pagehide", handleUnload);
       video.pause();
       video.removeAttribute("src");

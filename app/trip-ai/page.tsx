@@ -1,80 +1,330 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { PageHeader } from "@/components/common/PageHeader";
+import { TripResultView } from "@/components/trip/TripResultView";
 import { useSaved } from "@/hooks/useSaved";
 import { mockCctvs } from "@/constants/mock-cctvs";
+import type { TripPlan, TripPlanRequest } from "@/types/trip";
 
-const STYLES = [
-  { id: "healing",  emoji: "🌿", label: "힐링·휴식",  desc: "자연 속에서 느리게" },
-  { id: "food",     emoji: "🍖", label: "맛집 탐방",  desc: "제주 미식 여행" },
-  { id: "activity", emoji: "🏄", label: "액티비티",   desc: "서핑·트래킹·레저" },
-  { id: "culture",  emoji: "🏛️", label: "문화·역사",  desc: "박물관·유적지" },
-  { id: "cafe",     emoji: "☕", label: "카페 투어",  desc: "감성 카페 순례" },
-  { id: "family",   emoji: "👨‍👩‍👧", label: "가족 여행",  desc: "아이와 함께" },
+// ── 폼 상태 (TripPlannerModal 기반) ─────────────────────────
+type FormState = {
+  nights: number;
+  days: number;
+  arrivalHour: string;
+  arrivalMinute: string;
+  departureHour: string;
+  departureMinute: string;
+  companions: string[];
+  transportation: string;
+  accommodationStatus: "booked" | "not_booked" | null;
+  bookedAccommodations: string[];
+  remainingNightsPlan: "stay_at_first" | "recommend_rest" | null;
+  tripStyle: string;
+  accommodationRecommendationStyle: "base_camp" | "daily_move" | null;
+  preferredAccommodationRegion: string;
+  accommodationType: string[];
+  accommodationBudget: string;
+  pace: string;
+  interests: string[];
+  interestWeights: { [key: string]: number };
+  restaurantStyle: string;
+  mustVisitRestaurants: string[];
+  mustVisitSpots: string[];
+};
+
+const initialFormState: FormState = {
+  nights: 2,
+  days: 3,
+  arrivalHour: "10",
+  arrivalMinute: "00",
+  departureHour: "18",
+  departureMinute: "00",
+  companions: [],
+  transportation: "렌터카",
+  accommodationStatus: null,
+  bookedAccommodations: [""],
+  remainingNightsPlan: null,
+  tripStyle: "",
+  accommodationRecommendationStyle: null,
+  preferredAccommodationRegion: "",
+  accommodationType: [],
+  accommodationBudget: "",
+  pace: "보통",
+  interests: [],
+  interestWeights: {},
+  restaurantStyle: "",
+  mustVisitRestaurants: [""],
+  mustVisitSpots: [""],
+};
+
+const COMPANION_OPTIONS = ["혼자", "친구와", "연인과", "아이를 동반한 가족", "부모님을 모시고", "반려견과 함께", "회사 동료와"];
+const TRANSPORTATION_OPTIONS = ["렌터카", "대중교통", "택시/투어 상품 이용"];
+const PACE_OPTIONS = ["여유롭게", "보통", "촘촘하게"];
+const INTEREST_OPTIONS = ["#자연 (숲, 오름, 바다)", "#오션뷰 (카페, 식당, 숙소)", "#요즘 뜨는 핫플", "#쇼핑 & 소품샵", "#박물관 & 미술관", "#역사 & 문화 유적", "#짜릿한 액티비티", "#걷기 좋은 길"];
+const RESTAURANT_STYLE_OPTIONS = ["가성비 좋은 현지인 맛집 위주", "유명하고 검증된 관광객 맛집 위주", "분위기 좋은 감성 맛집 위주"];
+const ACCOMMODATION_TYPES = ["호텔", "펜션/풀빌라", "게스트하우스", "감성 숙소"];
+const ACCOMMODATION_BUDGETS = ["10만원 이하", "10~20만원", "20~30만원", "30만원 이상"];
+const TRIP_STYLE_OPTIONS = ["전체 저예산 위주", "중간 (적당히 절약 + 포인트 투자)", "고급 (숙소·식사·체험 모두 고급 위주)"];
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+const MINUTE_OPTIONS = ["00", "15", "30", "45"];
+
+const LOADING_MESSAGES = [
+  "🗿 여행 프로필 분석 중...",
+  "🍴 도민맛집 데이터에서 고르는 중...",
+  "🔍 구글에서 요즘 핫플 검색 중...",
+  "🗺️ 동선 최적화하는 중...",
+  "✨ 일정표 다듬는 중...",
 ];
 
-const DAYS_OPTIONS    = ["당일치기", "1박 2일", "2박 3일", "3박 4일"];
-const TRAVELER_OPTIONS = ["혼자", "커플 (2명)", "친구 (3-4명)", "가족"];
+// ── 공용 칩 버튼 ────────────────────────────────────────────
+function Chips({ options, selected, onSelect }: { options: string[]; selected: string; onSelect: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onSelect(opt)}
+          className={[
+            "rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",
+            selected === opt ? "bg-brand-orange text-white" : "bg-bg-card border border-border-soft text-text-secondary hover:border-brand-orange hover:text-brand-orange",
+          ].join(" ")}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-// 사용자가 직접 추가할 수 있는 예시 스팟
-const SUGGEST_SPOTS = ["한라산", "성산일출봉", "협재해변", "만장굴", "오설록", "우도", "섭지코지", "천지연폭포", "중문해수욕장"];
+function MultiChips({ options, selected, onToggle }: { options: string[]; selected: string[]; onToggle: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onToggle(opt)}
+          className={[
+            "rounded-full px-3.5 py-2 text-xs font-semibold transition-colors",
+            selected.includes(opt) ? "bg-brand-orange text-white" : "bg-bg-card border border-border-soft text-text-secondary hover:border-brand-orange hover:text-brand-orange",
+          ].join(" ")}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-type Day = { day: number; theme: string; items: { time: string; spot: string; category: string; emoji: string; comment: string; duration: string }[] };
-type Plan = { title: string; overview: string; days: Day[]; tips: string[]; closing: string };
+function BigChoice({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "w-full rounded-xl border px-4 py-3 text-left text-xs font-semibold transition-colors",
+        active ? "border-brand-orange bg-brand-orange/10 text-brand-orange" : "border-border-soft bg-bg-card text-text-primary hover:border-brand-orange/40",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
 
+function TimeSelect({ label, hour, minute, onHour, onMinute }: {
+  label: string; hour: string; minute: string; onHour: (v: string) => void; onMinute: (v: string) => void;
+}) {
+  const cls = "rounded-lg border border-border-soft bg-bg-card px-2 py-2 text-xs outline-none focus:border-brand-orange";
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-medium text-text-secondary">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <select value={hour} onChange={(e) => onHour(e.target.value)} className={cls}>
+          {HOUR_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
+        </select>
+        <span className="text-xs text-text-secondary">시</span>
+        <select value={minute} onChange={(e) => onMinute(e.target.value)} className={cls}>
+          {MINUTE_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <span className="text-xs text-text-secondary">분</span>
+      </div>
+    </div>
+  );
+}
+
+function DynamicList({ label, items, onChange, onAdd, onRemove, placeholder }: {
+  label: string; items: string[]; placeholder?: string;
+  onChange: (i: number, v: string) => void; onAdd: () => void; onRemove: (i: number) => void;
+}) {
+  return (
+    <div>
+      {label && <p className="mb-1.5 text-[11px] font-medium text-text-secondary">{label}</p>}
+      {items.map((item, i) => (
+        <div key={i} className="mb-2 flex items-center gap-2">
+          <input
+            type="text"
+            value={item}
+            placeholder={placeholder}
+            onChange={(e) => onChange(i, e.target.value)}
+            className="flex-1 rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs outline-none focus:border-brand-orange"
+          />
+          {items.length > 1 && (
+            <button type="button" onClick={() => onRemove(i)} className="text-sm text-live-red">✕</button>
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={onAdd}
+        className="rounded-full border border-border-soft bg-bg-card px-3 py-1.5 text-[11px] font-semibold text-text-secondary hover:border-brand-orange hover:text-brand-orange transition-colors"
+      >
+        + 추가
+      </button>
+    </div>
+  );
+}
+
+// ── 메인 ────────────────────────────────────────────────────
 export default function TripAiPage() {
   const { savedIds } = useSaved();
-  const [styleId,   setStyleId]   = useState("healing");
-  const [days,      setDays]      = useState("1박 2일");
-  const [travelers, setTravelers] = useState("커플 (2명)");
-  const [loading,   setLoading]   = useState(false);
-  const [plan,      setPlan]      = useState<Plan | null>(null);
-  const [error,     setError]     = useState("");
-  const [addInput,  setAddInput]  = useState("");
+  const [mode, setMode] = useState<"rough" | "detailed" | null>(null);
+  const [form, setForm] = useState<FormState>(initialFormState);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [plan, setPlan] = useState<TripPlan | null>(null);
+  const [error, setError] = useState("");
 
-  // 저장된 스팟 이름 목록 (초기 선택 상태)
+  // 저장한 스팟 → 필수 방문지 프리필
   const savedSpotNames = useMemo(
     () => mockCctvs.filter((c) => savedIds.has(c.id)).map((c) => c.name),
     [savedIds]
   );
-  const [selectedSpots, setSelectedSpots] = useState<string[]>(() => savedSpotNames);
 
-  // savedIds가 바뀌면 selectedSpots도 업데이트 (초기 로드 후)
-  // (hook 내부에서 처리하거나, 사용자가 직접 수정 가능하므로 초기값만 사용)
+  useEffect(() => {
+    if (!loading) return;
+    setLoadingMsgIdx(0);
+    const t = setInterval(() => setLoadingMsgIdx((i) => Math.min(i + 1, LOADING_MESSAGES.length - 1)), 4000);
+    return () => clearInterval(t);
+  }, [loading]);
 
-  function toggleSpot(name: string) {
-    setSelectedSpots((prev) =>
-      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name]
-    );
-  }
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setError("");
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
-  function addCustomSpot() {
-    const trimmed = addInput.trim();
-    if (!trimmed || selectedSpots.includes(trimmed)) { setAddInput(""); return; }
-    setSelectedSpots((prev) => [...prev, trimmed]);
-    setAddInput("");
-  }
+  const listChange = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots", i: number, v: string) => {
+    const next = [...form[key]];
+    next[i] = v;
+    update(key, next);
+  };
+  const listAdd = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots") =>
+    update(key, [...form[key], ""]);
+  const listRemove = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots", i: number) =>
+    update(key, form[key].filter((_, idx) => idx !== i));
 
-  async function generatePlan() {
+  // 동적 스텝 (TripPlannerModal 로직 이식)
+  const STEPS = useMemo(() => {
+    if (mode === "rough") return ["duration", "companions", "transportation", "summary"];
+    const base = ["duration", "companions", "transportation", "accommodationStatus"];
+    if (!form.accommodationStatus) return base;
+
+    const accSteps: string[] = [];
+    if (form.accommodationStatus === "booked") {
+      accSteps.push("bookedAccommodations");
+      const bookedCount = form.bookedAccommodations.filter((s) => s.trim() !== "").length;
+      if (form.nights > 0 && bookedCount > 0 && form.nights > bookedCount) {
+        accSteps.push("bookedAccommodationsFollowUp");
+      }
+    }
+    const needsRec = form.accommodationStatus === "not_booked" || form.remainingNightsPlan === "recommend_rest";
+    if (needsRec) {
+      accSteps.push("tripStyle");
+      if (form.nights > 1) accSteps.push("accommodationRecommendationStyle");
+      accSteps.push("accommodationPrefs");
+    }
+    const prefSteps = ["pace", "interests"];
+    if (form.interests.length > 1) prefSteps.push("interestWeights");
+    return [...base, ...accSteps, ...prefSteps, "food", "mustVisits", "summary"];
+  }, [mode, form.accommodationStatus, form.bookedAccommodations, form.nights, form.remainingNightsPlan, form.interests.length]);
+
+  const MAX_STEPS = mode === "rough" ? 4 : 15;
+
+  // 가중치 재분배 (합 100 유지)
+  const handleWeightChange = (changed: string, raw: number) => {
+    const weights = { ...form.interestWeights };
+    const newValue = Math.round(raw / 10) * 10;
+    const delta = newValue - (weights[changed] || 0);
+    if (delta === 0) return;
+    weights[changed] = newValue;
+
+    const others = form.interests.filter((i) => i !== changed);
+    let remaining = delta;
+    while (remaining > 0) {
+      const largest = others.filter((i) => (weights[i] || 0) > 0).sort((a, b) => (weights[b] || 0) - (weights[a] || 0))[0];
+      if (!largest) break;
+      weights[largest] -= 10;
+      remaining -= 10;
+    }
+    while (remaining < 0) {
+      const smallest = others.filter((i) => (weights[i] || 0) < 100).sort((a, b) => (weights[a] || 0) - (weights[b] || 0))[0];
+      if (!smallest) break;
+      weights[smallest] += 10;
+      remaining += 10;
+    }
+    const sum = Object.values(weights).reduce((s, v) => s + (v || 0), 0);
+    const correction = 100 - sum;
+    if (correction !== 0) {
+      const fix = form.interests.find((i) => (weights[i] || 0) + correction >= 0 && (weights[i] || 0) + correction <= 100);
+      if (fix) weights[fix] = (weights[fix] || 0) + correction;
+    }
+    update("interestWeights", weights);
+  };
+
+  async function generate() {
     setLoading(true);
     setError("");
     setPlan(null);
 
-    const daysNum = days === "당일치기" ? 1 : parseInt(days.match(/\d+박/)?.[0] ?? "1") + 1;
-    const styleLabel = STYLES.find((s) => s.id === styleId)?.label ?? "힐링·휴식";
-    const spots = selectedSpots.length > 0 ? selectedSpots : ["협재 해변", "성산일출봉", "오설록"];
+    const req: TripPlanRequest = {
+      mode: mode!,
+      nights: form.nights,
+      days: form.days,
+      arrivalTime: `${form.arrivalHour}:${form.arrivalMinute}`,
+      departureTime: `${form.departureHour}:${form.departureMinute}`,
+      companions: form.companions,
+      transportation: form.transportation,
+    };
+    if (mode === "detailed") {
+      Object.assign(req, {
+        accommodationStatus: form.accommodationStatus ?? undefined,
+        bookedAccommodations: form.bookedAccommodations.filter(Boolean),
+        remainingNightsPlan: form.remainingNightsPlan ?? undefined,
+        tripStyle: form.tripStyle || undefined,
+        accommodationRecommendationStyle: form.accommodationRecommendationStyle ?? undefined,
+        preferredAccommodationRegion: form.preferredAccommodationRegion || undefined,
+        accommodationType: form.accommodationType,
+        accommodationBudget: form.accommodationBudget || undefined,
+        pace: form.pace,
+        interestWeights: form.interestWeights,
+        restaurantStyle: form.restaurantStyle || undefined,
+        mustVisitRestaurants: form.mustVisitRestaurants.filter(Boolean),
+        mustVisitSpots: [...new Set([...form.mustVisitSpots.filter(Boolean), ...savedSpotNames])],
+      } satisfies Partial<TripPlanRequest>);
+    }
 
     try {
       const res = await fetch("/api/trip-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spots, style: styleLabel, days: daysNum, travelers }),
+        body: JSON.stringify(req),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "일정 생성 실패");
-      setPlan(data as Plan);
+      setPlan(data as TripPlan);
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했어요");
     } finally {
@@ -82,253 +332,351 @@ export default function TripAiPage() {
     }
   }
 
-  // ── 설정 화면 ──────────────────────────────────────────────
-  if (!plan) return (
-    <div className="mx-auto max-w-4xl px-0 md:px-4 md:py-6">
-      <PageHeader title="AI 여행 일정" subtitle="나만의 맞춤 제주 일정을 돌맹이가 짜드려요" emoji="🗓️" />
+  const handleNext = () => {
+    const step = STEPS[currentStep];
+    if (step === "interests") {
+      if (form.interests.length === 0 || form.interests.length > 4) {
+        setError("관심사를 1개 이상, 4개 이하로 선택해주세요.");
+        return;
+      }
+      // 균등 분배 후 10 단위 보정
+      const n = form.interests.length;
+      const weights: { [k: string]: number } = {};
+      form.interests.forEach((it) => { weights[it] = Math.round(100 / n / 10) * 10; });
+      let sum = Object.values(weights).reduce((s, v) => s + v, 0);
+      let i = 0;
+      while (sum !== 100 && i < 20) {
+        const key = form.interests[i % n];
+        const adj = Math.sign(100 - sum) * 10;
+        if (weights[key] + adj >= 0 && weights[key] + adj <= 100) weights[key] += adj;
+        sum = Object.values(weights).reduce((s, v) => s + v, 0);
+        i++;
+      }
+      update("interestWeights", weights);
+    }
+    if (step === "interestWeights") {
+      const total = Object.values(form.interestWeights).reduce((s, w) => s + (w || 0), 0);
+      if (total !== 100) {
+        setError(`가중치의 총합이 100%가 되어야 해요. (현재: ${total}%)`);
+        return;
+      }
+    }
+    if (step === "summary") {
+      generate();
+    } else {
+      setCurrentStep((p) => p + 1);
+    }
+  };
 
-      {/* 1. 여행 스타일 */}
-      <section className="mb-5 px-4 md:px-0">
-        <h2 className="mb-3 text-base font-bold text-text-primary">여행 스타일 선택</h2>
-        <div className="grid grid-cols-3 gap-2 md:grid-cols-6">
-          {STYLES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setStyleId(s.id)}
-              className={[
-                "flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition-all",
-                styleId === s.id
-                  ? "border-brand-orange bg-brand-orange/10 shadow-soft"
-                  : "border-border-soft bg-bg-card hover:border-brand-orange/40",
-              ].join(" ")}
+  const handleBack = () => {
+    if (currentStep === 0) setMode(null);
+    else setCurrentStep((p) => p - 1);
+  };
+
+  const resetAll = () => {
+    setPlan(null);
+    setMode(null);
+    setForm(initialFormState);
+    setCurrentStep(0);
+    setError("");
+  };
+
+  // ── 스텝 렌더링 ──────────────────────────────────────────
+  const renderStep = () => {
+    const step = STEPS[currentStep];
+    const bookedCount = form.bookedAccommodations.filter((s) => s.trim()).length;
+    const remainingNights = form.nights - bookedCount;
+
+    switch (step) {
+      case "duration": return (
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-text-primary">총 몇 박 며칠 일정인가요?</h3>
+          <div className="flex items-center gap-3">
+            <select
+              value={form.nights}
+              onChange={(e) => { const n = parseInt(e.target.value); update("nights", n); update("days", n + 1); }}
+              className="rounded-xl border border-border-soft bg-bg-card px-3 py-2 text-xs outline-none focus:border-brand-orange"
             >
-              <span className="text-2xl">{s.emoji}</span>
-              <span className={["text-[11px] font-bold", styleId === s.id ? "text-brand-orange" : "text-text-primary"].join(" ")}>
-                {s.label}
-              </span>
-              <span className="text-[9px] text-text-secondary">{s.desc}</span>
-            </button>
-          ))}
+              {Array.from({ length: 6 }, (_, i) => <option key={i} value={i}>{i === 0 ? "당일치기" : `${i}박`}</option>)}
+            </select>
+            <span className="text-xs font-bold text-text-secondary">{form.days}일</span>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TimeSelect label="도착 예상 시간" hour={form.arrivalHour} minute={form.arrivalMinute}
+              onHour={(v) => update("arrivalHour", v)} onMinute={(v) => update("arrivalMinute", v)} />
+            <TimeSelect label="출발 예상 시간" hour={form.departureHour} minute={form.departureMinute}
+              onHour={(v) => update("departureHour", v)} onMinute={(v) => update("departureMinute", v)} />
+          </div>
         </div>
-      </section>
-
-      {/* 2. 포함할 스팟 */}
-      <section className="mb-5 px-4 md:px-0">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-bold text-text-primary">
-            포함할 스팟
-            <span className="ml-1.5 rounded-full bg-brand-orange/10 px-2 py-0.5 text-xs font-bold text-brand-orange">
-              {selectedSpots.length}개
-            </span>
-          </h2>
-          {selectedSpots.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedSpots([])}
-              className="text-[11px] text-text-secondary hover:text-live-red transition-colors"
-            >
-              전체 해제
-            </button>
-          )}
+      );
+      case "companions": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">누구와 함께 떠나시나요?</h3>
+          <MultiChips options={COMPANION_OPTIONS} selected={form.companions}
+            onToggle={(v) => update("companions", form.companions.includes(v) ? form.companions.filter((c) => c !== v) : [...form.companions, v])} />
         </div>
-
-        {/* 선택된 스팟 */}
-        <div className="flex flex-wrap gap-2 mb-3">
-          {selectedSpots.length === 0 ? (
-            <div className="w-full rounded-2xl border border-dashed border-border-soft bg-bg-secondary/30 p-4 text-center">
-              <p className="text-xs text-text-secondary">
-                스팟 없이 진행하면 돌맹이가 알아서 추천해줄게요!
-              </p>
-            </div>
-          ) : (
-            selectedSpots.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => toggleSpot(name)}
-                className="flex items-center gap-1 rounded-full bg-brand-orange/10 px-3 py-1.5 text-xs font-semibold text-brand-orange hover:bg-live-red/10 hover:text-live-red transition-colors group"
-              >
-                📍 {name}
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity">✕</span>
-              </button>
-            ))
-          )}
+      );
+      case "transportation": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">주된 이동 수단은 무엇인가요?</h3>
+          <Chips options={TRANSPORTATION_OPTIONS} selected={form.transportation} onSelect={(v) => update("transportation", v)} />
         </div>
-
-        {/* 빠른 추가 제안 */}
-        <div className="mb-2">
-          <p className="mb-1.5 text-[10px] font-medium text-text-secondary">빠른 추가</p>
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGEST_SPOTS.filter((s) => !selectedSpots.includes(s)).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleSpot(s)}
-                className="rounded-full border border-border-soft bg-bg-card px-2.5 py-1 text-[11px] font-medium text-text-secondary hover:border-brand-orange hover:text-brand-orange transition-colors"
-              >
-                + {s}
-              </button>
+      );
+      case "accommodationStatus": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">이미 예약하신 숙소가 있나요?</h3>
+          <div className="flex flex-col gap-2">
+            <BigChoice active={form.accommodationStatus === "booked"} onClick={() => update("accommodationStatus", "booked")}>네, 있습니다</BigChoice>
+            <BigChoice active={form.accommodationStatus === "not_booked"} onClick={() => update("accommodationStatus", "not_booked")}>아니요, 추천해주세요</BigChoice>
+          </div>
+        </div>
+      );
+      case "bookedAccommodations": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">예약하신 숙소 이름을 모두 알려주세요</h3>
+          <DynamicList label="" items={form.bookedAccommodations} placeholder="예: 신라스테이 제주"
+            onChange={(i, v) => listChange("bookedAccommodations", i, v)}
+            onAdd={() => listAdd("bookedAccommodations")}
+            onRemove={(i) => listRemove("bookedAccommodations", i)} />
+        </div>
+      );
+      case "bookedAccommodationsFollowUp": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">
+            숙소 {bookedCount}곳을 입력하셨네요. 남은 {remainingNights}박은 어떻게 할까요?
+          </h3>
+          <div className="flex flex-col gap-2">
+            <BigChoice active={form.remainingNightsPlan === "stay_at_first"} onClick={() => update("remainingNightsPlan", "stay_at_first")}>입력한 숙소에서 모두 숙박할게요</BigChoice>
+            <BigChoice active={form.remainingNightsPlan === "recommend_rest"} onClick={() => update("remainingNightsPlan", "recommend_rest")}>남은 숙소는 돌맹이에게 추천받을게요</BigChoice>
+          </div>
+        </div>
+      );
+      case "tripStyle": return (
+        <div>
+          <h3 className="mb-1 text-sm font-bold text-text-primary">여행의 전반적인 스타일은요?</h3>
+          <p className="mb-3 text-[11px] text-text-secondary">숙소뿐만 아니라 식사, 체험 추천에도 반영돼요.</p>
+          <div className="flex flex-col gap-2">
+            {TRIP_STYLE_OPTIONS.map((opt) => (
+              <BigChoice key={opt} active={form.tripStyle === opt} onClick={() => update("tripStyle", opt)}>{opt}</BigChoice>
             ))}
           </div>
         </div>
-
-        {/* 직접 입력 */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={addInput}
-            onChange={(e) => setAddInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addCustomSpot()}
-            placeholder="직접 스팟 입력..."
-            className="flex-1 rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs outline-none focus:border-brand-orange"
-          />
-          <button
-            type="button"
-            onClick={addCustomSpot}
-            disabled={!addInput.trim()}
-            className="rounded-xl bg-brand-orange px-4 py-2 text-xs font-bold text-white hover:bg-brand-orange/90 disabled:opacity-40 transition-colors"
-          >
-            추가
-          </button>
+      );
+      case "accommodationRecommendationStyle": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">숙소는 어떻게 추천해 드릴까요?</h3>
+          <div className="mb-3 flex flex-col gap-2">
+            <BigChoice active={form.accommodationRecommendationStyle === "base_camp"} onClick={() => update("accommodationRecommendationStyle", "base_camp")}>한 곳을 거점으로 여행할래요</BigChoice>
+            <BigChoice active={form.accommodationRecommendationStyle === "daily_move"} onClick={() => update("accommodationRecommendationStyle", "daily_move")}>동선에 맞춰 매일 다른 곳에 머물래요</BigChoice>
+          </div>
+          {form.accommodationRecommendationStyle === "base_camp" && (
+            <input
+              type="text"
+              value={form.preferredAccommodationRegion}
+              onChange={(e) => update("preferredAccommodationRegion", e.target.value)}
+              placeholder="선호 지역이 있다면? 예: 애월, 서귀포 (선택)"
+              className="w-full rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs outline-none focus:border-brand-orange"
+            />
+          )}
+          {form.accommodationRecommendationStyle === "daily_move" && (
+            <p className="rounded-xl bg-brand-navy/5 p-3 text-[11px] leading-5 text-brand-navy">
+              알겠어요! 매일 그날 일정의 마지막 코스와 가까운 숙소를 추천해 드릴게요. 🗿
+            </p>
+          )}
         </div>
-      </section>
-
-      {/* 3. CTA 카드 (기간 + 인원 + 생성 버튼) */}
-      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-5 text-white md:mx-0">
-        <div className="flex items-start justify-between">
+      );
+      case "accommodationPrefs": return (
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-text-primary">선호하는 숙소 유형과 1박 예산을 알려주세요</h3>
           <div>
-            <p className="text-xs font-medium text-white/70">AI 맞춤 일정 생성</p>
-            <h2 className="mt-1 text-lg font-black">
-              제주 여행 일정,<br />나한테 맡겨봐! 🗿
-            </h2>
-            <p className="mt-1 text-xs text-white/80">
-              {selectedSpots.length > 0
-                ? <>스팟 <span className="font-bold">{selectedSpots.length}개</span>로 최적 동선 생성</>
-                : "돌맹이가 알아서 최적 코스 추천"}
+            <p className="mb-1.5 text-[11px] font-medium text-text-secondary">유형 (복수 선택)</p>
+            <MultiChips options={ACCOMMODATION_TYPES} selected={form.accommodationType}
+              onToggle={(v) => update("accommodationType", form.accommodationType.includes(v) ? form.accommodationType.filter((c) => c !== v) : [...form.accommodationType, v])} />
+          </div>
+          <div>
+            <p className="mb-1.5 text-[11px] font-medium text-text-secondary">1박 예산</p>
+            <Chips options={ACCOMMODATION_BUDGETS} selected={form.accommodationBudget} onSelect={(v) => update("accommodationBudget", v)} />
+          </div>
+        </div>
+      );
+      case "pace": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">여행 템포를 알려주세요</h3>
+          <Chips options={PACE_OPTIONS} selected={form.pace} onSelect={(v) => update("pace", v)} />
+        </div>
+      );
+      case "interests": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">경험하고 싶은 스타일을 골라주세요 (1~4개)</h3>
+          <MultiChips options={INTEREST_OPTIONS} selected={form.interests}
+            onToggle={(v) => update("interests", form.interests.includes(v) ? form.interests.filter((c) => c !== v) : [...form.interests, v])} />
+        </div>
+      );
+      case "interestWeights": return (
+        <div>
+          <h3 className="mb-3 text-sm font-bold text-text-primary">선택한 스타일의 중요도를 조절해주세요 (총합 100%)</h3>
+          <div className="space-y-3">
+            {form.interests.map((interest) => (
+              <div key={interest} className="grid grid-cols-5 items-center gap-2">
+                <label className="col-span-2 truncate text-[11px] text-text-primary" htmlFor={`w-${interest}`}>{interest}</label>
+                <input
+                  id={`w-${interest}`}
+                  type="range" min="0" max="100" step="10"
+                  value={form.interestWeights[interest] || 0}
+                  onChange={(e) => handleWeightChange(interest, parseInt(e.target.value))}
+                  className="col-span-2 accent-brand-orange"
+                />
+                <span className="col-span-1 text-right text-xs font-bold text-text-primary">{form.interestWeights[interest] || 0}%</span>
+              </div>
+            ))}
+            <p className="text-right text-xs font-bold text-brand-navy">
+              총합: {Object.values(form.interestWeights).reduce((a, b) => a + (b || 0), 0)}%
             </p>
           </div>
-          <DolmangyiIcon size={64} className="shrink-0" />
         </div>
-
-        <div className="mt-4 space-y-2">
-          <div>
-            <p className="mb-1.5 text-[10px] text-white/60">여행 기간</p>
-            <div className="flex flex-wrap gap-1.5">
-              {DAYS_OPTIONS.map((d) => (
-                <button key={d} type="button" onClick={() => setDays(d)}
-                  className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                    days === d ? "bg-brand-yellow text-brand-navy" : "bg-white/10 text-white hover:bg-white/20"].join(" ")}>
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-1.5 text-[10px] text-white/60">여행 인원</p>
-            <div className="flex flex-wrap gap-1.5">
-              {TRAVELER_OPTIONS.map((t) => (
-                <button key={t} type="button" onClick={() => setTravelers(t)}
-                  className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                    travelers === t ? "bg-brand-yellow text-brand-navy" : "bg-white/10 text-white hover:bg-white/20"].join(" ")}>
-                  {t}
-                </button>
-              ))}
-            </div>
+      );
+      case "food": return (
+        <div>
+          <h3 className="mb-1 text-sm font-bold text-text-primary">식사는 어떤 스타일을 선호하시나요?</h3>
+          <p className="mb-3 text-[11px] text-text-secondary">맛집은 도민이 인증한 진짜 맛집에서 우선 추천해 드려요. 🗿</p>
+          <div className="flex flex-col gap-2">
+            {RESTAURANT_STYLE_OPTIONS.map((opt) => (
+              <BigChoice key={opt} active={form.restaurantStyle === opt} onClick={() => update("restaurantStyle", opt)}>{opt}</BigChoice>
+            ))}
           </div>
         </div>
+      );
+      case "mustVisits": return (
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-text-primary">꼭 가고 싶은 곳이 있나요?</h3>
+          {savedSpotNames.length > 0 && (
+            <p className="rounded-xl bg-brand-yellow/20 p-2.5 text-[11px] leading-5 text-text-primary">
+              ⭐ 저장해둔 스팟 {savedSpotNames.length}곳({savedSpotNames.slice(0, 3).join(", ")}{savedSpotNames.length > 3 ? " 외" : ""})은 자동으로 반영돼요!
+            </p>
+          )}
+          <DynamicList label="맛집/카페" items={form.mustVisitRestaurants} placeholder="예: 우진해장국"
+            onChange={(i, v) => listChange("mustVisitRestaurants", i, v)}
+            onAdd={() => listAdd("mustVisitRestaurants")}
+            onRemove={(i) => listRemove("mustVisitRestaurants", i)} />
+          <DynamicList label="관광지" items={form.mustVisitSpots} placeholder="예: 성산일출봉"
+            onChange={(i, v) => listChange("mustVisitSpots", i, v)}
+            onAdd={() => listAdd("mustVisitSpots")}
+            onRemove={(i) => listRemove("mustVisitSpots", i)} />
+        </div>
+      );
+      case "summary": return (
+        <div className="text-center">
+          <DolmangyiIcon size={56} />
+          <h3 className="mt-3 text-sm font-bold text-text-primary">준비 끝!</h3>
+          <p className="mt-1 text-[11px] leading-5 text-text-secondary">
+            {form.nights === 0 ? "당일치기" : `${form.nights}박 ${form.days}일`} · {form.transportation}
+            {form.companions.length > 0 && ` · ${form.companions.join(", ")}`}
+            <br />아래 버튼을 누르면 돌맹이가 도민맛집과 함께 일정을 짜드려요.
+          </p>
+        </div>
+      );
+      default: return null;
+    }
+  };
 
-        <button
-          type="button"
-          onClick={generatePlan}
-          disabled={loading}
-          className="mt-4 w-full rounded-xl bg-brand-yellow py-3 text-sm font-black text-brand-navy hover:bg-brand-yellow/90 disabled:opacity-50 transition-colors"
-        >
-          {loading ? "🗿 돌맹이가 일정 짜는 중..." : "✨ AI 일정 만들기"}
-        </button>
-        {error && <p className="mt-2 text-xs font-semibold text-red-200">❌ {error}</p>}
-      </div>
-    </div>
-  );
-
-  // ── 결과 화면 ──────────────────────────────────────────────
+  // ── 화면 분기 ────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-4xl px-0 md:px-4 md:py-6">
-      <PageHeader title="AI 여행 일정" subtitle="나만의 맞춤 제주 일정을 돌맹이가 짜드려요" emoji="🗓️" />
-      <div className="mx-4 space-y-4 md:mx-0">
-        <div className="rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-5 text-white">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] text-white/70">🗿 돌맹이가 짜준 일정</p>
-              <h2 className="mt-1 text-lg font-black">{plan.title}</h2>
-              <p className="mt-2 text-xs leading-5 text-white/90">{plan.overview}</p>
-            </div>
-            <button type="button" onClick={() => setPlan(null)}
-              className="shrink-0 rounded-full border border-white/30 px-3 py-1.5 text-[11px] font-medium hover:bg-white/10 transition-colors">
-              다시 만들기
-            </button>
-          </div>
-        </div>
+      <PageHeader title="AI 여행 일정" subtitle="도민맛집과 함께하는 나만의 제주 일정" emoji="🗓️" />
 
-        {plan.days.map((d) => (
-          <div key={d.day} className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
-            <div className="mb-3 flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-orange text-xs font-black text-white">D{d.day}</span>
-              <p className="text-sm font-bold text-text-primary">{d.theme}</p>
+      <div className="px-4 md:px-0">
+        {plan ? (
+          <TripResultView
+            plan={plan}
+            transportation={form.transportation}
+            onReset={resetAll}
+            onRegenerate={generate}
+            regenerating={loading}
+          />
+        ) : loading ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border-soft bg-bg-card px-6 py-16 shadow-card">
+            <DolmangyiIcon size={72} />
+            <div className="mt-5 flex items-center gap-1.5">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-orange" style={{ animationDelay: "-0.3s" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-orange" style={{ animationDelay: "-0.15s" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-brand-orange" />
             </div>
-            <div className="space-y-2">
-              {d.items.map((item, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="flex w-12 shrink-0 flex-col items-center">
-                    <span className="text-[10px] font-bold text-brand-navy">{item.time}</span>
-                    <div className="mt-1 h-full w-px bg-border-soft" />
-                  </div>
-                  <div className="flex-1 rounded-xl bg-bg-secondary/50 p-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">{item.emoji}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-text-primary">{item.spot}</p>
-                        <div className="flex items-center gap-1.5">
-                          <span className="rounded-full bg-bg-card px-2 py-0.5 text-[9px] font-medium text-text-secondary">{item.category}</span>
-                          <span className="text-[10px] text-text-secondary">⏱ {item.duration}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-brand-yellow/20 p-2">
-                      <DolmangyiIcon size={20} className="shrink-0" />
-                      <p className="text-[11px] leading-5 text-text-primary">{item.comment}</p>
-                    </div>
-                  </div>
+            <p className="mt-4 text-sm font-bold text-text-primary">{LOADING_MESSAGES[loadingMsgIdx]}</p>
+            <p className="mt-1 text-[11px] text-text-secondary">검색까지 하느라 20초 정도 걸려요. 조금만 기다려주세요!</p>
+          </div>
+        ) : mode === null ? (
+          <div className="space-y-3">
+            <p className="mb-4 text-center text-sm font-bold text-text-primary">어떻게 일정을 짜드릴까요?</p>
+            <button
+              type="button"
+              onClick={() => setMode("rough")}
+              className="w-full rounded-2xl border-2 border-border-soft bg-bg-card p-5 text-left transition-all hover:border-brand-orange hover:bg-brand-orange/5 group"
+            >
+              <div className="flex items-start gap-4">
+                <span className="text-3xl">⚡</span>
+                <div>
+                  <p className="text-sm font-black text-text-primary group-hover:text-brand-orange">빠른 일정 짜기</p>
+                  <p className="mt-1 text-[11px] leading-5 text-text-secondary">3가지만 답하면 바로 일정 완성.<br />러프하게 큰 그림만 보고 싶을 때.</p>
                 </div>
-              ))}
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("detailed")}
+              className="w-full rounded-2xl border-2 border-border-soft bg-bg-card p-5 text-left transition-all hover:border-brand-orange hover:bg-brand-orange/5 group"
+            >
+              <div className="flex items-start gap-4">
+                <span className="text-3xl">🎯</span>
+                <div>
+                  <p className="text-sm font-black text-text-primary group-hover:text-brand-orange">맞춤 일정 짜기</p>
+                  <p className="mt-1 text-[11px] leading-5 text-text-secondary">숙소·관심사·식사 스타일까지 전부 반영.<br />내 취향 100% 맞춤 일정이 필요할 때.</p>
+                </div>
+              </div>
+            </button>
+            <div className="rounded-2xl bg-brand-yellow/20 p-4 text-center">
+              <p className="text-[11px] leading-5 text-text-primary">
+                🗿 맛집은 <strong>도민이 인증한 진짜 맛집</strong>에서, 관광지는 <strong>실시간 검색</strong>으로!<br />
+                완성된 일정은 지도 위에 동선까지 그려드려요.
+              </p>
             </div>
           </div>
-        ))}
+        ) : (
+          <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:p-6">
+            {/* 진행 바 */}
+            <div className="mb-5">
+              <p className="mb-1 text-center text-[11px] font-semibold text-text-secondary">
+                {currentStep + 1} / {MAX_STEPS} 단계
+              </p>
+              <div className="h-1.5 w-full rounded-full bg-bg-secondary">
+                <div
+                  className="h-1.5 rounded-full bg-brand-orange transition-all duration-300"
+                  style={{ width: `${((currentStep + 1) / MAX_STEPS) * 100}%` }}
+                />
+              </div>
+            </div>
 
-        {plan.tips.length > 0 && (
-          <div className="rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-5">
-            <p className="mb-2 text-sm font-bold text-brand-navy">💡 돌맹이 꿀팁</p>
-            <ul className="space-y-1.5">
-              {plan.tips.map((tip, i) => <li key={i} className="text-xs leading-5 text-text-primary">• {tip}</li>)}
-            </ul>
+            <div className="min-h-[200px]">{renderStep()}</div>
+
+            {error && <p className="mt-3 text-center text-[11px] font-semibold text-live-red">❌ {error}</p>}
+
+            <div className="mt-5 flex items-center justify-between gap-3 border-t border-border-soft pt-4">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="rounded-xl border border-border-soft bg-bg-card px-5 py-2.5 text-xs font-semibold text-text-secondary hover:bg-bg-secondary transition-colors"
+              >
+                이전
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="rounded-xl bg-brand-orange px-6 py-2.5 text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
+              >
+                {STEPS[currentStep] === "summary" ? "✨ 일정 생성하기" : "다음"}
+              </button>
+            </div>
           </div>
         )}
-
-        <div className="rounded-2xl bg-brand-yellow/20 p-5 text-center">
-          <DolmangyiIcon size={48} />
-          <p className="mt-2 text-sm font-medium text-text-primary">{plan.closing}</p>
-        </div>
-
-        <div className="flex gap-2">
-          <button type="button" onClick={() => window.print()}
-            className="flex-1 rounded-xl border border-border-soft bg-bg-card py-3 text-sm font-semibold text-text-secondary hover:bg-bg-secondary transition-colors">
-            📥 저장하기
-          </button>
-          <button type="button" onClick={generatePlan} disabled={loading}
-            className="flex-1 rounded-xl bg-brand-orange py-3 text-sm font-bold text-white hover:bg-brand-orange/90 disabled:opacity-50 transition-colors">
-            🔄 다시 만들기
-          </button>
-        </div>
       </div>
     </div>
   );

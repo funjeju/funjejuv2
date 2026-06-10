@@ -1,18 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
+import { loadAllRestaurants } from "@/lib/restaurants";
+import { JEJU_LOCATIONS } from "@/constants/jeju-locations";
+import { mockCctvs } from "@/constants/mock-cctvs";
+import type { Restaurant } from "@/types/restaurant";
+import type { TripPlan, TripPlanRequest } from "@/types/trip";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
-const SYSTEM_PROMPT = `너는 제주 여행 전문 플래너 '돌맹이'야. 사용자의 저장 스팟과 스타일에 맞춰 최적 동선의 일정을 짜줘.
+// ── 1차: 구글 검색 그라운딩으로 일정 초안 생성 ──────────────
+const DRAFT_SYSTEM = `너는 제주 여행 전문 플래너 '돌맹이'야. 사용자 프로필에 맞춰 최적 동선의 제주 여행 일정 초안을 짜줘.
+
+[절대 규칙]
+1. 점심·저녁 식사 자리는 반드시 아래 제공되는 [도민맛집 리스트]에서만 골라. 선택한 맛집은 반드시 "이름 [ID:식별자]" 형식으로 표기해. (예: 명진전복 [ID:r123])
+2. 관광지·카페·액티비티·숙소는 구글 검색을 활용해서 실제 존재하는 인기 장소로 채워. 폐업했거나 존재가 불확실한 곳은 넣지 마.
+3. 동선 효율 최우선 — 하루 일정은 같은 권역(제주 동/서/남/북)으로 묶고, 권역을 오가는 지그재그 동선은 금지.
+4. 도착/출발 시간을 반영해 첫날과 마지막 날 일정량을 조절해.
+5. 시간대 흐름: 오전 가벼운 일정 → 점심 → 오후 활동 → 저녁 식사 → 노을/야경.
+6. 각 스팟마다 시간(HH:MM), 체류 시간, 친근한 반말 한 줄 코멘트를 붙여.
+7. 모든 스팟 이름 뒤에 그 장소의 실제 위경도를 (위도, 경도) 형식으로 표기해. 예: 성산일출봉 (33.4587, 126.9426). 구글 검색과 네 지식을 총동원해서 최대한 정확하게. 정말 모르는 곳만 생략.
+8. 형식: "### N일차: [테마]" 헤더 아래 시간순 리스트.`;
+
+// ── 2차: 초안 → 구조화 JSON ────────────────────────────────
+const STRUCTURE_SYSTEM = `너는 여행 일정 텍스트를 JSON으로 변환하는 변환기야. 주어진 일정 초안을 스키마에 맞춰 정확히 구조화해.
 
 [규칙]
-- 동선 효율 최우선 (제주 동/서/남/북 권역별로 묶기)
-- 시간대별로 자연스럽게 (오전 가벼움 → 점심 → 오후 활동 → 저녁 식사 → 노을/야경)
-- 이동시간 고려해서 무리하지 않게
-- 친근한 반말 멘트로 한 줄씩 코멘트
-- 점심/저녁 식사 자리는 반드시 포함
-- 마지막에 총평 한마디`;
+- 초안의 "[ID:xxx]" 표기가 있는 스팟은 restaurantId에 xxx를 넣고, 표기가 없으면 restaurantId는 빈 문자열.
+- name에는 [ID:...] 표기를 제거한 순수 장소 이름만.
+- searchKeyword는 카카오맵에서 그 장소를 찾을 검색어 (예: "제주 성산일출봉", "서귀포 카페 허니문하우스").
+- type은 맛집/카페/관광지/자연/액티비티/쇼핑/문화/숙소 중 하나.
+- lat/lng는 초안에 (위도, 경도)로 표기된 좌표를 그대로 옮겨. 초안에 없으면 네가 아는 실제 좌표를, 그것도 모르면 둘 다 0.
+- name에서 좌표 표기 (위도, 경도)도 제거해.
+- 초안 내용을 빠짐없이 옮기되 새로운 장소를 추가하지 마.`;
 
 const RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -32,77 +52,235 @@ const RESPONSE_SCHEMA = {
               type: Type.OBJECT,
               properties: {
                 time: { type: Type.STRING, description: "HH:MM" },
-                spot: { type: Type.STRING, description: "장소 이름" },
-                category: { type: Type.STRING, description: "해변/오름/카페/맛집/관광지/이동" },
+                name: { type: Type.STRING, description: "장소 이름 ([ID:..] 제거)" },
+                type: { type: Type.STRING, description: "맛집/카페/관광지/자연/액티비티/쇼핑/문화/숙소" },
                 emoji: { type: Type.STRING },
                 comment: { type: Type.STRING, description: "돌맹이의 친근한 한 줄 멘트" },
                 duration: { type: Type.STRING, description: "체류 시간 예: 1시간" },
+                searchKeyword: { type: Type.STRING, description: "카카오맵 검색용 키워드" },
+                restaurantId: { type: Type.STRING, description: "[ID:xxx]의 xxx, 없으면 빈 문자열" },
+                lat: { type: Type.NUMBER, description: "장소의 위도, 모르면 0" },
+                lng: { type: Type.NUMBER, description: "장소의 경도, 모르면 0" },
               },
-              required: ["time", "spot", "category", "emoji", "comment", "duration"],
+              required: ["time", "name", "type", "emoji", "comment", "duration", "searchKeyword", "restaurantId", "lat", "lng"],
             },
           },
         },
         required: ["day", "theme", "items"],
       },
     },
-    tips: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "여행 팁 2-3개",
-    },
+    tips: { type: Type.ARRAY, items: { type: Type.STRING }, description: "여행 팁 2-3개" },
     closing: { type: Type.STRING, description: "돌맹이의 마무리 한마디" },
   },
   required: ["title", "overview", "days", "tips", "closing"],
 };
 
-type Request = {
-  spots: string[];
-  style: string;
-  days: number;
-  travelers: string;
-};
+/** 도민맛집 → 프롬프트용 압축 라인 */
+function restaurantLines(all: Restaurant[]): string {
+  return all
+    .filter((r) => r.lat && r.lng)
+    .map((r) => `${r.id}|${r.title}|${r.region}|${r.menu}`)
+    .join("\n");
+}
+
+/** 사용자 프로필 → 프롬프트 텍스트 */
+function profileText(req: TripPlanRequest): string {
+  const lines: string[] = [
+    `- 기간: ${req.nights === 0 ? "당일치기" : `${req.nights}박 ${req.days}일`} (도착 ${req.arrivalTime}, 출발 ${req.departureTime})`,
+    `- 동반자: ${req.companions.length > 0 ? req.companions.join(", ") : "정보 없음"}`,
+    `- 이동수단: ${req.transportation}`,
+  ];
+
+  if (req.mode === "detailed") {
+    if (req.accommodationStatus === "booked") {
+      const booked = (req.bookedAccommodations ?? []).filter(Boolean);
+      lines.push(`- 숙소: 예약 완료 (${booked.join(", ")})`);
+      if (req.remainingNightsPlan === "recommend_rest") {
+        lines.push(`- 남은 숙박: AI 추천 필요`);
+      }
+    } else if (req.accommodationStatus === "not_booked") {
+      lines.push(`- 숙소: 미정 — 추천 필요`);
+      if (req.accommodationRecommendationStyle) {
+        lines.push(`- 숙소 추천 방식: ${req.accommodationRecommendationStyle === "base_camp" ? "한 곳 거점" : "동선 따라 매일 이동"}`);
+      }
+      if (req.preferredAccommodationRegion) lines.push(`- 선호 숙소 지역: ${req.preferredAccommodationRegion}`);
+      if (req.accommodationType?.length) lines.push(`- 선호 숙소 유형: ${req.accommodationType.join(", ")}`);
+      if (req.accommodationBudget) lines.push(`- 1박 예산: ${req.accommodationBudget}`);
+    }
+    if (req.tripStyle) lines.push(`- 전반적 스타일: ${req.tripStyle}`);
+    if (req.pace) lines.push(`- 여행 템포: ${req.pace}`);
+    if (req.interestWeights && Object.keys(req.interestWeights).length > 0) {
+      lines.push(`- 관심사 가중치: ${Object.entries(req.interestWeights).map(([k, v]) => `${k} ${v}%`).join(", ")}`);
+    }
+    if (req.restaurantStyle) lines.push(`- 식사 스타일: ${req.restaurantStyle}`);
+    const mustRest = (req.mustVisitRestaurants ?? []).filter(Boolean);
+    const mustSpot = (req.mustVisitSpots ?? []).filter(Boolean);
+    if (mustRest.length) lines.push(`- 꼭 가고 싶은 맛집/카페: ${mustRest.join(", ")}`);
+    if (mustSpot.length) lines.push(`- 꼭 가고 싶은 관광지: ${mustSpot.join(", ")}`);
+  }
+
+  return lines.join("\n");
+}
+
+/** 이름 정규화 (공백 제거) — 제목 퍼지 매칭용 */
+function norm(s: string): string {
+  return s.replace(/\s+/g, "").toLowerCase();
+}
+
+/** 제주 BBOX — AI가 출력한 좌표 검증용 */
+function inJeju(lat: number, lng: number): boolean {
+  return lat >= 33.1 && lat <= 33.65 && lng >= 126.1 && lng <= 127.0;
+}
+
+/** 로컬 좌표 폴백 — CCTV 스팟(정밀) + 명소 상수(region 없는 정밀 좌표만) */
+function localGeocode(name: string): { lat: number; lng: number } | null {
+  const n = norm(name);
+  for (const c of mockCctvs) {
+    if (n.includes(norm(c.name))) return { lat: c.latitude, lng: c.longitude };
+  }
+  for (const loc of JEJU_LOCATIONS) {
+    if (loc.region) continue; // 읍면 중심 좌표는 너무 거칠어서 제외
+    if (loc.keywords.some((k) => norm(k).length >= 2 && n.includes(norm(k)))) {
+      return { lat: loc.lat, lng: loc.lng };
+    }
+  }
+  return null;
+}
+
+function isTransient(e: unknown): boolean {
+  const status = (e as { status?: number }).status;
+  return status === 503 || status === 429;
+}
+
+/** 과부하(503/429) 시 다음 시도로 넘어가는 폴백 체인 */
+async function tryAttempts<T>(attempts: Array<() => Promise<T>>): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      return await attempts[i]();
+    } catch (e) {
+      lastErr = e;
+      if (!isTransient(e)) throw e;
+      if (i < attempts.length - 1) await new Promise((r) => setTimeout(r, 1200));
+    }
+  }
+  throw lastErr;
+}
 
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "API 키 미설정" }, { status: 500 });
 
-  const { spots, style, days, travelers } = (await req.json()) as Request;
-
-  if (!spots?.length) {
-    return NextResponse.json({ error: "저장한 스팟이 없어요" }, { status: 400 });
+  let body: TripPlanRequest;
+  try {
+    body = (await req.json()) as TripPlanRequest;
+  } catch {
+    return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
+  }
+  if (!body.days || body.days < 1) {
+    return NextResponse.json({ error: "여행 기간을 확인해주세요" }, { status: 400 });
   }
 
   const ai = new GoogleGenAI({ apiKey });
+  const restaurants = await loadAllRestaurants();
 
-  const userPrompt = `다음 조건으로 제주 여행 일정 짜줘:
+  const draftPrompt = `# 사용자 여행 프로필
+${profileText(body)}
 
-- 저장 스팟: ${spots.join(", ")}
-- 여행 스타일: ${style}
-- 기간: ${days}일
-- 인원: ${travelers}
+# 도민맛집 리스트 (ID|이름|지역|메뉴) — 식사는 반드시 여기서 선택
+${restaurantLines(restaurants)}
 
-저장한 스팟을 최대한 포함하되, 동선이 맞으면 비슷한 권역의 다른 추천 스팟도 자유롭게 추가해도 돼.`;
+# 요청
+위 프로필에 맞춰 ${body.days}일짜리 제주 여행 일정 초안을 짜줘. 관광지·카페는 구글 검색으로 실존 여부와 인기를 확인해서 골라.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: "application/json",
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0.8,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    });
+    // 1차: 검색 그라운딩 초안 (responseSchema와 googleSearch는 동시 사용 불가 → 2단계 분리)
+    // 과부하 대비 폴백 체인: flash+검색 → flash → flash-lite+검색 → flash-lite
+    const draftConfig = {
+      systemInstruction: DRAFT_SYSTEM,
+      temperature: 0.7,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 1024 },
+    };
+    const draftCall = (model: string, withSearch: boolean) => () =>
+      ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: draftPrompt }] }],
+        config: withSearch ? { ...draftConfig, tools: [{ googleSearch: {} }] } : draftConfig,
+      });
+    const draftRes = await tryAttempts([
+      draftCall("gemini-2.5-flash", true),
+      draftCall("gemini-2.5-flash", false),
+      draftCall("gemini-2.5-flash-lite", true),
+      draftCall("gemini-2.5-flash-lite", false),
+    ]);
+    const draft = draftRes.text;
+    if (!draft) return NextResponse.json({ error: "일정 초안 생성 실패" }, { status: 500 });
 
-    const text = response.text;
-    if (!text) return NextResponse.json({ error: "일정 생성 실패" }, { status: 500 });
+    // 2차: 구조화 (flash → flash-lite 폴백)
+    const structCall = (model: string) => () =>
+      ai.models.generateContent({
+        model,
+        contents: [{ role: "user", parts: [{ text: `다음 일정 초안을 JSON으로 변환해줘:\n\n${draft}` }] }],
+        config: {
+          systemInstruction: STRUCTURE_SYSTEM,
+          responseMimeType: "application/json",
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.1,
+          maxOutputTokens: 8192,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+    const structRes = await tryAttempts([
+      structCall("gemini-2.5-flash"),
+      structCall("gemini-2.5-flash"),
+      structCall("gemini-2.5-flash-lite"),
+    ]);
+    const text = structRes.text;
+    if (!text) return NextResponse.json({ error: "일정 구조화 실패" }, { status: 500 });
 
-    return NextResponse.json(JSON.parse(text));
+    const plan = JSON.parse(text) as TripPlan;
+
+    // 도민맛집 데이터로 보강 (좌표·주소·썸네일)
+    const byId = new Map(restaurants.map((r) => [r.id, r]));
+    const byTitle = new Map(restaurants.map((r) => [norm(r.title), r]));
+
+    for (const day of plan.days) {
+      for (const item of day.items) {
+        const matched =
+          (item.restaurantId && byId.get(item.restaurantId)) ||
+          byTitle.get(norm(item.name));
+        // domin_food.json의 lat/lng는 문자열이므로 숫자로 강제 변환
+        const mLat = matched ? Number(matched.lat) : NaN;
+        const mLng = matched ? Number(matched.lng) : NaN;
+        if (matched && !isNaN(mLat) && !isNaN(mLng) && mLat !== 0 && mLng !== 0) {
+          item.isDominFood = true;
+          item.restaurantId = matched.id;
+          item.lat = mLat;
+          item.lng = mLng;
+          item.address = matched.address;
+          item.thumbnail = matched.images?.[0] ? `/restaurant-images/${matched.images[0]}` : null;
+        } else {
+          item.isDominFood = false;
+          item.restaurantId = undefined;
+          // AI 좌표(제주 BBOX 검증) > 로컬 상수 > 클라이언트 지오코딩 순
+          const aLat = Number(item.lat);
+          const aLng = Number(item.lng);
+          if (inJeju(aLat, aLng)) {
+            item.lat = aLat;
+            item.lng = aLng;
+          } else {
+            const local = localGeocode(item.name);
+            item.lat = local?.lat;
+            item.lng = local?.lng;
+          }
+        }
+      }
+    }
+
+    return NextResponse.json(plan);
   } catch (e) {
     console.error("Trip plan error:", e);
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    return NextResponse.json({ error: "일정 생성 중 오류가 발생했어요. 다시 시도해주세요." }, { status: 500 });
   }
 }
