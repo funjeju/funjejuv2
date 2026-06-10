@@ -419,41 +419,45 @@ export default function MultiviewPage() {
             </button>
           ))}
         </div>
-        {/* 액션 4칸 */}
-        <div className="grid grid-cols-4 gap-1 md:ml-auto md:flex md:gap-2">
+        {/* 액션 4칸 — 모바일은 아이콘 없이 글자만 7px */}
+        <div className="grid grid-cols-4 gap-0.5 md:ml-auto md:flex md:gap-2">
           <button
             type="button"
             onClick={togglePlayAll}
             className={[
-              "rounded-full px-0.5 py-1 text-[9px] font-bold text-white transition-colors md:px-3 md:py-1.5 md:text-xs",
+              "rounded-full px-0.5 py-1 text-[10px] font-bold text-white transition-colors md:px-3 md:py-1.5 md:text-xs",
               playing
                 ? "bg-live-red hover:bg-live-red/90"
                 : "bg-jeju-green hover:bg-jeju-green/90",
             ].join(" ")}
           >
-            {playing ? "⏸ 정지" : "▶ 재생"}
+            <span className="md:hidden">{playing ? "정지" : "재생"}</span>
+            <span className="hidden md:inline">{playing ? "⏸ 정지" : "▶ 재생"}</span>
           </button>
           <button
             type="button"
             onClick={autoFill}
-            className="rounded-full bg-brand-orange px-0.5 py-1 text-[9px] font-bold text-white hover:bg-brand-orange/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
+            className="rounded-full bg-brand-orange px-0.5 py-1 text-[10px] font-bold text-white hover:bg-brand-orange/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            ⚡<span className="hidden md:inline"> 자동</span> 채우기
+            <span className="md:hidden">채우기</span>
+            <span className="hidden md:inline">⚡ 자동 채우기</span>
           </button>
           <button
             type="button"
             onClick={clearAll}
-            className="rounded-full border border-border-soft bg-bg-secondary px-0.5 py-1 text-[9px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors md:px-3 md:py-1.5 md:text-xs"
+            className="rounded-full border border-border-soft bg-bg-secondary px-0.5 py-1 text-[10px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            🗑<span className="hidden md:inline"> 전체</span> 비우기
+            <span className="md:hidden">비우기</span>
+            <span className="hidden md:inline">🗑 전체 비우기</span>
           </button>
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="rounded-full bg-brand-navy px-0.5 py-1 text-[9px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
+            className="rounded-full bg-brand-navy px-0.5 py-1 text-[10px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
             title="전체화면"
           >
-            {isFullscreen ? "⛶ 종료" : "⛶ 전체"}
+            <span className="md:hidden">{isFullscreen ? "종료" : "전체"}</span>
+            <span className="hidden md:inline">{isFullscreen ? "⛶ 종료" : "⛶ 전체화면"}</span>
           </button>
         </div>
       </div>
