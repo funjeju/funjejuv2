@@ -38,14 +38,12 @@ export default function CctvPage() {
         emoji="📷"
         right={
           <div className="flex items-center gap-1.5">
-            {/* 멀티뷰 임시 숨김 (origin 안정성 이슈로 비공개)
             <Link
               href="/cctv/multiview"
               className="flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
             >
               📺 <span className="hidden sm:inline">멀티뷰</span>
             </Link>
-            */}
             <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-[11px] font-semibold shadow-card">
               <button
                 type="button"

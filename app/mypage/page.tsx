@@ -196,11 +196,9 @@ export default function MyPage() {
                       {savedCctvs.length}
                     </span>
                   </h2>
-                  {/* 멀티뷰 임시 숨김
                   <Link href="/cctv/multiview" className="text-xs font-medium text-brand-orange">
                     4분할로 보기 →
                   </Link>
-                  */}
                 </div>
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                   {savedCctvs.map((cctv) => (
