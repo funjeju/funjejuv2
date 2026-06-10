@@ -140,28 +140,23 @@ export async function findRelevantRestaurants(
 
   // GPS가 있으면 거리 계산 후 가까운 순 정렬 (region 필터보다 우선)
   if (typeof query.userLat === "number" && typeof query.userLng === "number") {
-    const radius = query.radiusKm ?? 7; // 기본 7km
-    results = results
-      .map((x) => {
-        if (typeof x.lat !== "number" || typeof x.lng !== "number") return null;
-        const d = distanceKm(query.userLat!, query.userLng!, x.lat, x.lng);
-        return { ...x, distanceKm: d };
-      })
-      .filter((x): x is ChatRestaurant => x !== null)
-      .filter((x) => x.distanceKm! <= radius)
-      .sort((a, b) => a.distanceKm! - b.distanceKm!);
+    const uLat = query.userLat;
+    const uLng = query.userLng;
+    const radius = query.radiusKm ?? 7;
+    const withDist = (list: ChatRestaurant[]): ChatRestaurant[] => {
+      const out: ChatRestaurant[] = [];
+      for (const x of list) {
+        if (typeof x.lat !== "number" || typeof x.lng !== "number") continue;
+        out.push({ ...x, distanceKm: distanceKm(uLat, uLng, x.lat, x.lng) });
+      }
+      return out.sort((a, b) => (a.distanceKm ?? 0) - (b.distanceKm ?? 0));
+    };
+
+    results = withDist(results).filter((x) => (x.distanceKm ?? Infinity) <= radius);
 
     // 반경 안 결과가 너무 적으면 반경 확장
     if (results.length < 3) {
-      results = all
-        .map((x) => {
-          if (typeof x.lat !== "number" || typeof x.lng !== "number") return null;
-          const d = distanceKm(query.userLat!, query.userLng!, x.lat, x.lng);
-          return { ...x, distanceKm: d };
-        })
-        .filter((x): x is ChatRestaurant => x !== null)
-        .sort((a, b) => a.distanceKm! - b.distanceKm!);
-      // 메뉴 필터 재적용 (있다면)
+      results = withDist(all);
       if (query.menuKeywords && query.menuKeywords.length > 0) {
         results = results.filter((x) =>
           query.menuKeywords!.some((kw) =>
