@@ -15,8 +15,8 @@ export function YoutubePlayer({ youtubeId, title }: Props) {
         allowFullScreen
         referrerPolicy="strict-origin-when-cross-origin"
       />
-      <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-bold text-white shadow">
-        ▶ YouTube LIVE
+      <span className="absolute left-2 top-2 z-10 flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow md:left-3 md:top-3 md:gap-1 md:px-2.5 md:py-1 md:text-[11px]">
+        ▶ <span className="hidden md:inline">YouTube</span> LIVE
       </span>
     </div>
   );

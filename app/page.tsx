@@ -20,23 +20,24 @@ export default function HomePage() {
 
           {/* Hero Banner */}
           <section className="relative overflow-hidden rounded-none md:rounded-2xl">
-            <div className="relative h-48 bg-gradient-to-r from-sky-300 via-blue-200 to-teal-100 md:h-60">
-              <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-12">
-                <h1 className="text-2xl font-black text-gray-800 drop-shadow-sm md:text-4xl">
+            <div className="relative h-40 bg-gradient-to-r from-sky-300 via-blue-200 to-teal-100 md:h-60">
+              {/* 텍스트 — 모바일에선 캐릭터 침범 안 받게 max-w 제한 */}
+              <div className="absolute inset-y-0 left-0 flex max-w-[60%] flex-col justify-center px-4 md:max-w-none md:px-12">
+                <h1 className="text-lg font-black leading-tight text-gray-800 drop-shadow-sm md:text-4xl">
                   제주, 지금 이 순간을 담다
                 </h1>
-                <p className="mt-1 text-sm text-gray-600 md:text-base">
+                <p className="mt-1 text-[11px] leading-snug text-gray-600 md:text-base">
                   실시간 제주, 당신의 여행이 콘텐츠가 되는 곳
                 </p>
               </div>
-              <div className="absolute right-4 top-4 rounded-full border border-yellow-300 bg-white/80 px-3 py-1 text-xs font-medium text-yellow-700 backdrop-blur">
-                오늘도 좋은 날씨! ☀️
+              <div className="absolute right-3 top-3 rounded-full border border-yellow-300 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-yellow-700 backdrop-blur md:right-4 md:top-4 md:px-3 md:py-1 md:text-xs">
+                ☀️ 좋은 날씨
               </div>
-              {/* 마스코트 */}
-              <div className="absolute bottom-0 right-6 flex items-end md:right-12">
-                <DolmangyiIcon size={96} className="md:!w-28 md:!h-28" />
+              {/* 마스코트 — 모바일 작게 */}
+              <div className="absolute bottom-0 right-2 flex items-end md:right-12">
+                <DolmangyiIcon size={72} className="md:!w-28 md:!h-28" />
               </div>
-              <div className="absolute bottom-2 right-28 text-2xl md:right-40">🌼🌼</div>
+              <div className="absolute bottom-1 right-20 text-lg md:right-40 md:text-2xl">🌼🌼</div>
             </div>
           </section>
 

@@ -197,25 +197,25 @@ function PlaceholderPlayer({
 }) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl bg-gradient-to-br from-blue-700/60 via-cyan-600/40 to-teal-500/30">
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-4 md:gap-3">
         <button
           type="button"
           onClick={onPlay}
-          className="group flex h-20 w-20 items-center justify-center rounded-full bg-brand-orange/90 text-white shadow-2xl backdrop-blur-sm transition-all hover:scale-110 hover:bg-brand-orange md:h-24 md:w-24"
+          className="group flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/90 text-white shadow-2xl backdrop-blur-sm transition-all hover:scale-110 hover:bg-brand-orange md:h-24 md:w-24"
           aria-label="실시간 영상 재생"
         >
-          <span className="ml-1.5 text-3xl md:text-4xl">▶</span>
+          <span className="ml-0.5 text-xl md:text-4xl">▶</span>
         </button>
         <div className="text-center">
-          <p className="text-sm font-black text-white drop-shadow-lg md:text-base">
+          <p className="text-xs font-black text-white drop-shadow-lg md:text-base">
             📡 실시간 영상 보기
           </p>
-          <p className="mt-1 text-[11px] text-white/80 drop-shadow md:text-xs">
-            ▶ 클릭하면 7초마다 자동 전환되는 라이브 영상이 시작됩니다
+          <p className="mt-0.5 text-[9px] text-white/75 drop-shadow md:text-xs">
+            클릭하면 7초마다 자동 전환되는 라이브
           </p>
         </div>
       </div>
-      <div className="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">
+      <div className="absolute bottom-2 left-2 rounded-full bg-black/40 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur-sm md:bottom-3 md:left-3 md:px-2.5 md:py-1 md:text-[11px]">
         📍 {cctvName}
       </div>
     </div>

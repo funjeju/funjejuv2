@@ -88,37 +88,37 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         {/* 상단 그라데이션 (가독성) */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
 
-        {/* AI 카피 (중앙 우상단) */}
-        <div className="absolute right-4 top-4 max-w-[60%]">
+        {/* AI 카피 (우상단) — 모바일에서 작게 */}
+        <div className="absolute right-2 top-2 max-w-[55%] md:right-4 md:top-4 md:max-w-[60%]">
           <p
-            className="text-right text-lg font-bold leading-7 text-white drop-shadow-lg md:text-xl"
+            className="text-right text-sm font-bold leading-tight text-white drop-shadow-lg md:text-xl md:leading-7"
             style={{ textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
           >
             {feed.aiCopy}
           </p>
         </div>
 
-        {/* 카테고리 + 지역 뱃지 (좌상단) */}
-        <div className="absolute left-3 top-3 flex flex-col gap-1">
-          <span className="rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-text-primary backdrop-blur">
+        {/* 카테고리 + 지역 뱃지 (좌상단) — 모바일 작게 */}
+        <div className="absolute left-2 top-2 flex flex-col gap-0.5 md:left-3 md:top-3 md:gap-1">
+          <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-text-primary backdrop-blur md:px-2.5 md:text-[10px]">
             {feed.category}
           </span>
           {feed.regionName && (
-            <span className="rounded-full bg-brand-navy/90 px-2.5 py-0.5 text-[10px] font-bold text-white backdrop-blur">
+            <span className="rounded-full bg-brand-navy/90 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur md:px-2.5 md:text-[10px]">
               📍 {feed.regionName}
             </span>
           )}
         </div>
 
-        {/* EXIF 정보 (하단) */}
+        {/* EXIF 정보 (하단) — 모바일 한 줄 압축 */}
         {hasExif && (
           <>
-            <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
-            <div className="absolute inset-x-0 bottom-3 px-4 text-white">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] font-medium tracking-wide opacity-90">
+            <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-1.5 px-2 text-white md:bottom-3 md:px-4">
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[8px] font-medium tracking-tight opacity-85 md:gap-x-3 md:text-[10px]">
                 {feed.exif.camera && (
-                  <span className="flex items-center gap-1">
-                    <span>📷</span> {feed.exif.camera}
+                  <span className="flex items-center gap-0.5 truncate max-w-[120px] md:max-w-none">
+                    📷 {feed.exif.camera}
                   </span>
                 )}
                 {feed.exif.focalLength && <span>{feed.exif.focalLength}</span>}

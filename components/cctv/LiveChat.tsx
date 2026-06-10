@@ -157,20 +157,20 @@ export function LiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps
       {/* 입력창 */}
       <div className="shrink-0 border-t border-border-soft px-3 py-2.5">
         {user ? (
-          <form onSubmit={handleSend} className="flex gap-2">
+          <form onSubmit={handleSend} className="flex items-center gap-1.5">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="채팅 참여하기..."
+              placeholder="채팅..."
               maxLength={200}
               disabled={sending}
-              className="flex-1 rounded-full border border-border-soft bg-bg-secondary px-3 py-1.5 text-xs outline-none placeholder:text-text-secondary disabled:opacity-50"
+              className="min-w-0 flex-1 rounded-full border border-border-soft bg-bg-secondary px-3 py-1.5 text-xs outline-none placeholder:text-text-secondary disabled:opacity-50"
             />
             <button
               type="submit"
               disabled={sending || !input.trim()}
-              className="rounded-full bg-brand-navy px-4 py-1.5 text-xs font-bold text-white hover:bg-brand-navy/90 disabled:opacity-50 transition-colors"
+              className="shrink-0 rounded-full bg-brand-orange px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-orange/90 disabled:opacity-50 transition-colors"
             >
               {sending ? "..." : "전송"}
             </button>

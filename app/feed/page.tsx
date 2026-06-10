@@ -36,6 +36,17 @@ export default function FeedPage() {
     return unsub;
   }, []);
 
+  // URL ?write=1 이면 자동 모달 (하단 + 버튼에서 진입)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("write") === "1") {
+      setShowWriter(true);
+      // URL 정리
+      window.history.replaceState({}, "", "/feed");
+    }
+  }, []);
+
   // 카테고리 + 지역 필터
   const filtered = feeds.filter((f) => {
     if (activeCategory !== "전체" && f.category !== activeCategory) return false;

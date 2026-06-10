@@ -23,13 +23,14 @@ export function BottomNavigation() {
         {items.map((item, i) => {
           if (!item) {
             return (
-              <button
+              <Link
                 key="plus"
-                type="button"
+                href="/feed?write=1"
                 className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange text-2xl text-white shadow-soft"
+                aria-label="라이브 피드 업로드"
               >
                 +
-              </button>
+              </Link>
             );
           }
           const active = isActive(item.href);
