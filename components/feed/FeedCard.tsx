@@ -129,52 +129,50 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         )}
       </div>
 
-      {/* 작성자 + 인터랙션 */}
-      <div className="flex items-center gap-2 px-4 py-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-secondary">
+      {/* 작성자 + 인터랙션 + ✕ 삭제 — 한 줄 컴팩트 */}
+      <div className="flex items-center gap-1.5 px-2.5 py-2 md:gap-2 md:px-4 md:py-3">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-secondary md:h-8 md:w-8">
           {feed.authorPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={feed.authorPhoto} alt="" className="h-full w-full object-cover" />
           ) : (
-            <span className="text-xs font-bold text-text-secondary">
+            <span className="text-[10px] font-bold text-text-secondary md:text-xs">
               {feed.authorName[0]?.toUpperCase() ?? "U"}
             </span>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1 text-xs font-bold text-text-primary">
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="flex items-center gap-1 text-[10px] font-bold text-text-primary md:text-xs">
             <span className="truncate">{feed.authorName}</span>
             {author?.isBusiness && (
-              <span className="rounded-full bg-brand-orange/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-orange">
+              <span className="rounded-full bg-brand-orange/10 px-1 py-0 text-[8px] font-bold text-brand-orange md:px-1.5 md:py-0.5 md:text-[9px]">
                 BIZ
               </span>
             )}
           </p>
-          <p className="text-[10px] text-text-secondary">{timeAgo(date)}</p>
+          <p className="text-[9px] text-text-secondary md:text-[10px]">{timeAgo(date)}</p>
         </div>
         <button
           type="button"
           onClick={handleLike}
-          className="flex items-center gap-1 text-xs font-semibold transition-transform active:scale-125"
+          className="flex items-center gap-0.5 text-[10px] font-semibold transition-transform active:scale-125 md:gap-1 md:text-xs"
         >
           <span className={liked ? "" : "grayscale opacity-60"}>{liked ? "❤️" : "🤍"}</span>
           <span className={liked ? "text-live-red" : "text-text-secondary"}>{likeCount}</span>
         </button>
-      </div>
-
-      {/* 삭제 버튼 (본인 or 어드민) */}
-      {canDelete && (
-        <div className="flex justify-end px-4 pb-1">
+        {canDelete && (
           <button
             type="button"
             onClick={handleDelete}
             disabled={deleting}
-            className="text-[10px] font-medium text-text-secondary hover:text-live-red transition-colors disabled:opacity-40"
+            aria-label={isAdmin && !isOwner ? "관리자 삭제" : "삭제"}
+            title={isAdmin && !isOwner ? "관리자 삭제" : "삭제"}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bg-secondary text-[11px] font-bold text-text-secondary hover:bg-live-red/10 hover:text-live-red transition-colors disabled:opacity-40 md:h-7 md:w-7 md:text-xs"
           >
-            {deleting ? "삭제 중..." : isAdmin && !isOwner ? "🗑 관리자 삭제" : "🗑 삭제"}
+            {deleting ? "…" : "✕"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 비즈니스 CTA */}
       {author?.isBusiness && author.ctaData?.text && author.ctaData.url && (
@@ -183,7 +181,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
           target="_blank"
           rel="noopener noreferrer"
           className={[
-            "mx-4 mb-3 block rounded-xl py-2.5 text-center text-xs font-bold transition-colors",
+            "mx-2.5 mb-2 block rounded-lg py-1.5 text-center text-[11px] font-bold transition-colors md:mx-4 md:mb-3 md:rounded-xl md:py-2.5 md:text-xs",
             author.ctaData.variant === "outline"
               ? "border-2 border-brand-orange text-brand-orange hover:bg-brand-orange/10"
               : "bg-brand-orange text-white hover:bg-brand-orange/90 shadow-soft",
