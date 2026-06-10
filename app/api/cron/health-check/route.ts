@@ -172,7 +172,10 @@ async function sha256Hex(data: string): Promise<string> {
 }
 
 async function hmac(key: ArrayBuffer | Uint8Array, msg: string): Promise<ArrayBuffer> {
-  const keyBuf = key instanceof Uint8Array ? key : new Uint8Array(key);
+  // ArrayBufferLike → ArrayBuffer 강제 (TS strict 호환)
+  const keyBuf: BufferSource = key instanceof Uint8Array
+    ? new Uint8Array(key).buffer as ArrayBuffer
+    : key;
   const cryptoKey = await crypto.subtle.importKey(
     "raw", keyBuf, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
