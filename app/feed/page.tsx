@@ -72,24 +72,24 @@ export default function FeedPage() {
               if (!user) return signInWithGoogle();
               setShowWriter(true);
             }}
-            className="flex items-center gap-1.5 rounded-full bg-brand-orange px-4 py-2 text-xs font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
+            className="flex shrink-0 items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors md:gap-1.5 md:px-4 md:py-2 md:text-xs"
           >
-            <span>+</span> 피드 올리기
+            <span>+</span> <span className="hidden sm:inline">피드 </span>올리기
           </button>
         }
       />
 
       {/* 콘텐츠 카테고리 */}
       <div className="px-4 md:px-0">
-        <p className="mb-1.5 text-[11px] font-bold text-text-secondary">🏷️ 카테고리</p>
-        <div className="flex gap-1.5 overflow-x-auto pb-2">
+        <p className="mb-1 text-[10px] font-bold text-text-secondary">🏷️ 카테고리</p>
+        <div className="flex gap-1 overflow-x-auto pb-1.5">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               type="button"
               onClick={() => setActiveCategory(cat)}
               className={[
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 activeCategory === cat
                   ? "bg-text-primary text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
@@ -102,27 +102,27 @@ export default function FeedPage() {
       </div>
 
       {/* 지역 필터 */}
-      <div className="mb-4 px-4 md:px-0">
-        <div className="mb-1.5 flex items-center justify-between">
-          <p className="text-[11px] font-bold text-text-secondary">📍 지역</p>
+      <div className="mb-3 px-4 md:px-0">
+        <div className="mb-1 flex items-center justify-between">
+          <p className="text-[10px] font-bold text-text-secondary">📍 지역</p>
           <button
             type="button"
             onClick={() => setRegionPanelOpen((v) => !v)}
-            className="text-[10px] font-semibold text-brand-orange hover:underline"
+            className="text-[9px] font-semibold text-brand-orange hover:underline"
           >
-            {regionPanelOpen ? "접기" : "전체 지역 보기"}
+            {regionPanelOpen ? "접기" : "전체 지역"}
           </button>
         </div>
 
         {/* 1차: 시 단위 */}
-        <div className="flex gap-1.5 overflow-x-auto pb-2">
+        <div className="flex gap-1 overflow-x-auto pb-1.5">
           {["전체", "제주시", "서귀포시"].map((c) => (
             <button
               key={c}
               type="button"
               onClick={() => setActiveRegion(c)}
               className={[
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 activeRegion === c
                   ? "bg-brand-navy text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",

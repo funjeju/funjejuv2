@@ -400,8 +400,8 @@ export default function MultiviewPage() {
       />
 
       {/* 컨트롤 바 */}
-      <div className="mx-4 mb-4 space-y-2 rounded-2xl border border-border-soft bg-bg-card p-2 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
-        {/* 분할 선택 — 모바일 한 줄 5칸 균등 */}
+      <div className="mx-4 mb-3 space-y-1.5 rounded-2xl border border-border-soft bg-bg-card p-1.5 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
+        {/* 분할 선택 */}
         <div className="grid grid-cols-5 gap-0.5 rounded-full bg-bg-secondary p-0.5 md:flex md:items-center md:gap-1 md:p-1">
           {([1, 2, 4, 6, 9] as SlotCount[]).map((n) => (
             <button
@@ -409,7 +409,7 @@ export default function MultiviewPage() {
               type="button"
               onClick={() => setSlotCount(n)}
               className={[
-                "rounded-full px-2 py-1 text-[11px] font-bold transition-colors md:px-3 md:text-xs",
+                "rounded-full px-1 py-0.5 text-[10px] font-bold transition-colors md:px-3 md:py-1 md:text-xs",
                 slotCount === n
                   ? "bg-brand-navy text-white shadow"
                   : "text-text-secondary hover:text-text-primary",
@@ -419,13 +419,13 @@ export default function MultiviewPage() {
             </button>
           ))}
         </div>
-        {/* 액션 — 모바일 한 줄 4칸 균등 */}
+        {/* 액션 4칸 */}
         <div className="grid grid-cols-4 gap-1 md:ml-auto md:flex md:gap-2">
           <button
             type="button"
             onClick={togglePlayAll}
             className={[
-              "rounded-full px-1 py-1.5 text-[10px] font-bold text-white transition-colors md:px-3 md:text-xs",
+              "rounded-full px-0.5 py-1 text-[9px] font-bold text-white transition-colors md:px-3 md:py-1.5 md:text-xs",
               playing
                 ? "bg-live-red hover:bg-live-red/90"
                 : "bg-jeju-green hover:bg-jeju-green/90",
@@ -436,21 +436,21 @@ export default function MultiviewPage() {
           <button
             type="button"
             onClick={autoFill}
-            className="rounded-full bg-brand-orange px-1 py-1.5 text-[10px] font-bold text-white hover:bg-brand-orange/90 transition-colors md:px-3 md:text-xs"
+            className="rounded-full bg-brand-orange px-0.5 py-1 text-[9px] font-bold text-white hover:bg-brand-orange/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            ⚡ <span className="hidden md:inline">자동 </span>채우기
+            ⚡<span className="hidden md:inline"> 자동</span> 채우기
           </button>
           <button
             type="button"
             onClick={clearAll}
-            className="rounded-full border border-border-soft bg-bg-secondary px-1 py-1.5 text-[10px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors md:px-3 md:text-xs"
+            className="rounded-full border border-border-soft bg-bg-secondary px-0.5 py-1 text-[9px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            <span className="hidden md:inline">전체 </span>비우기
+            🗑<span className="hidden md:inline"> 전체</span> 비우기
           </button>
           <button
             type="button"
             onClick={toggleFullscreen}
-            className="rounded-full bg-brand-navy px-1 py-1.5 text-[10px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:text-xs"
+            className="rounded-full bg-brand-navy px-0.5 py-1 text-[9px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
             title="전체화면"
           >
             {isFullscreen ? "⛶ 종료" : "⛶ 전체"}

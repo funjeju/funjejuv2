@@ -88,43 +88,41 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         {/* 상단 그라데이션 (가독성) */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
 
-        {/* AI 카피 (우상단) — 모바일에서 작게 */}
-        <div className="absolute right-2 top-2 max-w-[55%] md:right-4 md:top-4 md:max-w-[60%]">
+        {/* AI 카피 (우상단) */}
+        <div className="absolute right-1.5 top-1.5 max-w-[55%] md:right-4 md:top-4 md:max-w-[60%]">
           <p
-            className="text-right text-sm font-bold leading-tight text-white drop-shadow-lg md:text-xl md:leading-7"
+            className="line-clamp-2 text-right text-[11px] font-bold leading-tight text-white drop-shadow-lg md:line-clamp-none md:text-xl md:leading-7"
             style={{ textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
           >
             {feed.aiCopy}
           </p>
         </div>
 
-        {/* 카테고리 + 지역 뱃지 (좌상단) — 모바일 작게 */}
-        <div className="absolute left-2 top-2 flex flex-col gap-0.5 md:left-3 md:top-3 md:gap-1">
-          <span className="rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-text-primary backdrop-blur md:px-2.5 md:text-[10px]">
+        {/* 카테고리 + 지역 뱃지 (좌상단) */}
+        <div className="absolute left-1.5 top-1.5 flex flex-col gap-0.5 md:left-3 md:top-3 md:gap-1">
+          <span className="rounded-full bg-white/90 px-1 py-0 text-[8px] font-bold text-text-primary backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
             {feed.category}
           </span>
           {feed.regionName && (
-            <span className="rounded-full bg-brand-navy/90 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur md:px-2.5 md:text-[10px]">
+            <span className="rounded-full bg-brand-navy/90 px-1 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
               📍 {feed.regionName}
             </span>
           )}
         </div>
 
-        {/* EXIF 정보 (하단) — 모바일 한 줄 압축 */}
+        {/* EXIF (하단) — 모바일 한 줄 truncate */}
         {hasExif && (
           <>
             <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-            <div className="absolute inset-x-0 bottom-1.5 px-2 text-white md:bottom-3 md:px-4">
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[8px] font-medium tracking-tight opacity-85 md:gap-x-3 md:text-[10px]">
+            <div className="absolute inset-x-0 bottom-1 px-1.5 text-white md:bottom-3 md:px-4">
+              <div className="flex items-center gap-x-1 truncate text-[7px] font-medium tracking-tight opacity-80 md:gap-x-3 md:text-[10px] md:flex-wrap md:truncate-none">
                 {feed.exif.camera && (
-                  <span className="flex items-center gap-0.5 truncate max-w-[120px] md:max-w-none">
-                    📷 {feed.exif.camera}
-                  </span>
+                  <span className="shrink truncate md:shrink-0 md:truncate-none">📷 {feed.exif.camera}</span>
                 )}
-                {feed.exif.focalLength && <span>{feed.exif.focalLength}</span>}
-                {feed.exif.fStop && <span>{feed.exif.fStop}</span>}
-                {feed.exif.iso && <span>ISO {feed.exif.iso}</span>}
-                {feed.exif.exposureTime && <span>{feed.exif.exposureTime}</span>}
+                {feed.exif.focalLength && <span className="shrink-0">{feed.exif.focalLength}</span>}
+                {feed.exif.fStop && <span className="shrink-0">{feed.exif.fStop}</span>}
+                {feed.exif.iso && <span className="shrink-0">ISO{feed.exif.iso}</span>}
+                {feed.exif.exposureTime && <span className="shrink-0 hidden md:inline">{feed.exif.exposureTime}</span>}
               </div>
             </div>
           </>
