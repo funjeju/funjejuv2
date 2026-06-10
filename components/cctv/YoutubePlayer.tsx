@@ -8,7 +8,7 @@ export function YoutubePlayer({ youtubeId, title }: Props) {
     <div className="relative w-full overflow-hidden bg-gray-950 aspect-video md:rounded-2xl">
       <iframe
         className="absolute inset-0 h-full w-full"
-        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0`}
+        src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0&controls=0&showinfo=0&iv_load_policy=3&disablekb=1`}
         title={title}
         loading="lazy"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
