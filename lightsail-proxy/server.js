@@ -1,4 +1,4 @@
-// FunJeju CCTV Proxy v3 — m3u8/ts 메모리 캐시 + 이벤트 로그
+// FunJeju CCTV Proxy v4 — 자가치료 (circuit breaker + in-flight dedup + 짧은 timeout)
 // Node 20+ 내장 fetch 사용
 const express = require("express");
 const { Readable } = require("stream");
@@ -98,6 +98,43 @@ const events = [];
 const EVENT_MAX = 500;
 const counters = {}; // cctvId -> { origin, hit, lastAccess, lastIPs:Set }
 
+// ★ Circuit Breaker — cctv별 origin 실패 추적
+// 연속 N회 실패 시 일정 시간 origin 호출 차단 (소켓 누적 방지)
+const circuit = {}; // cctvId -> { failures, openUntil }
+const CB_FAILURE_THRESHOLD = 3;     // 3회 연속 실패 시 차단
+const CB_OPEN_DURATION = 30000;     // 30초간 차단
+
+function cbAllow(cctvId) {
+  const c = circuit[cctvId];
+  if (!c) return true;
+  if (c.openUntil > Date.now()) return false;
+  return true;
+}
+function cbSuccess(cctvId) {
+  if (circuit[cctvId]) circuit[cctvId].failures = 0;
+}
+function cbFail(cctvId) {
+  if (!circuit[cctvId]) circuit[cctvId] = { failures: 0, openUntil: 0 };
+  circuit[cctvId].failures++;
+  if (circuit[cctvId].failures >= CB_FAILURE_THRESHOLD) {
+    circuit[cctvId].openUntil = Date.now() + CB_OPEN_DURATION;
+    console.warn(`[circuit] ${cctvId} OPEN for ${CB_OPEN_DURATION / 1000}s after ${circuit[cctvId].failures} failures`);
+  }
+}
+
+// ★ In-flight dedup — 같은 캐시 키에 대한 동시 fetch는 1개로 합침
+// 100명이 동시에 같은 ts 요청해도 origin fetch는 1번만
+const inflight = new Map(); // cacheKey -> Promise
+
+async function dedupedFetch(cacheKey, fetchFn) {
+  if (inflight.has(cacheKey)) {
+    return inflight.get(cacheKey);
+  }
+  const promise = fetchFn().finally(() => inflight.delete(cacheKey));
+  inflight.set(cacheKey, promise);
+  return promise;
+}
+
 function shortIp(ipRaw) {
   if (!ipRaw) return "????";
   const ip = String(ipRaw).split(",")[0].trim();
@@ -147,7 +184,7 @@ function publicHost(req) {
   return `${proto}://${host}`;
 }
 
-// 메인 m3u8 — 6초 캐시
+// 메인 m3u8 — 6초 캐시 + circuit breaker + dedup
 app.get("/cctv/:id", async (req, res) => {
   const origin = CCTVS[req.params.id];
   if (!origin) return res.status(404).json({ error: "not found" });
@@ -161,41 +198,52 @@ app.get("/cctv/:id", async (req, res) => {
     return res.send(cached);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-  res.on("close", () => controller.abort());
+  // ★ Circuit breaker — origin 호출 차단 중이면 즉시 503
+  if (!cbAllow(req.params.id)) {
+    logEvent(req, req.params.id, "m3u8", "circuit-open");
+    return res.status(503).json({ error: "origin temporarily blocked (circuit open)" });
+  }
 
   try {
-    const r = await fetch(origin, {
-      headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" },
-      signal: controller.signal,
+    // ★ Dedup — 같은 cctv 동시 origin fetch 1개로
+    const rewritten = await dedupedFetch(`m3u8:${req.params.id}`, async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500); // 5s → 2.5s
+      try {
+        const r = await fetch(origin, {
+          headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" },
+          signal: controller.signal,
+        });
+        if (!r.ok) {
+          cbFail(req.params.id);
+          throw new Error(`origin ${r.status}`);
+        }
+        const text = await r.text();
+        const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
+        const out = text.split("\n").map((line) => {
+          const t = line.trim();
+          if (!t || t.startsWith("#")) return line;
+          return proxyBase + encodeURIComponent(resolveUrl(t, origin));
+        }).join("\n");
+        cbSuccess(req.params.id);
+        setCache(m3u8Cache, cacheKey, out);
+        return out;
+      } finally {
+        clearTimeout(timeoutId);
+      }
     });
-    if (!r.ok) {
-      if (!res.headersSent) res.status(r.status).json({ error: `origin ${r.status}` });
-      return;
-    }
-    const text = await r.text();
-    const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
-    const rewritten = text.split("\n").map((line) => {
-      const t = line.trim();
-      if (!t || t.startsWith("#")) return line;
-      return proxyBase + encodeURIComponent(resolveUrl(t, origin));
-    }).join("\n");
 
-    setCache(m3u8Cache, cacheKey, rewritten);
     logEvent(req, req.params.id, "m3u8", "origin");
-
     if (!res.headersSent) {
       res.set("Content-Type", "application/vnd.apple.mpegurl");
       res.set("Cache-Control", "no-cache");
       res.send(rewritten);
     }
   } catch (e) {
+    cbFail(req.params.id);
     if (e.name === "AbortError") return;
     console.error("[m3u8]", e.message);
-    if (!res.headersSent) res.status(502).json({ error: String(e) });
-  } finally {
-    clearTimeout(timeoutId);
+    if (!res.headersSent) res.status(502).json({ error: String(e).slice(0, 100) });
   }
 });
 
@@ -233,60 +281,77 @@ app.get("/cctv/:id/seg", async (req, res) => {
     }
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), isM3u8 ? 5000 : 8000);
-  let nodeStream = null;
-  res.on("close", () => {
-    controller.abort();
-    if (nodeStream) nodeStream.destroy();
-  });
+  // ★ Circuit breaker — 차단 중이면 즉시 503
+  if (!cbAllow(req.params.id)) {
+    logEvent(req, req.params.id, isM3u8 ? "chunklist" : "ts", "circuit-open");
+    return res.status(503).json({ error: "origin blocked (circuit open)" });
+  }
+
+  res.on("close", () => { /* abort는 fetch 내부에서 */ });
 
   try {
-    const headers = { "User-Agent": "Mozilla/5.0 FunJeju/1.0" };
-    if (req.headers.range) headers.Range = req.headers.range;
-    const r = await fetch(segUrl, { headers, signal: controller.signal });
+    // ★ Dedup — 같은 cacheKey 동시 origin fetch 1개로
+    const result = await dedupedFetch(cacheKey, async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), isM3u8 ? 2500 : 3500); // 5/8s → 2.5/3.5s
+      try {
+        const headers = { "User-Agent": "Mozilla/5.0 FunJeju/1.0" };
+        if (req.headers.range) headers.Range = req.headers.range;
+        const r = await fetch(segUrl, { headers, signal: controller.signal });
 
-    if (isM3u8) {
-      const text = await r.text();
-      const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
-      const rewritten = text.split("\n").map((line) => {
-        const t = line.trim();
-        if (!t || t.startsWith("#")) return line;
-        return proxyBase + encodeURIComponent(resolveUrl(t, segUrl));
-      }).join("\n");
-      setCache(m3u8Cache, cacheKey, rewritten); // ← cacheKey 사용
-      logEvent(req, req.params.id, "chunklist", "origin");
-      if (!res.headersSent) {
-        res.set("Content-Type", "application/vnd.apple.mpegurl");
-        res.set("Cache-Control", "no-cache");
-        return res.send(rewritten);
+        if (isM3u8) {
+          if (!r.ok) {
+            cbFail(req.params.id);
+            throw new Error(`chunklist ${r.status}`);
+          }
+          const text = await r.text();
+          const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
+          const rewritten = text.split("\n").map((line) => {
+            const t = line.trim();
+            if (!t || t.startsWith("#")) return line;
+            return proxyBase + encodeURIComponent(resolveUrl(t, segUrl));
+          }).join("\n");
+          cbSuccess(req.params.id);
+          setCache(m3u8Cache, cacheKey, rewritten);
+          return { type: "m3u8", body: rewritten };
+        }
+
+        // ts
+        if (!r.ok && r.status !== 206) {
+          cbFail(req.params.id);
+          throw new Error(`ts ${r.status}`);
+        }
+        const buf = Buffer.from(await r.arrayBuffer());
+        cbSuccess(req.params.id);
+        if (buf.length < 5 * 1024 * 1024) {
+          setCache(tsCache, cacheKey, buf, TS_MAX);
+        }
+        return { type: "ts", body: buf, status: r.status, contentType: r.headers.get("content-type") };
+      } finally {
+        clearTimeout(timeoutId);
       }
-      return;
-    }
+    });
 
-    if (!r.ok && r.status !== 206) {
-      if (!res.headersSent) res.status(r.status).json({ error: `seg ${r.status}` });
-      return;
-    }
     if (res.headersSent || res.destroyed) return;
 
-    const buf = Buffer.from(await r.arrayBuffer());
-    if (buf.length < 5 * 1024 * 1024) {
-      setCache(tsCache, cacheKey, buf, TS_MAX); // ← cacheKey 사용 (정규화된 ts:cctvId:chunkNum)
+    if (result.type === "m3u8") {
+      logEvent(req, req.params.id, "chunklist", "origin");
+      res.set("Content-Type", "application/vnd.apple.mpegurl");
+      res.set("Cache-Control", "no-cache");
+      return res.send(result.body);
     }
-    logEvent(req, req.params.id, "ts", "origin");
 
-    res.status(r.status);
-    res.set("Content-Type", r.headers.get("content-type") || "video/MP2T");
+    logEvent(req, req.params.id, "ts", "origin");
+    res.status(result.status);
+    res.set("Content-Type", result.contentType || "video/MP2T");
     res.set("Cache-Control", "public, max-age=10");
-    res.send(buf);
+    res.send(result.body);
   } catch (e) {
+    cbFail(req.params.id);
     if (e.name === "AbortError") return;
     console.error("[seg]", e.message);
-    if (!res.headersSent) res.status(502).json({ error: String(e) });
+    if (!res.headersSent) res.status(502).json({ error: String(e).slice(0, 100) });
     else if (!res.destroyed) res.destroy();
-  } finally {
-    clearTimeout(timeoutId);
   }
 });
 
@@ -363,7 +428,19 @@ app.post("/event", express.text({ type: "*/*" }), (req, res) => {
   res.status(204).end();
 });
 
-app.get("/", (req, res) => res.send("FunJeju CCTV Proxy v3.1 (cache fix + leave events)"));
+// ★ Health check — Vercel Cron이 ping
+app.get("/health", (req, res) => {
+  const openCircuits = Object.entries(circuit).filter(([, c]) => c.openUntil > Date.now()).map(([id]) => id);
+  res.json({
+    ok: true,
+    uptime: Date.now() - startedAt,
+    memory: process.memoryUsage().rss,
+    inflightCount: inflight.size,
+    openCircuits, // origin 차단 중인 cctv 목록
+  });
+});
+
+app.get("/", (req, res) => res.send("FunJeju CCTV Proxy v4 (self-healing)"));
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Proxy v3 listening on port ${PORT} — cache + event tracking enabled`);
