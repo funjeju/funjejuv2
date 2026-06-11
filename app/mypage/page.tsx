@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { getAuthor } from "@/lib/feed";
 import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
+import { getEntitlements } from "@/lib/entitlements";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
@@ -33,6 +34,8 @@ export default function MyPage() {
   const [tripPlans, setTripPlans] = useState<SavedTripPlan[]>([]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
+  // 멤버십 — 정식 모드 전이라 users.plan은 아직 미사용(베타는 로그인 여부만 봄)
+  const entitlements = getEntitlements({ loggedIn: !!user });
 
   useEffect(() => {
     if (!user) return;
@@ -127,6 +130,30 @@ export default function MyPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* 멤버십 카드 */}
+      <div className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3 md:mx-0">
+        <span className="text-2xl">💎</span>
+        <div className="flex-1">
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-bold text-text-primary">{entitlements.planLabel}</p>
+            {entitlements.betaPerks && (
+              <span className="rounded-full bg-brand-navy px-2 py-0.5 text-[9px] font-black text-white">시범 무료</span>
+            )}
+          </div>
+          <p className="text-[11px] text-text-secondary">
+            {entitlements.betaPerks
+              ? "베타 기간이라 멀티뷰 9분할까지 거의 다 열려 있어요!"
+              : "더 많은 기능이 필요하면 요금제를 확인해보세요."}
+          </p>
+        </div>
+        <Link
+          href="/pricing"
+          className="shrink-0 rounded-full bg-brand-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-brand-orange/90 transition-colors"
+        >
+          요금제 보기 →
+        </Link>
       </div>
 
       {/* Admin 바로가기 */}

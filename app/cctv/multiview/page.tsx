@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { useSaved } from "@/hooks/useSaved";
+import { useWatchBudget, fmtDuration } from "@/hooks/useWatchBudget";
+import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
@@ -381,6 +383,30 @@ export default function MultiviewPage() {
     ? allCctvs.filter((c) => savedIds.has(c.id))
     : allCctvs;
 
+  // ── 시청시간 예산 (우리 워커 경유 HLS 스트림만 차감, 유튜브 제외) ──
+  const activeHlsStreams = useMemo(() => {
+    if (!playing) return 0;
+    return slots.slice(0, slotCount).filter((id) => {
+      if (!id) return false;
+      const c = allCctvs.find((x) => x.id === id);
+      return !!c && !c.youtubeId;
+    }).length;
+  }, [playing, slots, slotCount, allCctvs]);
+
+  const budget = useWatchBudget(activeHlsStreams);
+
+  // 소진되면 재생 자동 정지
+  useEffect(() => {
+    if (budget.exhausted && playing) setPlaying(false);
+  }, [budget.exhausted, playing]);
+
+  // 플랜 한도 초과 분할은 강제로 낮춤 (예: 비회원 1분할)
+  useEffect(() => {
+    if (slotCount > budget.maxSplit) {
+      setSlotCount(budget.maxSplit as SlotCount);
+    }
+  }, [budget.maxSplit, slotCount]);
+
   // localStorage에서 슬롯 상태 복원
   useEffect(() => {
     const stored = localStorage.getItem("multiview_slots");
@@ -467,23 +493,30 @@ export default function MultiviewPage() {
 
       {/* 컨트롤 바 */}
       <div className="mx-4 mb-3 space-y-1.5 rounded-2xl border border-border-soft bg-bg-card p-1.5 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
-        {/* 분할 선택 */}
+        {/* 분할 선택 — 플랜 한도 초과는 잠금 */}
         <div className="grid grid-cols-5 gap-0.5 rounded-full bg-bg-secondary p-0.5 md:flex md:items-center md:gap-1 md:p-1">
-          {([1, 2, 4, 6, 9] as SlotCount[]).map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setSlotCount(n)}
-              className={[
-                "rounded-full px-1 py-0.5 text-[10px] font-bold transition-colors md:px-3 md:py-1 md:text-xs",
-                slotCount === n
-                  ? "bg-brand-navy text-white shadow"
-                  : "text-text-secondary hover:text-text-primary",
-              ].join(" ")}
-            >
-              {n}<span className="hidden md:inline">분할</span>
-            </button>
-          ))}
+          {([1, 2, 4, 6, 9] as SlotCount[]).map((n) => {
+            const locked = n > budget.maxSplit;
+            return (
+              <button
+                key={n}
+                type="button"
+                disabled={locked}
+                onClick={() => setSlotCount(n)}
+                title={locked ? `${budget.maxSplit}분할까지 가능해요 (요금제 업그레이드 시 확장)` : undefined}
+                className={[
+                  "rounded-full px-1 py-0.5 text-[10px] font-bold transition-colors md:px-3 md:py-1 md:text-xs",
+                  slotCount === n
+                    ? "bg-brand-navy text-white shadow"
+                    : locked
+                      ? "text-text-secondary/30 cursor-not-allowed"
+                      : "text-text-secondary hover:text-text-primary",
+                ].join(" ")}
+              >
+                {locked ? "🔒" : n}<span className="hidden md:inline">{locked ? "" : "분할"}</span>
+              </button>
+            );
+          })}
         </div>
         {/* 액션 4칸 — 모바일은 아이콘 없이 글자만 7px */}
         <div className="grid grid-cols-4 gap-0.5 md:ml-auto md:flex md:gap-2">
@@ -527,6 +560,38 @@ export default function MultiviewPage() {
           </button>
         </div>
       </div>
+
+      {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
+      <div className="mx-4 mb-3 md:mx-0">
+        <BetaPlanNotice />
+      </div>
+
+      {/* 시청시간 예산 바 */}
+      {!budget.unlimited && (
+        <div className="mx-4 mb-3 md:mx-0">
+          {budget.exhausted ? (
+            <div className="flex items-center gap-2 rounded-2xl border border-live-red/30 bg-live-red/5 px-4 py-3">
+              <span className="text-lg">⏳</span>
+              <p className="flex-1 text-[11px] leading-5 text-text-primary">
+                오늘 시청시간을 다 썼어요! 내일 다시 충전돼요.
+                <Link href="/pricing" className="ml-1 font-bold text-brand-orange">더 길게 보려면 →</Link>
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 rounded-2xl border border-border-soft bg-bg-card px-4 py-2 shadow-card">
+              <span className="text-sm">⏱</span>
+              <p className="flex-1 text-[11px] text-text-secondary">
+                오늘 남은 시청시간{" "}
+                <span className="font-black text-brand-navy">{fmtDuration(budget.remainingSeconds)}</span>
+                {activeHlsStreams > 1 && (
+                  <span className="ml-1 text-text-secondary">· 지금 {activeHlsStreams}배 차감 중</span>
+                )}
+              </p>
+              <Link href="/pricing" className="shrink-0 text-[10px] font-bold text-brand-orange">늘리기</Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 멀티뷰 그리드 — 모바일 여백·간격 최소화 */}
       <div className="mb-5 md:mx-0">

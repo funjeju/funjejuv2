@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
+import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { fetchWeather } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { getCctvSeo } from "@/constants/cctv-seo";
@@ -162,6 +163,13 @@ export default async function CctvDetailPage({ params }: Props) {
               cctvId={cctv.id}
               cctvName={cctv.name}
             />
+          )}
+
+          {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
+          {!cctv.youtubeId && (
+            <div className="px-4 md:px-0">
+              <BetaPlanNotice />
+            </div>
           )}
 
           <div className="px-4 md:px-0">

@@ -18,15 +18,34 @@
 
 export interface Env {
   CCTV_ORIGINS: KVNamespace;
-  ALLOWED_ORIGIN: string;
+  ALLOWED_ORIGIN: string; // 콤마 구분 허용 도메인 (예: "https://funjeju.com,https://www.funjeju.com")
 }
 
 const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  // 우리 도메인에서만 재생 가능 (타 사이트 임베드 차단의 1차 방어)
+  "Access-Control-Allow-Origin": "https://funjeju.com",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Range",
   "Access-Control-Expose-Headers": "Content-Length, Content-Range",
+  "Vary": "Origin",
 };
+
+// 허용 도메인 목록 (ALLOWED_ORIGIN 콤마 구분, 미설정 시 기본값)
+function allowedHosts(env: Env): string[] {
+  const raw = env.ALLOWED_ORIGIN || "https://funjeju.com,https://www.funjeju.com";
+  return raw.split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
+}
+
+// 요청 출처 검증 — Origin(우선) 또는 Referer가 허용 도메인이어야 함.
+// 타 사이트 임베드/스크래핑 차단. 둘 다 없으면(앱 외 직접 호출) 차단.
+function isAllowed(request: Request, env: Env): boolean {
+  const hosts = allowedHosts(env);
+  const origin = request.headers.get("Origin");
+  if (origin) return hosts.includes(origin.replace(/\/$/, ""));
+  const referer = request.headers.get("Referer");
+  if (referer) return hosts.some((h) => referer.startsWith(h));
+  return false;
+}
 
 const M3U8_TTL_SEC = 6;
 const TS_TTL_SEC = 30;
@@ -75,6 +94,11 @@ export default {
 
     const segments = url.pathname.split("/").filter(Boolean);
     if (segments[0] !== "cctv" || !segments[1]) return jsonError(404, "Not found");
+
+    // 출처 가드 — 우리 도메인에서 온 스트림 요청만 허용 (타 사이트 임베드·직접 스크래핑 차단)
+    if (!isAllowed(request, env)) {
+      return jsonError(403, "Forbidden");
+    }
 
     const id = segments[1];
     const action = segments[2]; // "seg" | "status" | undefined

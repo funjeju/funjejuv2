@@ -163,14 +163,32 @@ function logEvent(req, cctvId, type, result) {
   counters[cctvId].uniqueIps.add(ip);
 }
 
+// 허용 도메인 (ALLOWED_ORIGIN 콤마 구분, 미설정 시 기본값)
+const ALLOWED_HOSTS = (process.env.ALLOWED_ORIGIN || "https://funjeju.com,https://www.funjeju.com")
+  .split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
+
+// 출처 검증 — 우리 도메인에서 온 요청만 (타 사이트 임베드·직접 스크래핑 차단)
+function isAllowed(req) {
+  const origin = req.headers["origin"];
+  if (origin) return ALLOWED_HOSTS.includes(origin.replace(/\/$/, ""));
+  const referer = req.headers["referer"];
+  if (referer) return ALLOWED_HOSTS.some((h) => referer.startsWith(h));
+  return false;
+}
+
 app.use((req, res, next) => {
   res.set({
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": ALLOWED_HOSTS[0],
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Range",
     "Access-Control-Expose-Headers": "Content-Length, Content-Range",
+    "Vary": "Origin",
   });
   if (req.method === "OPTIONS") return res.sendStatus(204);
+  // /stats, "/" 등 비스트림 경로는 통과, /cctv/* 스트림만 가드
+  if (req.path.startsWith("/cctv/") && !isAllowed(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
   next();
 });
 

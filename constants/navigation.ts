@@ -7,6 +7,7 @@ export const sidebarItems = [
   { href: "/chat",    label: "AI 도슨트 챗봇", icon: "🤖" },
   { href: "/youtube", label: "제주tube",    icon: "▶️" },
   { href: "/trip-ai", label: "AI 여행 일정", icon: "🗓️" },
+  { href: "/pricing", label: "요금제",       icon: "💎" },
   { href: "/mypage",  label: "마이페이지",  icon: "👤" },
 ] as const;
 

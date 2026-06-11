@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useCctvSession } from "@/hooks/useCctvSession";
+import { useWatchBudget, fmtDuration } from "@/hooks/useWatchBudget";
 
 type Status = "loading" | "playing" | "error" | "offline";
 
@@ -27,6 +29,16 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     cctvName,
     isPlaying,
   });
+
+  // 시청시간 예산 — 멀티뷰와 같은 풀(localStorage) 공유
+  const budget = useWatchBudget(isPlaying ? 1 : 0);
+
+  // 소진되면 재생 정지
+  useEffect(() => {
+    if (budget.exhausted && videoRef.current && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+  }, [budget.exhausted]);
 
   useEffect(() => {
     if (!proxyUrl || !videoRef.current) return;
@@ -150,6 +162,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
+      if (budget.exhausted) return; // 소진 시 재생 차단
       v.play().catch(() => { /* ignore */ });
     } else {
       v.pause();
@@ -186,6 +199,28 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
             <span className="text-xs font-bold text-white">클릭하면 정지</span>
           </div>
         </div>
+      )}
+
+      {/* 시청시간 소진 오버레이 */}
+      {budget.exhausted && (status === "playing" || status === "loading") && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-gray-950/90 px-6 text-center">
+          <span className="text-4xl">⏳</span>
+          <p className="text-sm font-bold text-white">오늘 시청시간을 다 썼어요</p>
+          <p className="text-xs text-white/60">내일 다시 충전돼요 · 정식 오픈 후에는 요금제에 따라 달라져요</p>
+          <Link
+            href="/pricing"
+            className="mt-2 rounded-full bg-brand-orange px-4 py-2 text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
+          >
+            요금제 보러가기 →
+          </Link>
+        </div>
+      )}
+
+      {/* 잔여 시청시간 배지 (재생 중, 한도 있을 때) */}
+      {status === "playing" && isPlaying && !budget.unlimited && !budget.exhausted && (
+        <span className="absolute right-3 top-3 z-20 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur">
+          ⏱ {fmtDuration(budget.remainingSeconds)}
+        </span>
       )}
 
       {/* 로딩 오버레이 */}

@@ -10,9 +10,14 @@ binding = "CCTV_ORIGINS"
 id = "a2e7fee994e94d9f9a5f1972201fcbc3"
 
 [vars]
-ALLOWED_ORIGIN = "https://funjeju.com"
+# 콤마로 여러 도메인 허용 가능 (출처 가드용)
+ALLOWED_ORIGIN = "https://funjeju.com,https://www.funjeju.com"
 
-# 커스텀 도메인 (Cloudflare DNS에 worker.funjeju.com 등록 후 활성화)
+# 커스텀 도메인 — workers.dev 주소를 우리 도메인 뒤로 숨김.
+# 클라이언트 video src가 stream.funjeju.com만 가리키게 됨 (Cloudflare 정체 은닉).
+# 사전 준비: Cloudflare 대시보드 → Workers & Pages → 이 워커 → Settings → Domains & Routes
+#   → "Add Custom Domain" → stream.funjeju.com (DNS 레코드 자동 생성됨)
+# 그 후 아래 주석을 풀고 `wrangler deploy` 하면 라우트가 반영됩니다.
 # [[routes]]
-# pattern = "worker.funjeju.com/cctv/*"
-# zone_name = "funjeju.com"
+# pattern = "stream.funjeju.com"
+# custom_domain = true
