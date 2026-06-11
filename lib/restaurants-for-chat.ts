@@ -6,12 +6,14 @@ const API_KEY    = process.env.NEXT_PUBLIC_FIREBASE_API_KEY!;
 const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 export type ChatRestaurant = {
+  id:          string;
   name:        string;
   region:      string;
   menu:        string;
   shortDesc:   string;
   options:     string;
   source:      "json" | "firestore";
+  thumbnail?:  string | null;
   phone?:      string;
   hours?:      string;
   address?:    string;
@@ -58,6 +60,8 @@ async function getFirestoreNew(): Promise<ChatRestaurant[]> {
       const fsLat = f.lat?.doubleValue ?? (f.lat?.integerValue ? Number(f.lat.integerValue) : undefined);
       const fsLng = f.lng?.doubleValue ?? (f.lng?.integerValue ? Number(f.lng.integerValue) : undefined);
       items.push({
+        id:        doc.name?.split("/").pop() ?? "",
+        thumbnail: f.imageUrl?.stringValue || null,
         name:      f.title?.stringValue ?? "",
         region:    f.region?.stringValue ?? "",
         menu:      f.menu?.stringValue ?? "",
@@ -88,14 +92,17 @@ export async function loadAllChatRestaurants(): Promise<ChatRestaurant[]> {
   const jsonItems: ChatRestaurant[] = jsonAll
     .filter((r) => !hidden.has(r.id))
     .map((r) => ({
+      id:        r.id,
+      thumbnail: r.images?.[0] ? `/restaurant-images/${r.images[0]}` : null,
       name:      r.title,
       region:    r.region,
       menu:      r.menu,
       shortDesc: stripHtml(r.content, 100),
       options:   r.options.replace(/\|/g, " "),
       address:   r.address,
-      lat:       r.lat,
-      lng:       r.lng,
+      // domin_food.json의 lat/lng는 문자열 → 숫자 변환 (GPS 거리 정렬에 필수)
+      lat:       r.lat && !isNaN(Number(r.lat)) ? Number(r.lat) : undefined,
+      lng:       r.lng && !isNaN(Number(r.lng)) ? Number(r.lng) : undefined,
       source:    "json",
     }));
   return [...fsNew, ...jsonItems];

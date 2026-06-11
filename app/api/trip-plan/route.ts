@@ -15,8 +15,8 @@ const DRAFT_SYSTEM = `너는 제주 여행 전문 플래너 '돌맹이'야. 사�
 [절대 규칙]
 1. 점심·저녁 식사 자리는 반드시 아래 제공되는 [도민맛집 리스트]에서만 골라. 선택한 맛집은 반드시 "이름 [ID:식별자]" 형식으로 표기해. (예: 명진전복 [ID:r123])
 2. 관광지·카페·액티비티·숙소는 구글 검색을 활용해서 실제 존재하는 인기 장소로 채워. 폐업했거나 존재가 불확실한 곳은 넣지 마.
-3. 동선 효율 최우선 — 하루 일정은 같은 권역(제주 동/서/남/북)으로 묶고, 권역을 오가는 지그재그 동선은 금지.
-4. 도착/출발 시간을 반영해 첫날과 마지막 날 일정량을 조절해.
+3. 동선 규칙 (가장 중요): 하루 일정은 그날의 시작점에서 그날의 종착점(그날 묵을 숙소, 마지막 날은 공항)을 향해 한 방향으로만 진행해. 스팟은 시작점과 종착점을 잇는 경로 주변(회랑 반경 약 10km) 안에서만 골라. 종착점 반대 방향으로 갔다가 되돌아오는 왕복·지그재그 동선은 절대 금지. [일자별 동선 앵커]가 주어지면 반드시 그대로 따라.
+4. 도착/출발 시간을 반영해 첫날과 마지막 날 일정량을 조절해. 첫날은 공항에서 시작, 마지막 날은 공항 도착으로 끝나야 해.
 5. 시간대 흐름: 오전 가벼운 일정 → 점심 → 오후 활동 → 저녁 식사 → 노을/야경.
 6. 각 스팟마다 시간(HH:MM), 체류 시간, 친근한 반말 한 줄 코멘트를 붙여.
 7. 모든 스팟 이름 뒤에 그 장소의 실제 위경도를 (위도, 경도) 형식으로 표기해. 예: 성산일출봉 (33.4587, 126.9426). 구글 검색과 네 지식을 총동원해서 최대한 정확하게. 정말 모르는 곳만 생략.
@@ -93,10 +93,13 @@ function profileText(req: TripPlanRequest): string {
 
   if (req.mode === "detailed") {
     if (req.accommodationStatus === "booked") {
-      const booked = (req.bookedAccommodations ?? []).filter(Boolean);
-      lines.push(`- 숙소: 예약 완료 (${booked.join(", ")})`);
+      const booked = (req.bookedAccommodations ?? []).filter((a) => a.name);
+      const desc = booked
+        .map((a) => `${a.name} ${a.nights}박${a.address ? ` (${a.address})` : ""}`)
+        .join(", ");
+      lines.push(`- 숙소: 예약 완료 — ${desc}`);
       if (req.remainingNightsPlan === "recommend_rest") {
-        lines.push(`- 남은 숙박: AI 추천 필요`);
+        lines.push(`- 남은 숙박: AI 추천 필요 (동선 방향에 맞는 위치로)`);
       }
     } else if (req.accommodationStatus === "not_booked") {
       lines.push(`- 숙소: 미정 — 추천 필요`);
@@ -125,6 +128,59 @@ function profileText(req: TripPlanRequest): string {
 /** 이름 정규화 (공백 제거) — 제목 퍼지 매칭용 */
 function norm(s: string): string {
   return s.replace(/\s+/g, "").toLowerCase();
+}
+
+const AIRPORT = { name: "제주국제공항", lat: 33.5066, lng: 126.4927 };
+
+function anchorLabel(a: { name: string; lat?: number; lng?: number }): string {
+  return typeof a.lat === "number" && typeof a.lng === "number"
+    ? `${a.name}(${a.lat.toFixed(4)}, ${a.lng.toFixed(4)})`
+    : a.name;
+}
+
+/**
+ * 일자별 동선 앵커: 각 날의 시작점·종착점을 좌표와 함께 명시.
+ * 1일차 공항→첫 숙소, 중간일 숙소→다음 숙소, 마지막 날 숙소→공항.
+ */
+function buildAnchors(req: TripPlanRequest): string {
+  const days = req.days;
+  if (days < 1) return "";
+
+  // 박별 숙소 배열 만들기 (1박째 숙소, 2박째 숙소, ...)
+  const booked = (req.bookedAccommodations ?? []).filter((a) => a.name);
+  const lodgingByNight: Array<{ name: string; lat?: number; lng?: number } | null> = [];
+  for (const acc of booked) {
+    for (let n = 0; n < acc.nights; n++) lodgingByNight.push(acc);
+  }
+  // 남은 박 처리
+  while (lodgingByNight.length < req.nights) {
+    if (req.remainingNightsPlan === "stay_at_first" && booked.length > 0) {
+      lodgingByNight.push(booked[booked.length - 1]); // 마지막 입력 숙소에서 연장
+    } else {
+      lodgingByNight.push(null); // AI 추천
+    }
+  }
+
+  const lines: string[] = [];
+  for (let d = 1; d <= days; d++) {
+    const start = d === 1 ? AIRPORT : lodgingByNight[d - 2];
+    const end = d === days ? AIRPORT : lodgingByNight[d - 1];
+    const startLabel = start
+      ? anchorLabel(start) + (d === 1 ? ` ${req.arrivalTime} 도착` : " 체크아웃")
+      : "전날 AI 추천 숙소";
+    const endLabel = end
+      ? anchorLabel(end) + (d === days ? ` ${req.departureTime} 출발` : " 체크인·숙박")
+      : "AI 추천 숙소 (이날 동선의 끝 지점 근처로 선택)";
+    lines.push(`- ${d}일차: 시작=${startLabel} → 종착=${endLabel}`);
+  }
+
+  return `
+# 일자별 동선 앵커 (반드시 준수)
+${lines.join("\n")}
+- 각 날의 모든 스팟은 위 시작점→종착점 방향으로 진행하면서 그 경로 회랑(반경 약 10km) 안에서 선택해.
+- 시작점에서 종착점 반대 방향으로 가는 스팟은 넣지 마. 이미 지나온 권역으로 되돌아가는 것도 금지.
+- 시작점과 종착점이 같은 날(당일치기 등)은 한 방향으로 도는 원형(루프) 동선으로 짜고, 같은 길을 왕복하지 마.
+- 숙소 체크인은 그날 일정의 마지막에, 체크아웃은 다음 날 일정의 처음에 배치해.`;
 }
 
 /** 제주 BBOX — AI가 출력한 좌표 검증용 */
@@ -186,12 +242,13 @@ export async function POST(req: NextRequest) {
 
   const draftPrompt = `# 사용자 여행 프로필
 ${profileText(body)}
+${buildAnchors(body)}
 
 # 도민맛집 리스트 (ID|이름|지역|메뉴) — 식사는 반드시 여기서 선택
 ${restaurantLines(restaurants)}
 
 # 요청
-위 프로필에 맞춰 ${body.days}일짜리 제주 여행 일정 초안을 짜줘. 관광지·카페는 구글 검색으로 실존 여부와 인기를 확인해서 골라.`;
+위 프로필과 일자별 동선 앵커에 맞춰 ${body.days}일짜리 제주 여행 일정 초안을 짜줘. 관광지·카페는 구글 검색으로 실존 여부와 인기를 확인해서 골라.`;
 
   try {
     // 1차: 검색 그라운딩 초안 (responseSchema와 googleSearch는 동시 사용 불가 → 2단계 분리)
@@ -244,9 +301,25 @@ ${restaurantLines(restaurants)}
     // 도민맛집 데이터로 보강 (좌표·주소·썸네일)
     const byId = new Map(restaurants.map((r) => [r.id, r]));
     const byTitle = new Map(restaurants.map((r) => [norm(r.title), r]));
+    // 예약 숙소는 카카오 검색으로 확정된 좌표가 있음 → 이름 매칭으로 정확 좌표 주입
+    const bookedWithCoords = (body.bookedAccommodations ?? []).filter(
+      (a) => a.name && typeof a.lat === "number" && typeof a.lng === "number"
+    );
 
     for (const day of plan.days) {
       for (const item of day.items) {
+        const lodging = bookedWithCoords.find(
+          (a) => norm(item.name).includes(norm(a.name)) || norm(a.name).includes(norm(item.name))
+        );
+        if (lodging) {
+          item.isDominFood = false;
+          item.restaurantId = undefined;
+          item.lat = lodging.lat;
+          item.lng = lodging.lng;
+          item.address = lodging.address;
+          continue;
+        }
+
         const matched =
           (item.restaurantId && byId.get(item.restaurantId)) ||
           byTitle.get(norm(item.name));

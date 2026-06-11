@@ -63,13 +63,26 @@ function loadKakaoSdk(): Promise<KakaoNS> {
 type Props = {
   days: TripDay[];
   activeDay: number; // 1-based, 0 = 전체
+  compact?: boolean; // 스크롤 시 축소 모드
   onSpotClick?: (dayIndex: number, itemIndex: number) => void;
 };
 
-export function TripResultMap({ days, activeDay, onSpotClick }: Props) {
+export function TripResultMap({ days, activeDay, compact = false, onSpotClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<KakaoMap | null>(null);
   const overlaysRef = useRef<KakaoOverlay[]>([]);
+  const boundsRef = useRef<unknown>(null);
+
+  // 높이 전환 후 지도 리레이아웃 + 범위 복원
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.relayout();
+      if (boundsRef.current) map.setBounds(boundsRef.current);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [compact]);
 
   useEffect(() => {
     if (!KAKAO_KEY || !containerRef.current) return;
@@ -159,7 +172,10 @@ export function TripResultMap({ days, activeDay, onSpotClick }: Props) {
       }
 
       map.relayout();
-      if (!bounds.isEmpty()) map.setBounds(bounds);
+      if (!bounds.isEmpty()) {
+        boundsRef.current = bounds;
+        map.setBounds(bounds);
+      }
     }
 
     draw();
@@ -177,7 +193,10 @@ export function TripResultMap({ days, activeDay, onSpotClick }: Props) {
   return (
     <div
       ref={containerRef}
-      className="h-[300px] w-full rounded-2xl border border-border-soft bg-bg-secondary overflow-hidden md:h-[380px]"
+      className={[
+        "w-full rounded-2xl border border-border-soft bg-bg-secondary overflow-hidden transition-[height] duration-300",
+        compact ? "h-[130px]" : "h-[300px] md:h-[380px]",
+      ].join(" ")}
     />
   );
 }

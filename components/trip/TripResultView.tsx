@@ -95,18 +95,32 @@ const TYPE_BADGE: Record<string, string> = {
 type Props = {
   plan: TripPlan;
   transportation: string;
+  savedToMyPage?: boolean;
   onReset: () => void;
-  onRegenerate: () => void;
-  regenerating: boolean;
+  onRegenerate?: () => void;
+  regenerating?: boolean;
 };
 
-export function TripResultView({ plan, transportation, onReset, onRegenerate, regenerating }: Props) {
+export function TripResultView({ plan, transportation, savedToMyPage, onReset, onRegenerate, regenerating }: Props) {
   const [days, setDays] = useState(plan.days);
   const [activeDay, setActiveDay] = useState(plan.days.length === 1 ? 1 : 0);
   const [geocoding, setGeocoding] = useState(false);
   const [highlight, setHighlight] = useState<string | null>(null);
+  const [mapCompact, setMapCompact] = useState(false);
+  const [mapPinned, setMapPinned] = useState(false); // 사용자가 수동으로 크게 고정
 
   useEffect(() => { setDays(plan.days); }, [plan]);
+
+  // 스크롤이 내려가면 지도를 축소해서 일정 내용에 화면을 양보
+  useEffect(() => {
+    const onScroll = () => {
+      if (mapPinned) return;
+      setMapCompact(window.scrollY > 260);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [mapPinned]);
 
   // 비도민 스팟 좌표를 카카오 키워드 검색으로 정밀 보정
   // (AI 추정 좌표는 수 km 오차 가능 — 카카오 성공 시 교체, 실패/쿼터초과 시 AI 좌표 유지)
@@ -115,7 +129,8 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
     const pending: Array<{ dayIdx: number; itemIdx: number; item: TripItem }> = [];
     plan.days.forEach((d, dayIdx) =>
       d.items.forEach((item, itemIdx) => {
-        if (!item.isDominFood) pending.push({ dayIdx, itemIdx, item });
+        // address가 있으면 서버에서 확정된 좌표 (도민맛집·예약 숙소) → 보정 불필요
+        if (!item.isDominFood && !item.address) pending.push({ dayIdx, itemIdx, item });
       })
     );
     if (pending.length === 0) return;
@@ -162,32 +177,72 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
     <div className="space-y-4">
       <style>{`
         @media print {
-          .no-print { display: none !important; }
-          .printable-trip { padding: 0 !important; }
+          @page { margin: 12mm; }
+          body * { visibility: hidden; }
+          .printable-trip, .printable-trip * { visibility: visible; }
+          .printable-trip {
+            position: absolute; left: 0; top: 0; width: 100%;
+            font-size: 11px;
+          }
+          .no-print, .no-print * { display: none !important; }
+          .print-only { display: flex !important; }
+          /* 글자는 전부 진한 검정으로 */
+          .printable-trip, .printable-trip * { color: #000 !important; }
+          .printable-trip .trip-day-badge { color: #fff !important; }
+          /* 공간 압축 */
+          .printable-trip .trip-day-card {
+            padding: 8px 10px !important; margin-bottom: 8px !important;
+            box-shadow: none !important; border: 1px solid #ccc !important;
+            break-inside: avoid-page;
+          }
+          .printable-trip .trip-item-card { padding: 5px 8px !important; background: #fff !important; }
+          .printable-trip .trip-item { break-inside: avoid; }
+          .printable-trip .trip-connector { padding: 0 0 0 22px !important; }
+          .printable-trip .trip-connector > div { height: 10px !important; }
+          .printable-trip .trip-comment { padding: 2px 6px !important; background: #f5f5f5 !important; }
+          .printable-trip .trip-comment p { font-size: 10px !important; line-height: 1.45 !important; }
+          .printable-trip .trip-tips { padding: 8px 10px !important; break-inside: avoid-page; }
+          .printable-trip .trip-closing { padding: 8px !important; break-inside: avoid-page; }
         }
       `}</style>
 
-      {/* 헤더 카드 */}
-      <div className="rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-5 text-white">
+      {/* 화면용 헤더 카드 (인쇄 제외) */}
+      <div className="no-print rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-5 text-white">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] text-white/70">🗿 돌맹이가 짜준 일정</p>
             <h2 className="mt-1 text-lg font-black">{plan.title}</h2>
             <p className="mt-2 text-xs leading-5 text-white/90">{plan.overview}</p>
+            {savedToMyPage && (
+              <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold">
+                ✓ 마이페이지에 저장됨
+              </p>
+            )}
           </div>
           <button
             type="button"
             onClick={onReset}
-            className="no-print shrink-0 rounded-full border border-white/30 px-3 py-1.5 text-[11px] font-medium hover:bg-white/10 transition-colors"
+            className="shrink-0 rounded-full border border-white/30 px-3 py-1.5 text-[11px] font-medium hover:bg-white/10 transition-colors"
           >
             처음부터 다시
           </button>
         </div>
       </div>
 
-      {/* 지도 + 일차 탭 (모바일 헤더 아래 고정) */}
+      {/* 지도 + 일차 탭 (스크롤 시 자동 축소) */}
       <div className="no-print sticky top-14 z-10 -mx-4 bg-bg-primary px-4 pb-2 pt-2 md:top-0 md:mx-0 md:px-0">
-        <TripResultMap days={days} activeDay={activeDay} onSpotClick={handleSpotClick} />
+        <div className="relative">
+          <TripResultMap days={days} activeDay={activeDay} compact={mapCompact && !mapPinned} onSpotClick={handleSpotClick} />
+          {mapCompact && (
+            <button
+              type="button"
+              onClick={() => setMapPinned((p) => !p)}
+              className="absolute right-2 top-2 z-10 rounded-full bg-bg-card/95 px-2.5 py-1 text-[10px] font-bold text-text-primary shadow-card hover:bg-bg-card transition-colors"
+            >
+              {mapPinned ? "지도 접기 ▲" : "지도 크게 ▼"}
+            </button>
+          )}
+        </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {days.length > 1 && (
             <button
@@ -225,15 +280,28 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
         </div>
       </div>
 
-      {/* 일정 타임라인 */}
+      {/* ── 인쇄 가능 영역 ── */}
       <div className="printable-trip space-y-4">
+        {/* 인쇄 전용 문서 헤더: 로고 + Funjeju.com + 일정 제목 */}
+        <div className="print-only hidden flex-col gap-2 border-b-2 border-black pb-3">
+          <div className="flex items-center gap-2">
+            <Image src="/dolmangyi.png" alt="돌맹이" width={36} height={36} className="h-9 w-9 object-contain" />
+            <span className="text-xl font-black tracking-tight">Funjeju.com</span>
+            <span className="ml-auto text-[10px]">AI 여행 일정 · {new Date().toLocaleDateString("ko-KR")}</span>
+          </div>
+          <div>
+            <p className="text-base font-black">{plan.title}</p>
+            <p className="text-[11px]">{plan.overview}</p>
+          </div>
+        </div>
+
         {visibleDays.map((d) => {
           const color = DAY_COLORS[(d.day - 1) % DAY_COLORS.length];
           return (
-            <div key={d.day} className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:p-5">
+            <div key={d.day} className="trip-day-card rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:p-5">
               <div className="mb-3 flex items-center gap-2">
                 <span
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white"
+                  className="trip-day-badge flex h-7 w-7 items-center justify-center rounded-full text-xs font-black text-white"
                   style={{ background: color }}
                 >
                   D{d.day}
@@ -247,10 +315,10 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
                   const travel = i > 0 ? estimateTravel(d.items[i - 1], item, transportation) : null;
                   const noCoord = typeof item.lat !== "number";
                   return (
-                    <div key={i}>
+                    <div key={i} className="trip-item">
                       {/* 이동시간 커넥터 */}
                       {i > 0 && (
-                        <div className="flex items-center gap-2 py-1 pl-[22px]">
+                        <div className="trip-connector flex items-center gap-2 py-1 pl-[22px]">
                           <div className="h-6 w-px border-l border-dashed border-border-soft" />
                           <span className="text-[10px] font-semibold text-text-secondary">
                             {travel ? travel.label : "🚗 이동"}
@@ -270,7 +338,7 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
                           <span className="mt-0.5 text-[9px] text-text-secondary">{item.duration}</span>
                         </div>
 
-                        <div className="mb-1 flex-1 rounded-xl bg-bg-secondary/50 p-3">
+                        <div className="trip-item-card mb-1 flex-1 rounded-xl bg-bg-secondary/50 p-3">
                           <div className="flex items-center gap-2">
                             <span className="text-2xl">{item.emoji || TYPE_BADGE[item.type] || "📍"}</span>
                             <div className="min-w-0 flex-1">
@@ -290,19 +358,19 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
                                   <span className="truncate text-[10px] text-text-secondary">{item.address}</span>
                                 )}
                                 {noCoord && (
-                                  <span className="text-[9px] text-text-secondary/70">지도 표시 불가</span>
+                                  <span className="no-print text-[9px] text-text-secondary/70">지도 표시 불가</span>
                                 )}
                               </div>
                             </div>
                             {item.isDominFood && item.thumbnail && (
-                              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+                              <div className="no-print relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
                                 <Image src={item.thumbnail} alt={item.name} fill className="object-cover" sizes="48px" />
                               </div>
                             )}
                           </div>
 
-                          <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-brand-yellow/20 p-2">
-                            <DolmangyiIcon size={20} className="shrink-0" />
+                          <div className="trip-comment mt-2 flex items-start gap-1.5 rounded-lg bg-brand-yellow/20 p-2">
+                            <DolmangyiIcon size={20} className="no-print shrink-0" />
                             <p className="text-[11px] leading-5 text-text-primary">{item.comment}</p>
                           </div>
 
@@ -326,7 +394,7 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
 
         {/* 팁 */}
         {plan.tips.length > 0 && (
-          <div className="rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-5">
+          <div className="trip-tips rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-5">
             <p className="mb-2 text-sm font-bold text-brand-navy">💡 돌맹이 꿀팁</p>
             <ul className="space-y-1.5">
               {plan.tips.map((tip, i) => (
@@ -336,8 +404,8 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
           </div>
         )}
 
-        <div className="rounded-2xl bg-brand-yellow/20 p-5 text-center">
-          <DolmangyiIcon size={48} />
+        <div className="trip-closing rounded-2xl bg-brand-yellow/20 p-5 text-center">
+          <DolmangyiIcon size={48} className="no-print" />
           <p className="mt-2 text-sm font-medium text-text-primary">{plan.closing}</p>
         </div>
       </div>
@@ -349,16 +417,18 @@ export function TripResultView({ plan, transportation, onReset, onRegenerate, re
           onClick={() => window.print()}
           className="flex-1 rounded-xl border border-border-soft bg-bg-card py-3 text-sm font-semibold text-text-secondary hover:bg-bg-secondary transition-colors"
         >
-          📥 저장하기
+          📥 PDF 저장
         </button>
-        <button
-          type="button"
-          onClick={onRegenerate}
-          disabled={regenerating}
-          className="flex-1 rounded-xl bg-brand-orange py-3 text-sm font-bold text-white hover:bg-brand-orange/90 disabled:opacity-50 transition-colors"
-        >
-          {regenerating ? "🗿 다시 짜는 중..." : "🔄 다시 만들기"}
-        </button>
+        {onRegenerate && (
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={regenerating}
+            className="flex-1 rounded-xl bg-brand-orange py-3 text-sm font-bold text-white hover:bg-brand-orange/90 disabled:opacity-50 transition-colors"
+          >
+            {regenerating ? "🗿 다시 짜는 중..." : "🔄 다시 만들기"}
+          </button>
+        )}
       </div>
     </div>
   );

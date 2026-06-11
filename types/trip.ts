@@ -30,6 +30,26 @@ export type TripPlan = {
   closing: string;
 };
 
+/** 예약 숙소 — 카카오 숙박 검색으로 확정 (좌표 포함 시 동선 앵커로 사용) */
+export type BookedAccommodation = {
+  name: string;
+  nights: number;       // 이 숙소에서 몇 박인지
+  address?: string;
+  lat?: number;
+  lng?: number;
+};
+
+/** Firestore에 저장된 일정 (users/{uid}/tripPlans/{id}) */
+export type SavedTripPlan = {
+  id: string;
+  title: string;
+  nights: number;
+  days: number;
+  transportation: string;
+  createdAt: number; // epoch ms
+  plan: TripPlan;
+};
+
 export type TripPlanRequest = {
   mode: "rough" | "detailed";
   nights: number;
@@ -40,7 +60,7 @@ export type TripPlanRequest = {
   transportation: string;
   // detailed 전용
   accommodationStatus?: "booked" | "not_booked";
-  bookedAccommodations?: string[];
+  bookedAccommodations?: BookedAccommodation[];
   remainingNightsPlan?: "stay_at_first" | "recommend_rest";
   tripStyle?: string;
   accommodationRecommendationStyle?: "base_camp" | "daily_move";

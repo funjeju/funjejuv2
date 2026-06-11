@@ -7,10 +7,12 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { getAuthor } from "@/lib/feed";
+import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
 import type { FeedAuthor } from "@/types/feed";
+import type { SavedTripPlan } from "@/types/trip";
 
 const ADMIN_EMAIL = "naggu1999@gmail.com";
 
@@ -27,18 +29,26 @@ export default function MyPage() {
   const { savedIds } = useSaved();
   const [author, setAuthor] = useState<FeedAuthor | null>(null);
   const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
+  const [tripPlans, setTripPlans] = useState<SavedTripPlan[]>([]);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
   useEffect(() => {
     if (!user) return;
     getAuthor(user.uid).then(setAuthor);
+    listTripPlans(user.uid).then(setTripPlans).catch(() => setTripPlans([]));
   }, [user]);
+
+  const handleDeleteTripPlan = async (planId: string) => {
+    if (!user) return;
+    setTripPlans((prev) => prev.filter((p) => p.id !== planId));
+    try { await deleteTripPlan(user.uid, planId); } catch { /* 다음 로드에서 동기화 */ }
+  };
 
   const stats = [
     { label: "저장한 스팟", value: String(savedIds.size), emoji: "⭐" },
     { label: "작성한 피드", value: "—",  emoji: "📸" },
-    { label: "완성한 일정", value: "—",  emoji: "🗓️" },
+    { label: "완성한 일정", value: String(tripPlans.length), emoji: "🗓️" },
   ];
 
   if (!loading && !user) {
@@ -182,6 +192,53 @@ export default function MyPage() {
               일정 만들기
             </Link>
           </div>
+
+          {/* 내 여행 일정 */}
+          {tripPlans.length > 0 && (
+            <section className="mx-4 mb-5 md:mx-0">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-sm font-bold text-text-primary">
+                  🗓️ 내 여행 일정
+                  <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                    {tripPlans.length}
+                  </span>
+                </h2>
+                <Link href="/trip-ai" className="text-xs font-medium text-brand-orange">
+                  새 일정 만들기 →
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {tripPlans.slice(0, 5).map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border-soft bg-bg-card px-4 py-3 shadow-card"
+                  >
+                    <Link href={`/trip-ai?plan=${p.id}`} className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-text-primary">{p.title}</p>
+                      <p className="mt-0.5 text-[10px] text-text-secondary">
+                        {p.nights === 0 ? "당일치기" : `${p.nights}박 ${p.days}일`} · {p.transportation}
+                        {p.createdAt > 0 && ` · ${new Date(p.createdAt).toLocaleDateString("ko-KR")}`}
+                      </p>
+                    </Link>
+                    <Link
+                      href={`/trip-ai?plan=${p.id}`}
+                      className="shrink-0 rounded-full bg-brand-orange/10 px-3 py-1.5 text-[10px] font-bold text-brand-orange hover:bg-brand-orange hover:text-white transition-colors"
+                    >
+                      보기
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTripPlan(p.id)}
+                      className="shrink-0 text-xs text-text-secondary hover:text-live-red transition-colors"
+                      aria-label="일정 삭제"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 즐겨찾기 CCTV */}
           {(() => {

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import type { DominCard, AiSpotCard } from "@/types/chat";
 
 const SUGGESTIONS = [
   { label: "성산 흑돼지 맛집 추천",    emoji: "🍽️" },
@@ -12,8 +15,93 @@ const SUGGESTIONS = [
   { label: "비 오는 날 가볼 곳",       emoji: "🌧️" },
 ];
 
-type Message = { role: "user" | "model"; text: string };
+type Message = { role: "user" | "model"; text: string; domin?: DominCard[]; aiSpots?: AiSpotCard[] };
 type GPS = { lat: number; lng: number } | null;
+
+// 카카오맵 URL 스킴 — 모바일에선 카카오맵 앱(길찾기→카카오내비)으로 연결
+const kakaoMapUrl  = (name: string, lat: number, lng: number) =>
+  `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
+const kakaoNaviUrl = (name: string, lat: number, lng: number) =>
+  `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+
+function fmtDist(km?: number): string | null {
+  if (typeof km !== "number") return null;
+  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
+}
+
+function MapButtons({ name, lat, lng }: { name: string; lat?: number; lng?: number }) {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  return (
+    <span className="flex shrink-0 gap-1">
+      <a
+        href={kakaoMapUrl(name, lat, lng)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-bg-secondary px-2 py-1 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors"
+      >
+        🗺️ 지도
+      </a>
+      <a
+        href={kakaoNaviUrl(name, lat, lng)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-full bg-brand-yellow/30 px-2 py-1 text-[10px] font-bold text-brand-navy hover:bg-brand-yellow transition-colors"
+      >
+        🧭 길찾기
+      </a>
+    </span>
+  );
+}
+
+function DominCards({ cards }: { cards: DominCard[] }) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <p className="text-[10px] font-bold text-brand-navy">🗿 펀제주 인증 도민맛집</p>
+      {cards.map((c) => (
+        <div key={c.id} className="flex items-center gap-2.5 rounded-xl border border-brand-navy/15 bg-bg-card p-2 shadow-card">
+          {c.thumbnail ? (
+            <Link href={`/food/${c.id}`} className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+              <Image src={c.thumbnail} alt={c.name} fill className="object-cover" sizes="44px" />
+            </Link>
+          ) : (
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-lg">🍴</span>
+          )}
+          <div className="min-w-0 flex-1">
+            <Link href={`/food/${c.id}`} className="block truncate text-xs font-bold text-text-primary hover:text-brand-orange">
+              {c.name}
+            </Link>
+            <p className="truncate text-[10px] text-text-secondary">
+              {[c.menu, c.region].filter(Boolean).join(" · ")}
+              {fmtDist(c.distanceKm) && <span className="ml-1 font-bold text-brand-orange">📍 {fmtDist(c.distanceKm)}</span>}
+            </p>
+          </div>
+          <MapButtons name={c.name} lat={c.lat} lng={c.lng} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AiSpotCards({ cards }: { cards: AiSpotCard[] }) {
+  return (
+    <div className="mt-2 space-y-1.5">
+      <p className="text-[10px] font-bold text-text-secondary">🔍 AI가 검색으로 찾은 곳</p>
+      {cards.map((c) => (
+        <div key={c.name} className="flex items-center gap-2.5 rounded-xl border border-border-soft bg-bg-card p-2 shadow-card">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-bg-secondary text-lg">🔍</span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-text-primary">{c.name}</p>
+            <p className="truncate text-[10px] text-text-secondary">
+              {c.reason}
+              {fmtDist(c.distanceKm) && <span className="ml-1 font-bold text-brand-orange">📍 {fmtDist(c.distanceKm)}</span>}
+            </p>
+          </div>
+          <MapButtons name={c.name} lat={c.lat} lng={c.lng} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const INITIAL: Message[] = [
   {
@@ -73,7 +161,12 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, lat: gps?.lat, lng: gps?.lng }),
+        body: JSON.stringify({
+          // 카드 데이터는 서버로 다시 보낼 필요 없음
+          messages: history.map((m) => ({ role: m.role, text: m.text })),
+          lat: gps?.lat,
+          lng: gps?.lng,
+        }),
       });
 
       if (!res.ok || !res.body) throw new Error(`API error: ${res.status}`);
@@ -82,6 +175,14 @@ export default function ChatPage() {
       const decoder = new TextDecoder();
       let accumulated = "";
       let buffer = "";
+
+      const patchLast = (patch: Partial<Message>) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = { ...next[next.length - 1], ...patch };
+          return next;
+        });
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -94,15 +195,13 @@ export default function ChatPage() {
           const data = line.slice(6).trim();
           if (data === "[DONE]") break;
           try {
-            const { text: chunk, error } = JSON.parse(data) as { text?: string; error?: string };
-            if (error) throw new Error(error);
-            if (chunk) {
-              accumulated += chunk;
-              setMessages((prev) => {
-                const next = [...prev];
-                next[next.length - 1] = { role: "model", text: accumulated };
-                return next;
-              });
+            const evt = JSON.parse(data) as { text?: string; error?: string; domin?: DominCard[]; aiSpots?: AiSpotCard[] };
+            if (evt.error) throw new Error(evt.error);
+            if (evt.domin) patchLast({ domin: evt.domin });
+            if (evt.aiSpots) patchLast({ aiSpots: evt.aiSpots });
+            if (evt.text) {
+              accumulated += evt.text;
+              patchLast({ text: accumulated });
             }
           } catch { /* ignore parse errors */ }
         }
@@ -192,17 +291,24 @@ export default function ChatPage() {
             {msg.role === "model" && (
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={28} /></div>
             )}
-            <div
-              className={[
-                "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
-                msg.role === "model"
-                  ? "rounded-tl-none bg-bg-card border border-border-soft text-text-primary shadow-card"
-                  : "rounded-tr-none bg-brand-navy text-white",
-              ].join(" ")}
-            >
-              {msg.text || (loading && i === messages.length - 1 ? "" : "　")}
-              {msg.role === "model" && loading && i === messages.length - 1 && (
-                <span className="inline-block w-1.5 h-4 bg-text-primary/40 animate-pulse rounded-sm ml-0.5 align-middle" />
+            <div className={`flex max-w-[85%] flex-col ${msg.role === "user" ? "items-end" : "items-stretch"}`}>
+              <div
+                className={[
+                  "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+                  msg.role === "model"
+                    ? "rounded-tl-none bg-bg-card border border-border-soft text-text-primary shadow-card"
+                    : "rounded-tr-none bg-brand-navy text-white self-end",
+                ].join(" ")}
+              >
+                {msg.text || (loading && i === messages.length - 1 ? "" : "　")}
+                {msg.role === "model" && loading && i === messages.length - 1 && (
+                  <span className="inline-block w-1.5 h-4 bg-text-primary/40 animate-pulse rounded-sm ml-0.5 align-middle" />
+                )}
+              </div>
+              {msg.domin && msg.domin.length > 0 && <DominCards cards={msg.domin} />}
+              {msg.aiSpots && msg.aiSpots.length > 0 && <AiSpotCards cards={msg.aiSpots} />}
+              {msg.role === "model" && msg.domin && loading && i === messages.length - 1 && !msg.aiSpots && (
+                <p className="mt-1.5 text-[10px] text-text-secondary">🔍 AI가 검색 추천도 찾는 중...</p>
               )}
             </div>
           </div>

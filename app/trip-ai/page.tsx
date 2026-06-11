@@ -4,9 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { PageHeader } from "@/components/common/PageHeader";
 import { TripResultView } from "@/components/trip/TripResultView";
+import { AccommodationPicker } from "@/components/trip/AccommodationPicker";
+import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
+import { saveTripPlan, listTripPlans, getTripPlan, deleteTripPlan } from "@/lib/trip-plans";
 import { mockCctvs } from "@/constants/mock-cctvs";
-import type { TripPlan, TripPlanRequest } from "@/types/trip";
+import type { TripPlan, TripPlanRequest, SavedTripPlan, BookedAccommodation } from "@/types/trip";
 
 // ── 폼 상태 (TripPlannerModal 기반) ─────────────────────────
 type FormState = {
@@ -19,7 +22,7 @@ type FormState = {
   companions: string[];
   transportation: string;
   accommodationStatus: "booked" | "not_booked" | null;
-  bookedAccommodations: string[];
+  bookedAccommodations: BookedAccommodation[];
   remainingNightsPlan: "stay_at_first" | "recommend_rest" | null;
   tripStyle: string;
   accommodationRecommendationStyle: "base_camp" | "daily_move" | null;
@@ -44,7 +47,7 @@ const initialFormState: FormState = {
   companions: [],
   transportation: "렌터카",
   accommodationStatus: null,
-  bookedAccommodations: [""],
+  bookedAccommodations: [],
   remainingNightsPlan: null,
   tripStyle: "",
   accommodationRecommendationStyle: null,
@@ -189,6 +192,7 @@ function DynamicList({ label, items, onChange, onAdd, onRemove, placeholder }: {
 
 // ── 메인 ────────────────────────────────────────────────────
 export default function TripAiPage() {
+  const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const { savedIds } = useSaved();
   const [mode, setMode] = useState<"rough" | "detailed" | null>(null);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -197,6 +201,28 @@ export default function TripAiPage() {
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
   const [plan, setPlan] = useState<TripPlan | null>(null);
   const [error, setError] = useState("");
+  const [savedNotice, setSavedNotice] = useState(false);
+  const [myPlans, setMyPlans] = useState<SavedTripPlan[]>([]);
+  const [viewingSaved, setViewingSaved] = useState<SavedTripPlan | null>(null);
+
+  // 내 저장 일정 로드 + ?plan= 딥링크 처리
+  useEffect(() => {
+    if (!user) { setMyPlans([]); return; }
+    listTripPlans(user.uid).then(setMyPlans).catch(() => setMyPlans([]));
+
+    const planId = new URLSearchParams(window.location.search).get("plan");
+    if (planId) {
+      getTripPlan(user.uid, planId)
+        .then((saved) => { if (saved) setViewingSaved(saved); })
+        .catch(() => { /* 없는 일정이면 무시 */ });
+    }
+  }, [user]);
+
+  const handleDeletePlan = async (planId: string) => {
+    if (!user) return;
+    setMyPlans((prev) => prev.filter((p) => p.id !== planId));
+    try { await deleteTripPlan(user.uid, planId); } catch { /* 목록은 다음 로드에서 동기화 */ }
+  };
 
   // 저장한 스팟 → 필수 방문지 프리필
   const savedSpotNames = useMemo(
@@ -216,27 +242,37 @@ export default function TripAiPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const listChange = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots", i: number, v: string) => {
+  const listChange = (key: "mustVisitRestaurants" | "mustVisitSpots", i: number, v: string) => {
     const next = [...form[key]];
     next[i] = v;
     update(key, next);
   };
-  const listAdd = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots") =>
+  const listAdd = (key: "mustVisitRestaurants" | "mustVisitSpots") =>
     update(key, [...form[key], ""]);
-  const listRemove = (key: "bookedAccommodations" | "mustVisitRestaurants" | "mustVisitSpots", i: number) =>
+  const listRemove = (key: "mustVisitRestaurants" | "mustVisitSpots", i: number) =>
     update(key, form[key].filter((_, idx) => idx !== i));
+
+  // 숙소 박수 합계
+  const bookedNights = form.bookedAccommodations.reduce((s, a) => s + a.nights, 0);
 
   // 동적 스텝 (TripPlannerModal 로직 이식)
   const STEPS = useMemo(() => {
     if (mode === "rough") return ["duration", "companions", "transportation", "summary"];
+
+    // 당일치기는 숙소 관련 스텝 전부 생략
+    if (form.nights === 0) {
+      const prefSteps0 = ["pace", "interests"];
+      if (form.interests.length > 1) prefSteps0.push("interestWeights");
+      return ["duration", "companions", "transportation", ...prefSteps0, "food", "mustVisits", "summary"];
+    }
+
     const base = ["duration", "companions", "transportation", "accommodationStatus"];
     if (!form.accommodationStatus) return base;
 
     const accSteps: string[] = [];
     if (form.accommodationStatus === "booked") {
       accSteps.push("bookedAccommodations");
-      const bookedCount = form.bookedAccommodations.filter((s) => s.trim() !== "").length;
-      if (form.nights > 0 && bookedCount > 0 && form.nights > bookedCount) {
+      if (form.bookedAccommodations.length > 0 && form.nights > bookedNights) {
         accSteps.push("bookedAccommodationsFollowUp");
       }
     }
@@ -249,7 +285,7 @@ export default function TripAiPage() {
     const prefSteps = ["pace", "interests"];
     if (form.interests.length > 1) prefSteps.push("interestWeights");
     return [...base, ...accSteps, ...prefSteps, "food", "mustVisits", "summary"];
-  }, [mode, form.accommodationStatus, form.bookedAccommodations, form.nights, form.remainingNightsPlan, form.interests.length]);
+  }, [mode, form.accommodationStatus, form.bookedAccommodations, bookedNights, form.nights, form.remainingNightsPlan, form.interests.length]);
 
   const MAX_STEPS = mode === "rough" ? 4 : 15;
 
@@ -288,6 +324,7 @@ export default function TripAiPage() {
     setLoading(true);
     setError("");
     setPlan(null);
+    setSavedNotice(false);
 
     const req: TripPlanRequest = {
       mode: mode!,
@@ -301,7 +338,7 @@ export default function TripAiPage() {
     if (mode === "detailed") {
       Object.assign(req, {
         accommodationStatus: form.accommodationStatus ?? undefined,
-        bookedAccommodations: form.bookedAccommodations.filter(Boolean),
+        bookedAccommodations: form.bookedAccommodations.filter((a) => a.name.trim()),
         remainingNightsPlan: form.remainingNightsPlan ?? undefined,
         tripStyle: form.tripStyle || undefined,
         accommodationRecommendationStyle: form.accommodationRecommendationStyle ?? undefined,
@@ -324,7 +361,21 @@ export default function TripAiPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "일정 생성 실패");
-      setPlan(data as TripPlan);
+      const newPlan = data as TripPlan;
+      setPlan(newPlan);
+
+      // 마이페이지에 자동 저장
+      if (user) {
+        try {
+          await saveTripPlan(
+            user.uid,
+            { nights: form.nights, days: form.days, transportation: form.transportation },
+            newPlan
+          );
+          setSavedNotice(true);
+          listTripPlans(user.uid).then(setMyPlans).catch(() => {});
+        } catch { /* 저장 실패해도 일정은 보여줌 */ }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류가 발생했어요");
     } finally {
@@ -334,6 +385,16 @@ export default function TripAiPage() {
 
   const handleNext = () => {
     const step = STEPS[currentStep];
+    if (step === "bookedAccommodations") {
+      if (form.bookedAccommodations.length === 0) {
+        setError("숙소를 1곳 이상 검색해서 추가해주세요.");
+        return;
+      }
+      if (bookedNights > form.nights) {
+        setError(`배정된 박수(${bookedNights}박)가 전체 여행(${form.nights}박)보다 많아요.`);
+        return;
+      }
+    }
     if (step === "interests") {
       if (form.interests.length === 0 || form.interests.length > 4) {
         setError("관심사를 1개 이상, 4개 이하로 선택해주세요.");
@@ -384,8 +445,7 @@ export default function TripAiPage() {
   // ── 스텝 렌더링 ──────────────────────────────────────────
   const renderStep = () => {
     const step = STEPS[currentStep];
-    const bookedCount = form.bookedAccommodations.filter((s) => s.trim()).length;
-    const remainingNights = form.nights - bookedCount;
+    const remainingNights = form.nights - bookedNights;
 
     switch (step) {
       case "duration": return (
@@ -433,17 +493,21 @@ export default function TripAiPage() {
       );
       case "bookedAccommodations": return (
         <div>
-          <h3 className="mb-3 text-sm font-bold text-text-primary">예약하신 숙소 이름을 모두 알려주세요</h3>
-          <DynamicList label="" items={form.bookedAccommodations} placeholder="예: 신라스테이 제주"
-            onChange={(i, v) => listChange("bookedAccommodations", i, v)}
-            onAdd={() => listAdd("bookedAccommodations")}
-            onRemove={(i) => listRemove("bookedAccommodations", i)} />
+          <h3 className="mb-1 text-sm font-bold text-text-primary">예약하신 숙소를 검색해서 추가해주세요</h3>
+          <p className="mb-3 text-[11px] text-text-secondary">
+            숙소 위치를 정확히 알아야 동선이 꼬이지 않게 짤 수 있어요. 숙소마다 몇 박인지도 정해주세요!
+          </p>
+          <AccommodationPicker
+            totalNights={form.nights}
+            value={form.bookedAccommodations}
+            onChange={(next) => update("bookedAccommodations", next)}
+          />
         </div>
       );
       case "bookedAccommodationsFollowUp": return (
         <div>
           <h3 className="mb-3 text-sm font-bold text-text-primary">
-            숙소 {bookedCount}곳을 입력하셨네요. 남은 {remainingNights}박은 어떻게 할까요?
+            {`숙소 ${form.bookedAccommodations.length}곳에 ${bookedNights}박을 배정하셨네요. 남은 ${remainingNights}박은 어떻게 할까요?`}
           </h3>
           <div className="flex flex-col gap-2">
             <BigChoice active={form.remainingNightsPlan === "stay_at_first"} onClick={() => update("remainingNightsPlan", "stay_at_first")}>입력한 숙소에서 모두 숙박할게요</BigChoice>
@@ -580,15 +644,51 @@ export default function TripAiPage() {
   };
 
   // ── 화면 분기 ────────────────────────────────────────────
+  // 로그인 게이트
+  if (!authLoading && !user) {
+    return (
+      <div className="mx-auto max-w-4xl px-0 md:px-4 md:py-6">
+        <PageHeader title="AI 여행 일정" subtitle="도민맛집과 함께하는 나만의 제주 일정" emoji="🗓️" />
+        <div className="flex flex-col items-center px-4 py-16 text-center">
+          <DolmangyiIcon size={64} />
+          <h2 className="mt-4 text-lg font-black text-text-primary">로그인이 필요해요</h2>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">
+            돌맹이가 짜준 일정은 마이페이지에 차곡차곡 저장돼요.<br />
+            로그인하고 나만의 제주 일정을 만들어보세요!
+          </p>
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            className="mt-6 rounded-full bg-brand-navy px-6 py-3 text-sm font-bold text-white shadow-soft hover:bg-brand-navy/90 transition-colors"
+          >
+            Google로 시작하기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl px-0 md:px-4 md:py-6">
       <PageHeader title="AI 여행 일정" subtitle="도민맛집과 함께하는 나만의 제주 일정" emoji="🗓️" />
 
       <div className="px-4 md:px-0">
-        {plan ? (
+        {viewingSaved ? (
+          <TripResultView
+            key={viewingSaved.id}
+            plan={viewingSaved.plan}
+            transportation={viewingSaved.transportation}
+            savedToMyPage
+            onReset={() => {
+              setViewingSaved(null);
+              window.history.replaceState(null, "", "/trip-ai");
+            }}
+          />
+        ) : plan ? (
           <TripResultView
             plan={plan}
             transportation={form.transportation}
+            savedToMyPage={savedNotice}
             onReset={resetAll}
             onRegenerate={generate}
             regenerating={loading}
@@ -639,6 +739,53 @@ export default function TripAiPage() {
                 완성된 일정은 지도 위에 동선까지 그려드려요.
               </p>
             </div>
+
+            {/* 내가 만든 일정 */}
+            {myPlans.length > 0 && (
+              <section className="pt-2">
+                <h2 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-text-primary">
+                  📂 내가 만든 일정
+                  <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10px] font-bold text-brand-orange">
+                    {myPlans.length}
+                  </span>
+                </h2>
+                <div className="space-y-2">
+                  {myPlans.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 rounded-2xl border border-border-soft bg-bg-card px-4 py-3 shadow-card"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setViewingSaved(p)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p className="truncate text-xs font-bold text-text-primary">{p.title}</p>
+                        <p className="mt-0.5 text-[10px] text-text-secondary">
+                          {p.nights === 0 ? "당일치기" : `${p.nights}박 ${p.days}일`} · {p.transportation}
+                          {p.createdAt > 0 && ` · ${new Date(p.createdAt).toLocaleDateString("ko-KR")}`}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewingSaved(p)}
+                        className="shrink-0 rounded-full bg-brand-orange/10 px-3 py-1.5 text-[10px] font-bold text-brand-orange hover:bg-brand-orange hover:text-white transition-colors"
+                      >
+                        보기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePlan(p.id)}
+                        className="shrink-0 text-xs text-text-secondary hover:text-live-red transition-colors"
+                        aria-label="일정 삭제"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:p-6">
