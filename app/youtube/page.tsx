@@ -66,6 +66,39 @@ export default function JejutubePage() {
   const [savedNames, setSavedNames] = useState<Set<string>>(new Set());
   const [savingName, setSavingName] = useState<string | null>(null);
   const [playing, setPlaying] = useState<string | null>(null); // 재생 중인 videoId
+  // 유저 영상 등록
+  const [url, setUrl] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeMsg, setAnalyzeMsg] = useState<{ type: "ok" | "info" | "error"; text: string } | null>(null);
+
+  async function handleAnalyze() {
+    if (!url.trim() || analyzing) return;
+    if (!user) { signInWithGoogle(); return; }
+    setAnalyzing(true);
+    setAnalyzeMsg(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/jejutube/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "분석 실패");
+      const video = data as JejutubeVideo & { alreadyExists?: boolean };
+      if (video.alreadyExists) {
+        setAnalyzeMsg({ type: "info", text: "이미 다른 여행자가 등록한 영상이에요! 아래에서 바로 스팟을 찜해보세요." });
+      } else {
+        setAnalyzeMsg({ type: "ok", text: `✓ 분석 완료! 스팟 ${video.spots.length}곳을 찾았어요.` });
+      }
+      setVideos((prev) => [video, ...prev.filter((v) => v.videoId !== video.videoId)]);
+      setUrl("");
+    } catch (e) {
+      setAnalyzeMsg({ type: "error", text: e instanceof Error ? e.message : "오류가 발생했어요" });
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   useEffect(() => {
     fetch("/api/jejutube")
@@ -110,6 +143,50 @@ export default function JejutubePage() {
       <PageHeader title="제주tube" subtitle="유튜브 속 제주 스팟을 한눈에, 찜하면 내 여행 일정에" emoji="▶️" />
 
       <div className="space-y-5 px-4 md:px-0">
+        {/* 영상 등록 (로그인 유저 누구나) */}
+        <div className="rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white">
+          <div className="mb-2 flex items-center gap-2">
+            <DolmangyiIcon size={32} className="shrink-0" />
+            <div>
+              <p className="text-sm font-black">봤던 제주 유튜브, 여기에 넣어봐!</p>
+              <p className="text-[10px] text-white/80">돌맹이가 영상 속 스팟을 뽑아줄게. 다른 여행자들과 함께 공유돼요.</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
+              placeholder="https://www.youtube.com/watch?v=..."
+              disabled={analyzing}
+              className="flex-1 rounded-xl border-0 bg-white/15 px-3 py-2.5 text-xs text-white placeholder:text-white/50 outline-none focus:bg-white/25"
+            />
+            <button
+              type="button"
+              onClick={handleAnalyze}
+              disabled={!url.trim() || analyzing}
+              className="shrink-0 rounded-xl bg-brand-yellow px-4 py-2.5 text-xs font-black text-brand-navy hover:bg-brand-yellow/90 disabled:opacity-40 transition-colors"
+            >
+              {analyzing ? "🗿 분석 중..." : "✨ 스팟 추출"}
+            </button>
+          </div>
+          {analyzing && (
+            <p className="mt-2 text-[10px] text-white/80">자막을 읽고 스팟을 찾는 중이에요. 최대 1분 정도 걸려요!</p>
+          )}
+          {analyzeMsg && (
+            <p className={[
+              "mt-2 text-[11px] font-semibold",
+              analyzeMsg.type === "error" ? "text-red-200" : "text-white",
+            ].join(" ")}>
+              {analyzeMsg.type === "error" ? "❌ " : ""}{analyzeMsg.text}
+            </p>
+          )}
+          {!user && (
+            <p className="mt-2 text-[10px] text-white/70">등록하려면 로그인이 필요해요 (버튼을 누르면 로그인 창이 떠요)</p>
+          )}
+        </div>
+
         {/* 안내 */}
         <div className="flex items-center gap-3 rounded-2xl bg-brand-yellow/20 p-3">
           <DolmangyiIcon size={36} className="shrink-0" />
@@ -161,7 +238,10 @@ export default function JejutubePage() {
 
               <div className="p-4">
                 <p className="text-sm font-bold text-text-primary">{v.title}</p>
-                <p className="mt-0.5 text-[11px] text-text-secondary">{v.author}</p>
+                <p className="mt-0.5 text-[11px] text-text-secondary">
+                  {v.author}
+                  {v.addedByName && <span className="ml-1.5 text-brand-orange">· 🙋 {v.addedByName}님이 공유</span>}
+                </p>
                 <p className="mt-2 text-xs leading-5 text-text-secondary">{v.summary}</p>
                 {v.tags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">

@@ -5,7 +5,7 @@ export const sidebarItems = [
   { href: "/feed",    label: "라이브 피드", icon: "🖼️" },
   { href: "/food",    label: "도민맛집",    icon: "🍽️" },
   { href: "/chat",    label: "AI 도슨트 챗봇", icon: "🤖" },
-  // { href: "/youtube", label: "Jeju Tube", icon: "▶️" },
+  { href: "/youtube", label: "제주tube",    icon: "▶️" },
   { href: "/trip-ai", label: "AI 여행 일정", icon: "🗓️" },
   { href: "/mypage",  label: "마이페이지",  icon: "👤" },
 ] as const;

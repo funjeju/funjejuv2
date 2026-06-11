@@ -22,4 +22,6 @@ export type JejutubeVideo = {
   spots: JejutubeSpot[];
   transcriptSource: "socialkit" | "gemini-video";
   createdAt: number; // epoch ms
+  addedBy?: string;      // 등록한 사용자 uid (공유 풀 — 모두에게 보임)
+  addedByName?: string;
 };

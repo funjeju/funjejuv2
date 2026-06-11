@@ -1,6 +1,7 @@
 import "server-only";
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getAuth, type Auth } from "firebase-admin/auth";
 
 /**
  * Firebase Admin SDK 싱글톤
@@ -52,4 +53,19 @@ export function getAdminDb(): Firestore {
   if (adminDb) return adminDb;
   adminDb = getFirestore(getAdminApp());
   return adminDb;
+}
+
+export function getAdminAuth(): Auth {
+  return getAuth(getAdminApp());
+}
+
+/** Authorization: Bearer <Firebase ID 토큰> 검증 → uid 반환 (실패 시 null) */
+export async function verifyFirebaseToken(authHeader: string | null): Promise<{ uid: string; name?: string } | null> {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  try {
+    const decoded = await getAdminAuth().verifyIdToken(authHeader.slice(7));
+    return { uid: decoded.uid, name: decoded.name as string | undefined };
+  } catch {
+    return null;
+  }
 }

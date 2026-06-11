@@ -1,18 +1,15 @@
 /**
- * 어드민 제주tube — 유튜브 영상 등록/분석
- * SocialKit 자막 추출 → 실패 시 Gemini 영상 직접 분석 폴백 → 스팟 추출 → 카카오 지오코딩
+ * 어드민 제주tube 관리 — 등록(한도 없음)·전체 목록·삭제
+ * 분석 파이프라인은 lib/jejutube-analyze.ts 공용 (유저 등록 API와 동일)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { GoogleGenAI, Type } from "@google/genai";
 import { getAdminDb } from "@/lib/firebase-admin";
-import type { JejutubeSpot, JejutubeVideo } from "@/types/jejutube";
+import { analyzeAndSaveVideo } from "@/lib/jejutube-analyze";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
-
-const KAKAO_REST_KEY = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
 
 async function authCheck(): Promise<NextResponse | null> {
   const cookieStore = await cookies();
@@ -23,250 +20,20 @@ async function authCheck(): Promise<NextResponse | null> {
   return null;
 }
 
-function extractVideoId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
-  return m ? m[1] : null;
-}
-
-function fmtTs(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-// ── 1) SocialKit 자막 추출 (nextcurator/lib/transcript.ts 이식) ──
-async function getTranscriptViaSocialKit(videoId: string): Promise<string> {
-  const apiKey = process.env.SOCIALKIT_API_KEY;
-  if (!apiKey) throw new Error("SOCIALKIT_NOT_CONFIGURED");
-
-  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const res = await fetch(
-    `https://api.socialkit.dev/youtube/transcript?url=${encodeURIComponent(videoUrl)}`,
-    { headers: { "x-access-key": apiKey }, signal: AbortSignal.timeout(20000) }
-  );
-  if (!res.ok) {
-    const errText = await res.text().catch(() => "");
-    throw new Error(`SOCIALKIT_${res.status}: ${errText.slice(0, 100)}`);
-  }
-
-  const data = (await res.json()) as {
-    success?: boolean;
-    data?: {
-      transcript?: string;
-      transcriptSegments?: Array<{ text: string; start: number }>;
-    };
-    error?: string;
-    message?: string;
-  };
-  if (!data.success || !data.data) {
-    throw new Error(`SOCIALKIT_FAILED: ${data.error || data.message || "unknown"}`);
-  }
-
-  const segs = data.data.transcriptSegments;
-  if (segs && segs.length > 0) {
-    return segs
-      .map((s) => `[${fmtTs(s.start)}] ${s.text.replace(/\n/g, " ").trim()}`)
-      .filter((line) => line.length > 10)
-      .join("\n");
-  }
-  if (data.data.transcript && data.data.transcript.trim().length > 50) {
-    return data.data.transcript.trim();
-  }
-  throw new Error("SOCIALKIT_EMPTY_RESPONSE");
-}
-
-// ── 2) 유튜브 메타 (oEmbed — 키 불필요) ─────────────────────
-async function getVideoMeta(videoId: string): Promise<{ title: string; author: string }> {
-  try {
-    const res = await fetch(
-      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!res.ok) return { title: "", author: "" };
-    const data = (await res.json()) as { title?: string; author_name?: string };
-    return { title: data.title ?? "", author: data.author_name ?? "" };
-  } catch {
-    return { title: "", author: "" };
-  }
-}
-
-// ── 3) Gemini 스팟 추출 ─────────────────────────────────────
-const EXTRACT_SYSTEM = `너는 제주 여행 유튜브를 분석해서 핵심 스팟을 뽑아주는 큐레이터야.
-
-[규칙]
-- 제주가 아닌 장소는 제외
-- 실제 존재하는 정확한 장소명만 (확실치 않으면 빼)
-- 일반명사(바다, 카페 등)가 아니라 고유 장소명만
-- timestamp는 자막의 [MM:SS] 표기 기준, 없으면 "00:00"
-- 카테고리: 해변/오름/카페/맛집/관광지/액티비티/숙소 중 하나
-- summary는 3-4문장, 친근한 반말`;
-
-const EXTRACT_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    summary: { type: Type.STRING, description: "영상 요약 3-4문장 반말" },
-    spots: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          name: { type: Type.STRING },
-          category: { type: Type.STRING, description: "해변/오름/카페/맛집/관광지/액티비티/숙소" },
-          description: { type: Type.STRING, description: "영상 속 맥락 1문장 반말" },
-          timestamp: { type: Type.STRING, description: "MM:SS" },
-          emoji: { type: Type.STRING },
-        },
-        required: ["name", "category", "description", "timestamp", "emoji"],
-      },
-    },
-    tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "키워드 3-5개" },
-  },
-  required: ["summary", "spots", "tags"],
-};
-
-type Extracted = { summary: string; spots: JejutubeSpot[]; tags: string[] };
-
-/** 과부하(503/429) 시 flash → flash-lite 폴백 */
-async function genWithFallback(
-  ai: GoogleGenAI,
-  parts: Array<{ text: string } | { fileData: { fileUri: string; mimeType: string } }>
-) {
-  const call = (model: string) =>
-    ai.models.generateContent({
-      model,
-      contents: [{ role: "user", parts }],
-      config: {
-        systemInstruction: EXTRACT_SYSTEM,
-        responseMimeType: "application/json",
-        responseSchema: EXTRACT_SCHEMA,
-        temperature: 0.3,
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    });
-  try {
-    return await call("gemini-2.5-flash");
-  } catch (e) {
-    const status = (e as { status?: number }).status;
-    if (status !== 503 && status !== 429) throw e;
-    await new Promise((r) => setTimeout(r, 1200));
-    return await call("gemini-2.5-flash-lite");
-  }
-}
-
-async function extractFromTranscript(ai: GoogleGenAI, transcript: string, title: string): Promise<Extracted> {
-  const res = await genWithFallback(ai, [
-    { text: `영상 제목: ${title}\n\n자막:\n${transcript.slice(0, 24000)}\n\n위 제주 여행 영상에서 스팟을 추출해줘.` },
-  ]);
-  if (!res.text) throw new Error("EXTRACT_EMPTY");
-  return JSON.parse(res.text) as Extracted;
-}
-
-/** 폴백: Gemini가 영상을 직접 분석 (자막 추출 실패 시) */
-async function extractFromVideo(ai: GoogleGenAI, url: string): Promise<Extracted> {
-  const res = await genWithFallback(ai, [
-    { fileData: { fileUri: url, mimeType: "video/*" } },
-    { text: "이 제주 여행 유튜브 영상을 분석해서 스팟을 추출해줘." },
-  ]);
-  if (!res.text) throw new Error("VIDEO_EXTRACT_EMPTY");
-  return JSON.parse(res.text) as Extracted;
-}
-
-// ── 4) 카카오 지오코딩 ──────────────────────────────────────
-function inJeju(lat: number, lng: number): boolean {
-  return lat >= 33.1 && lat <= 33.65 && lng >= 126.1 && lng <= 127.0;
-}
-
-async function geocodeSpots(spots: JejutubeSpot[]): Promise<JejutubeSpot[]> {
-  if (!KAKAO_REST_KEY) return spots;
-  const out: JejutubeSpot[] = [];
-  for (const spot of spots) {
-    const enriched = { ...spot };
-    try {
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(`제주 ${spot.name}`)}&size=3`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }
-      );
-      if (res.ok) {
-        const data = (await res.json()) as {
-          documents?: Array<{ road_address_name?: string; address_name?: string; x: string; y: string }>;
-        };
-        const hit = (data.documents ?? []).find((d) => inJeju(Number(d.y), Number(d.x)));
-        if (hit) {
-          enriched.lat = Number(hit.y);
-          enriched.lng = Number(hit.x);
-          enriched.address = hit.road_address_name || hit.address_name;
-        }
-      }
-    } catch { /* 좌표 없이 저장 */ }
-    out.push(enriched);
-  }
-  return out;
-}
-
-// ── POST: 영상 분석 + 저장 ──────────────────────────────────
 export async function POST(req: NextRequest) {
   const unauth = await authCheck();
   if (unauth) return unauth;
 
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "GOOGLE_AI_API_KEY 미설정" }, { status: 500 });
-
   const { url } = (await req.json()) as { url?: string };
-  const videoId = url ? extractVideoId(url) : null;
-  if (!videoId) {
-    return NextResponse.json({ error: "올바른 유튜브 URL을 입력해주세요" }, { status: 400 });
+  if (!url) return NextResponse.json({ error: "URL을 입력해주세요" }, { status: 400 });
+
+  const result = await analyzeAndSaveVideo(url);
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
-
-  const ai = new GoogleGenAI({ apiKey });
-  const cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-  try {
-    const meta = await getVideoMeta(videoId);
-
-    // 자막 추출 → 실패 시 Gemini 영상 직접 분석
-    let extracted: Extracted;
-    let source: JejutubeVideo["transcriptSource"] = "socialkit";
-    try {
-      const transcript = await getTranscriptViaSocialKit(videoId);
-      extracted = await extractFromTranscript(ai, transcript, meta.title);
-    } catch (e) {
-      console.warn("[jejutube] SocialKit 실패 → Gemini 영상 분석 폴백:", e instanceof Error ? e.message : e);
-      source = "gemini-video";
-      extracted = await extractFromVideo(ai, cleanUrl);
-    }
-
-    if (!extracted.spots || extracted.spots.length === 0) {
-      return NextResponse.json({ error: "영상에서 제주 스팟을 찾지 못했어요" }, { status: 422 });
-    }
-
-    const spots = await geocodeSpots(extracted.spots.slice(0, 12));
-
-    const video: JejutubeVideo = {
-      videoId,
-      url: cleanUrl,
-      title: meta.title || extracted.tags[0] || "제주 여행 영상",
-      author: meta.author,
-      thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      summary: extracted.summary,
-      tags: extracted.tags ?? [],
-      spots,
-      transcriptSource: source,
-      createdAt: Date.now(),
-    };
-
-    const db = getAdminDb();
-    await db.collection("jejutube_videos").doc(videoId).set(video);
-
-    return NextResponse.json(video);
-  } catch (e) {
-    console.error("[jejutube] 분석 실패:", e);
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: `분석 실패: ${msg.slice(0, 200)}` }, { status: 500 });
-  }
+  return NextResponse.json({ ...result.video, alreadyExists: result.alreadyExists });
 }
 
-// ── GET: 전체 목록 (어드민) ─────────────────────────────────
 export async function GET() {
   const unauth = await authCheck();
   if (unauth) return unauth;
@@ -279,7 +46,6 @@ export async function GET() {
   }
 }
 
-// ── DELETE: 영상 삭제 ───────────────────────────────────────
 export async function DELETE(req: NextRequest) {
   const unauth = await authCheck();
   if (unauth) return unauth;
