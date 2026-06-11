@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/cctv",   label: "📡 CCTV",    short: "CCTV"  },
   { href: "/admin/food",   label: "🍽️ 도민맛집", short: "맛집"  },
   { href: "/admin/feed",   label: "📸 라이브피드",short: "피드"  },
+  { href: "/admin/jejutube", label: "▶ 제주tube", short: "튜브" },
   { href: "/admin/users",  label: "👥 사용자",   short: "사용자" },
 ];
 

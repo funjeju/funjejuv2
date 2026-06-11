@@ -11,6 +11,7 @@ import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
+import { MySpotsManager } from "@/components/mypage/MySpotsManager";
 import type { FeedAuthor } from "@/types/feed";
 import type { SavedTripPlan } from "@/types/trip";
 
@@ -192,6 +193,9 @@ export default function MyPage() {
               일정 만들기
             </Link>
           </div>
+
+          {/* 마이스팟 */}
+          <MySpotsManager />
 
           {/* 내 여행 일정 */}
           {tripPlans.length > 0 && (

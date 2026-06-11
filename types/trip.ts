@@ -72,4 +72,6 @@ export type TripPlanRequest = {
   restaurantStyle?: string;
   mustVisitRestaurants?: string[];
   mustVisitSpots?: string[];
+  /** 마이페이지에 저장해둔 마이스팟 중 이번 여행에 선택한 것 (좌표 포함 → 동선 배치에 사용) */
+  mySpots?: Array<{ name: string; category: string; lat: number; lng: number }>;
 };

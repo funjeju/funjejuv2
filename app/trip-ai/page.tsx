@@ -5,11 +5,14 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { PageHeader } from "@/components/common/PageHeader";
 import { TripResultView } from "@/components/trip/TripResultView";
 import { AccommodationPicker } from "@/components/trip/AccommodationPicker";
+import { MySpotsSelector } from "@/components/trip/MySpotsSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useSaved } from "@/hooks/useSaved";
 import { saveTripPlan, listTripPlans, getTripPlan, deleteTripPlan } from "@/lib/trip-plans";
+import { listMySpots } from "@/lib/my-spots";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import type { TripPlan, TripPlanRequest, SavedTripPlan, BookedAccommodation } from "@/types/trip";
+import type { MySpot } from "@/types/my-spot";
 
 // ── 폼 상태 (TripPlannerModal 기반) ─────────────────────────
 type FormState = {
@@ -204,11 +207,20 @@ export default function TripAiPage() {
   const [savedNotice, setSavedNotice] = useState(false);
   const [myPlans, setMyPlans] = useState<SavedTripPlan[]>([]);
   const [viewingSaved, setViewingSaved] = useState<SavedTripPlan | null>(null);
+  const [mySpots, setMySpots] = useState<MySpot[]>([]);
+  const [selectedMySpotIds, setSelectedMySpotIds] = useState<Set<string>>(new Set());
 
   // 내 저장 일정 로드 + ?plan= 딥링크 처리
   useEffect(() => {
     if (!user) { setMyPlans([]); return; }
     listTripPlans(user.uid).then(setMyPlans).catch(() => setMyPlans([]));
+    // 마이스팟 로드 — 기본 전체 선택
+    listMySpots(user.uid)
+      .then((spots) => {
+        setMySpots(spots);
+        setSelectedMySpotIds(new Set(spots.map((s) => s.id)));
+      })
+      .catch(() => setMySpots([]));
 
     const planId = new URLSearchParams(window.location.search).get("plan");
     if (planId) {
@@ -350,6 +362,9 @@ export default function TripAiPage() {
         restaurantStyle: form.restaurantStyle || undefined,
         mustVisitRestaurants: form.mustVisitRestaurants.filter(Boolean),
         mustVisitSpots: [...new Set([...form.mustVisitSpots.filter(Boolean), ...savedSpotNames])],
+        mySpots: mySpots
+          .filter((s) => selectedMySpotIds.has(s.id))
+          .map((s) => ({ name: s.name, category: s.category, lat: s.lat, lng: s.lng })),
       } satisfies Partial<TripPlanRequest>);
     }
 
@@ -613,6 +628,21 @@ export default function TripAiPage() {
       case "mustVisits": return (
         <div className="space-y-4">
           <h3 className="text-sm font-bold text-text-primary">꼭 가고 싶은 곳이 있나요?</h3>
+          {mySpots.length > 0 && (
+            <MySpotsSelector
+              spots={mySpots}
+              selectedIds={selectedMySpotIds}
+              onToggle={(id) =>
+                setSelectedMySpotIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })
+              }
+              days={form.days}
+            />
+          )}
           {savedSpotNames.length > 0 && (
             <p className="rounded-xl bg-brand-yellow/20 p-2.5 text-[11px] leading-5 text-text-primary">
               ⭐ 저장해둔 스팟 {savedSpotNames.length}곳({savedSpotNames.slice(0, 3).join(", ")}{savedSpotNames.length > 3 ? " 외" : ""})은 자동으로 반영돼요!

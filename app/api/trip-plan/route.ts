@@ -120,6 +120,15 @@ function profileText(req: TripPlanRequest): string {
     const mustSpot = (req.mustVisitSpots ?? []).filter(Boolean);
     if (mustRest.length) lines.push(`- 꼭 가고 싶은 맛집/카페: ${mustRest.join(", ")}`);
     if (mustSpot.length) lines.push(`- 꼭 가고 싶은 관광지: ${mustSpot.join(", ")}`);
+    if (req.mySpots?.length) {
+      const spotList = req.mySpots
+        .map((s) => `${s.name}(${s.category}, ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)})`)
+        .join(", ");
+      lines.push(`- 사용자 마이스팟 (반드시 전부 일정에 포함, 좌표를 보고 그 방향 일자에 배치): ${spotList}`);
+      if (req.mySpots.some((s) => s.category === "숙소")) {
+        lines.push(`- 마이스팟 중 숙소가 있으면 그 숙소를 숙박지로 사용해.`);
+      }
+    }
   }
 
   return lines.join("\n");
@@ -138,11 +147,30 @@ function anchorLabel(a: { name: string; lat?: number; lng?: number }): string {
     : a.name;
 }
 
+/** 좌표 기준 가까운 도민맛집 (저녁 후보용) */
+function nearestRestaurants(
+  restaurants: Restaurant[], lat: number, lng: number, n = 8
+): Array<{ r: Restaurant; km: number }> {
+  return restaurants
+    .map((r) => {
+      const rLat = Number(r.lat);
+      const rLng = Number(r.lng);
+      if (isNaN(rLat) || isNaN(rLng) || rLat === 0) return null;
+      const dLat = (rLat - lat) * 111;
+      const dLng = (rLng - lng) * 111 * Math.cos(((rLat + lat) / 2) * Math.PI / 180);
+      return { r, km: Math.sqrt(dLat * dLat + dLng * dLng) };
+    })
+    .filter((x): x is { r: Restaurant; km: number } => x !== null)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, n);
+}
+
 /**
  * 일자별 동선 앵커: 각 날의 시작점·종착점을 좌표와 함께 명시.
  * 1일차 공항→첫 숙소, 중간일 숙소→다음 숙소, 마지막 날 숙소→공항.
+ * 숙소 좌표가 있으면 그 인근 도민맛집을 저녁 후보로 함께 제시.
  */
-function buildAnchors(req: TripPlanRequest): string {
+function buildAnchors(req: TripPlanRequest, restaurants: Restaurant[]): string {
   const days = req.days;
   if (days < 1) return "";
 
@@ -172,6 +200,17 @@ function buildAnchors(req: TripPlanRequest): string {
       ? anchorLabel(end) + (d === days ? ` ${req.departureTime} 출발` : " 체크인·숙박")
       : "AI 추천 숙소 (이날 동선의 끝 지점 근처로 선택)";
     lines.push(`- ${d}일차: 시작=${startLabel} → 종착=${endLabel}`);
+
+    // 그날 숙박 숙소 좌표를 알면 → 인근 도민맛집을 저녁 후보로 명시
+    if (d < days && end && typeof end.lat === "number" && typeof end.lng === "number") {
+      const candidates = nearestRestaurants(restaurants, end.lat, end.lng);
+      if (candidates.length > 0) {
+        const list = candidates
+          .map((c) => `${c.r.title}[ID:${c.r.id}](${c.r.menu}, ${c.km.toFixed(1)}km)`)
+          .join(", ");
+        lines.push(`  · ${d}일차 저녁 식사 후보 (숙소에서 가까운 도민맛집 순): ${list}`);
+      }
+    }
   }
 
   return `
@@ -180,7 +219,9 @@ ${lines.join("\n")}
 - 각 날의 모든 스팟은 위 시작점→종착점 방향으로 진행하면서 그 경로 회랑(반경 약 10km) 안에서 선택해.
 - 시작점에서 종착점 반대 방향으로 가는 스팟은 넣지 마. 이미 지나온 권역으로 되돌아가는 것도 금지.
 - 시작점과 종착점이 같은 날(당일치기 등)은 한 방향으로 도는 원형(루프) 동선으로 짜고, 같은 길을 왕복하지 마.
-- 숙소 체크인은 그날 일정의 마지막에, 체크아웃은 다음 날 일정의 처음에 배치해.`;
+- 숙소 체크인은 그날 일정의 마지막에, 체크아웃은 다음 날 일정의 처음에 배치해.
+- [저녁 식사 규칙 — 매우 중요] 저녁 식사는 반드시 그날 묵는 숙소에서 차로 20분(약 10km) 이내에서 해결해. 위 "저녁 식사 후보" 목록이 있으면 거기서 우선 골라. 적합한 도민맛집이 그 반경에 없으면 검색으로 찾은 일반 맛집(ID 표기 없이)을 써도 되지만, 숙소 근처여야 해. 체크인 후 멀리 있는 식당으로 되돌아가는 동선은 절대 금지.
+- 숙소를 AI가 추천하는 날은 그날 마지막 활동 지역을 먼저 정하고, 저녁 식사와 숙소를 그 근처에서 함께 골라. 숙소만 동떨어진 곳에 두지 마.`;
 }
 
 /** 제주 BBOX — AI가 출력한 좌표 검증용 */
@@ -242,7 +283,7 @@ export async function POST(req: NextRequest) {
 
   const draftPrompt = `# 사용자 여행 프로필
 ${profileText(body)}
-${buildAnchors(body)}
+${buildAnchors(body, restaurants)}
 
 # 도민맛집 리스트 (ID|이름|지역|메뉴) — 식사는 반드시 여기서 선택
 ${restaurantLines(restaurants)}
