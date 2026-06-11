@@ -1,13 +1,77 @@
 "use client";
 
-import { useState, useRef, useEffect, type DragEvent } from "react";
+import { useState, useRef, useEffect, useMemo, type DragEvent } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
-import { mockCctvs } from "@/constants/mock-cctvs";
+import { useCctvs } from "@/hooks/useCctvs";
 import { useSaved } from "@/hooks/useSaved";
-import type { Cctv } from "@/types/cctv";
+import type { Cctv, CctvEntry } from "@/types/cctv";
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
+
+const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
+
+/** CctvEntry(Firestore/mock 통합) → 멀티뷰 표시용 Cctv */
+function toView(e: CctvEntry): Cctv {
+  return {
+    id: e.id,
+    name: e.name,
+    region: e.region,
+    direction: e.direction,
+    category: e.category,
+    status: "실시간",
+    description: e.description,
+    latitude: e.lat ?? 0,
+    longitude: e.lng ?? 0,
+    isSaved: false,
+    youtubeId: e.youtubeId,
+    streamProxyUrl: e.youtubeId ? null : (PROXY_BASE ? `${PROXY_BASE}/cctv/${e.id}` : null),
+  };
+}
+
+/** 유튜브형 슬롯 — embed iframe (재생 토글 시에만 로드) */
+function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => void; enabled: boolean }) {
+  return (
+    <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
+      {enabled ? (
+        <iframe
+          className="absolute inset-0 h-full w-full"
+          src={`https://www.youtube.com/embed/${cctv.youtubeId}?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0&controls=0&iv_load_policy=3&disablekb=1`}
+          title={cctv.name}
+          loading="lazy"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/50">
+          <span className="text-2xl">▶</span>
+          <span className="text-[10px]">일괄 재생 대기 중</span>
+        </div>
+      )}
+
+      {/* YouTube 뱃지 */}
+      {enabled && (
+        <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-red-600 px-1.5 py-0.5 text-[7px] font-bold text-white shadow">
+          ▶ LIVE
+        </span>
+      )}
+
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
+        title="제거"
+      >
+        ✕
+      </button>
+
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 py-1">
+        <p className="text-[8px] font-medium leading-tight text-white truncate">{cctv.name}</p>
+      </div>
+    </div>
+  );
+}
 
 /** 단일 슬롯 플레이어 - 멀티뷰 전용
  *  initDelay: 봇 탐지 회피용 초기 지연 (0~3000ms 랜덤 권장)
@@ -261,6 +325,8 @@ function EmptySlot({
 
 export default function MultiviewPage() {
   const { savedIds } = useSaved();
+  const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
+  const allCctvs = useMemo(() => cctvs.map(toView), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -312,8 +378,8 @@ export default function MultiviewPage() {
 
   // 저장된 CCTV 우선, 없으면 전체
   const availableCctvs = savedIds.size > 0
-    ? mockCctvs.filter((c) => savedIds.has(c.id))
-    : mockCctvs;
+    ? allCctvs.filter((c) => savedIds.has(c.id))
+    : allCctvs;
 
   // localStorage에서 슬롯 상태 복원
   useEffect(() => {
@@ -474,7 +540,7 @@ export default function MultiviewPage() {
         >
           {Array.from({ length: slotCount }).map((_, idx) => {
             const cctvId = slots[idx];
-            const cctv = cctvId ? mockCctvs.find((c) => c.id === cctvId) ?? null : null;
+            const cctv = cctvId ? allCctvs.find((c) => c.id === cctvId) ?? null : null;
             const isDragOver = dragOverIdx === idx;
             return (
               <div
@@ -489,7 +555,13 @@ export default function MultiviewPage() {
                   setDragOverIdx(null);
                 }}
               >
-                {cctv ? (
+                {cctv?.youtubeId ? (
+                  <YoutubeSlot
+                    cctv={cctv}
+                    onRemove={() => removeSlot(idx)}
+                    enabled={playing}
+                  />
+                ) : cctv ? (
                   <SlotPlayer
                     cctv={cctv}
                     onRemove={() => removeSlot(idx)}
@@ -541,8 +613,13 @@ export default function MultiviewPage() {
                   inUse ? "opacity-40" : "hover:border-brand-orange hover:bg-brand-orange/5",
                 ].join(" ")}
               >
-                <div className="flex aspect-video items-center justify-center rounded bg-gray-800 text-2xl">
+                <div className="relative flex aspect-video items-center justify-center rounded bg-gray-800 text-2xl">
                   🏝️
+                  {cctv.youtubeId && (
+                    <span className="absolute left-1 top-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[7px] font-bold text-white">
+                      ▶ YouTube
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1.5 truncate text-[11px] font-semibold text-text-primary">
                   {cctv.name}
