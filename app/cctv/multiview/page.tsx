@@ -272,9 +272,10 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       )}
 
       {status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 px-2 text-center text-white/60">
           <span className="text-2xl">📡</span>
           <span className="text-[10px]">연결 실패</span>
+          <span className="text-[9px] text-white/40">1분 후 다시 연결을 시도합니다</span>
         </div>
       )}
 

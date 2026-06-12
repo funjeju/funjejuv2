@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { listContents, publishContent, deleteContent, createContent } from "@/lib/contents";
 import { pickWebzineTopic, generateWebzineDraft } from "@/lib/webzine-ai";
+import { generateBriefingDraft } from "@/lib/briefing-ai";
 import type { ContentStatus } from "@/types/content";
 
 export const runtime = "nodejs";
@@ -43,8 +44,16 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true, id });
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const type = req.nextUrl.searchParams.get("type"); // "briefing" | (기본) "webzine"
+
+  if (type === "briefing") {
+    const draft = await generateBriefingDraft();
+    await createContent(draft);
+    return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, title: draft.title });
+  }
+
   const topic = await pickWebzineTopic();
   if (!topic) return NextResponse.json({ error: "토픽 없음" }, { status: 200 });
   const draft = await generateWebzineDraft(topic);

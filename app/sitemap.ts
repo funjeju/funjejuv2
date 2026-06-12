@@ -3,6 +3,7 @@ import { getAllIds } from "@/lib/restaurants";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { GUIDE_SLUGS } from "@/lib/guides";
 import { listPublished } from "@/lib/contents";
+import { listPublishedSites } from "@/lib/biz/store";
 
 const BASE = "https://funjeju.com";
 
@@ -22,7 +23,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/search`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE}/guide`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/webzine`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/daily`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
   ];
+
+  // AI데일리제주 모닝브리핑 (발행된 것만)
+  let dailyPages: MetadataRoute.Sitemap = [];
+  try {
+    const briefings = await listPublished("briefing", 200);
+    dailyPages = briefings.map((c) => ({
+      url: `${BASE}/daily/${c.slug}`,
+      lastModified: c.publishedAt ? new Date(c.publishedAt) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
+  } catch { /* Firestore 미설정 시 스킵 */ }
 
   // 웹진 (콘텐츠 엔진 2단계 — 발행된 것만)
   let webzinePages: MetadataRoute.Sitemap = [];
@@ -70,5 +84,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...guidePages, ...webzinePages, ...cctvPages, ...regionPages, ...foodPages];
+  // 비즈 홈페이지 (/biz/[slug] — 발행된 것만, 롱테일 SEO 출구)
+  let bizPages: MetadataRoute.Sitemap = [];
+  try {
+    const sites = await listPublishedSites();
+    bizPages = sites.map((s) => ({
+      url: `${BASE}/biz/${s.slug}`,
+      lastModified: s.updatedAt ? new Date(s.updatedAt) : now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    }));
+  } catch { /* Firestore 미설정 시 스킵 */ }
+
+  return [...staticPages, ...guidePages, ...webzinePages, ...dailyPages, ...bizPages, ...cctvPages, ...regionPages, ...foodPages];
 }
