@@ -52,11 +52,15 @@ export async function findWebzinesByRestaurant(restaurantId: string, limit = 3):
 
 /** 퍼블릭 — 발행된 것만 (sitemap/목록용) */
 export async function listPublished(type?: ContentType, limit = 100): Promise<Content[]> {
+  // type 필터는 메모리에서 처리 (복합 인덱스 불필요). Firestore limit은 여유있게 잡아야 함.
+  const fetchLimit = type ? Math.max(limit * 10, 200) : limit;
   const snap = await getAdminDb()
     .collection(COLLECTION)
     .where("status", "==", "published")
-    .limit(limit)
+    .limit(fetchLimit)
     .get();
   const items = snap.docs.map((d) => d.data() as Content).filter((c) => !type || c.type === type);
-  return items.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+  return items
+    .sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""))
+    .slice(0, limit);
 }
