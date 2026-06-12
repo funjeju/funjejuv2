@@ -23,6 +23,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
+  const [retryKey, setRetryKey] = useState(0); // 재연결 버튼 → effect 재실행
 
   // 시청 세션 추적 + 서버 시청예산: 비디오가 실제 재생 중일 때만 (단일 스트림)
   useCctvSession({
@@ -49,6 +50,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
     let stallTimerId: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false; // 동적 import 대기 중 언마운트되면 hls 생성 자체를 막음
 
     // ★ 프록시 origin 추출 → /event 호출용
     // proxyUrl: https://proxy.tuberecipe.co.kr/cctv/hagwi → proxyBase: https://proxy...
@@ -75,6 +77,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
 
     async function init() {
       const Hls = (await import("hls.js")).default;
+      if (cancelled) return;
 
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -145,8 +148,28 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     const handleUnload = () => sendEvent("leave");
     window.addEventListener("pagehide", handleUnload);
 
+    // ★ 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
+    let pausedByHidden = false;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (!video.paused) {
+          pausedByHidden = true;
+          video.pause(); // → pause 이벤트로 세션 종료 + stop 이벤트 전송
+        }
+        try { hls?.stopLoad(); } catch { /* ignore */ }
+      } else {
+        try { hls?.startLoad(); } catch { /* ignore */ }
+        if (pausedByHidden) {
+          pausedByHidden = false;
+          video.play().catch(() => { /* ignore */ });
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       // 강제 정리: HLS destroy + video 완전 해제 → origin 다운로드 즉시 중단
+      cancelled = true;
       sendEvent("leave"); // 슬롯 제거/페이지 이동
       if (stallTimerId) clearInterval(stallTimerId);
       hls?.destroy();
@@ -154,12 +177,13 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       video.removeEventListener("pause",   handlePause);
       video.removeEventListener("ended",   handleEnd);
       window.removeEventListener("pagehide", handleUnload);
+      document.removeEventListener("visibilitychange", handleVisibility);
       video.pause();
       video.removeAttribute("src");
       video.load();
       setIsPlaying(false);
     };
-  }, [proxyUrl]);
+  }, [proxyUrl, retryKey]);
 
   function togglePlay() {
     const v = videoRef.current;
@@ -249,7 +273,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
           <p className="text-xs text-white/50">잠시 후 다시 시도해주세요</p>
           <button
             type="button"
-            onClick={() => { setStatus("loading"); }}
+            onClick={() => { setStatus("loading"); setRetryKey((k) => k + 1); }}
             className="mt-1 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
           >
             재연결

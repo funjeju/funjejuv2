@@ -4,7 +4,8 @@ import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
-export const revalidate = 60;
+// 등록 즉시 사용자 페이지에 보이도록 동적 응답 + 브라우저 단기 캐시만 사용
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -12,7 +13,12 @@ export async function GET() {
     const snap = await db.collection("jejutube_videos").orderBy("createdAt", "desc").limit(50).get();
     return NextResponse.json(
       { videos: snap.docs.map((d) => d.data()) },
-      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+      {
+        headers: {
+          // CDN 캐시 끄고 브라우저 5초 캐시 + 30초 stale → 새 등록 즉시 반영, 짧은 폭주만 흡수
+          "Cache-Control": "private, max-age=5, stale-while-revalidate=30",
+        },
+      }
     );
   } catch (e) {
     console.error("[jejutube] 목록 조회 실패:", e);

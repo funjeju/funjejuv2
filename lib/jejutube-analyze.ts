@@ -133,6 +133,7 @@ async function extractSpotsViaGPT(transcript: string, title: string): Promise<Ex
       type: "json_schema",
       json_schema: { name: "jeju_spots", strict: true, schema: EXTRACT_SCHEMA },
     },
+    reasoning_effort: "minimal", // 스팟 추출은 잘 정의된 작업 — 내부 추론 생략으로 응답 속도 대폭 단축
     max_completion_tokens: 8192,
   });
   const text = res.choices[0]?.message?.content;
@@ -145,31 +146,95 @@ function inJeju(lat: number, lng: number): boolean {
   return lat >= 33.1 && lat <= 33.65 && lng >= 126.1 && lng <= 127.0;
 }
 
+type KakaoDoc = {
+  place_name?: string;
+  road_address_name?: string;
+  address_name?: string;
+  category_group_code?: string;
+  x: string;
+  y: string;
+};
+
+async function kakaoSearch(query: string): Promise<KakaoDoc | null> {
+  if (!KAKAO_REST_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,
+      { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { documents?: KakaoDoc[] };
+    return (data.documents ?? []).find((d) => inJeju(Number(d.y), Number(d.x))) ?? null;
+  } catch { return null; }
+}
+
 async function geocodeSpots(spots: JejutubeSpot[]): Promise<JejutubeSpot[]> {
-  if (!KAKAO_REST_KEY) return spots;
-  const out: JejutubeSpot[] = [];
-  for (const spot of spots) {
-    const enriched = { ...spot };
-    try {
-      const res = await fetch(
-        `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(`제주 ${spot.name}`)}&size=3`,
-        { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` }, signal: AbortSignal.timeout(5000) }
-      );
-      if (res.ok) {
-        const data = (await res.json()) as {
-          documents?: Array<{ road_address_name?: string; address_name?: string; x: string; y: string }>;
-        };
-        const hit = (data.documents ?? []).find((d) => inJeju(Number(d.y), Number(d.x)));
-        if (hit) {
-          enriched.lat = Number(hit.y);
-          enriched.lng = Number(hit.x);
-          enriched.address = hit.road_address_name || hit.address_name;
-        }
+  // 카카오 검색을 병렬 실행 — 순차 대비 스팟 수만큼 시간 단축
+  return Promise.all(
+    spots.map(async (spot) => {
+      const enriched = { ...spot };
+      const hit = await kakaoSearch(`제주 ${spot.name}`);
+      if (hit) {
+        enriched.lat = Number(hit.y);
+        enriched.lng = Number(hit.x);
+        enriched.address = hit.road_address_name || hit.address_name;
       }
-    } catch { /* 좌표 없이 저장 */ }
-    out.push(enriched);
+      return enriched;
+    })
+  );
+}
+
+/** 영상 제목의 ·구분 스팟을 카카오로 검증해 GPT가 놓친 것을 보완 */
+async function enrichSpotsFromTitle(
+  title: string,
+  existing: JejutubeSpot[]
+): Promise<JejutubeSpot[]> {
+  // "A·B·C" 패턴 섹션 파싱 (최소 2개 이상 ·로 연결된 부분)
+  const sections = title.match(/[가-힣\w]+(?:·[가-힣\w]+){1,}/g) ?? [];
+  const candidates: string[] = [];
+  for (const sec of sections) {
+    candidates.push(...sec.split("·").map((s) => s.trim()).filter((s) => s.length >= 2));
   }
-  return out;
+  if (candidates.length === 0) return [];
+
+  const existingNorm = new Set(existing.map((s) => s.name.replace(/\s/g, "")));
+
+  const CODE_CATEGORY: Record<string, string> = {
+    FD6: "맛집", CE7: "카페", AD5: "숙소", AT4: "관광지", PO3: "공공기관",
+  };
+
+  // 기존 스팟과 겹치지 않고 후보끼리도 중복되지 않는 이름만 추려서 병렬 검색
+  const toSearch: string[] = [];
+  for (const name of candidates) {
+    const norm = name.replace(/\s/g, "");
+    if ([...existingNorm].some((n) => n.includes(norm) || norm.includes(n))) continue;
+    existingNorm.add(norm);
+    toSearch.push(name);
+  }
+
+  const hits = await Promise.all(toSearch.map((name) => kakaoSearch(`제주 ${name}`)));
+
+  const EMOJI: Record<string, string> = {
+    맛집: "🍽️", 카페: "☕", 숙소: "🏠", 관광지: "📍",
+  };
+  const added: JejutubeSpot[] = [];
+  for (let i = 0; i < toSearch.length; i++) {
+    const hit = hits[i];
+    if (!hit) continue; // 카카오에 없으면 존재 불확실 → 제외
+
+    const cat = CODE_CATEGORY[hit.category_group_code ?? ""] ?? "관광지";
+    added.push({
+      name: hit.place_name || toSearch[i],
+      category: cat,
+      description: `영상 제목에 소개된 제주 스팟`,
+      timestamp: "00:00",
+      emoji: EMOJI[cat] ?? "📍",
+      lat: Number(hit.y),
+      lng: Number(hit.x),
+      address: hit.road_address_name || hit.address_name,
+    });
+  }
+  return added;
 }
 
 // ── 메인: 분석 + 저장 ───────────────────────────────────────
@@ -205,15 +270,14 @@ export async function analyzeAndSaveVideo(
   const cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   try {
-    const meta = await getVideoMeta(videoId);
-
-    // 1) 자막 추출 — 자막이 없으면 영상 분석은 하지 않고 바로 실패 안내
-    let transcript: string | null = null;
-    try {
-      transcript = await getTranscriptViaSocialKit(videoId);
-    } catch (e) {
-      console.warn("[jejutube] SocialKit 자막 실패:", e instanceof Error ? e.message : e);
-    }
+    // 1) 메타 + 자막을 병렬 추출 (서로 의존성 없음) — 자막이 없으면 바로 실패 안내
+    const [meta, transcript] = await Promise.all([
+      getVideoMeta(videoId),
+      getTranscriptViaSocialKit(videoId).catch((e) => {
+        console.warn("[jejutube] SocialKit 자막 실패:", e instanceof Error ? e.message : e);
+        return null;
+      }),
+    ]);
     if (!transcript) {
       return {
         ok: false,
@@ -239,7 +303,13 @@ export async function analyzeAndSaveVideo(
       return { ok: false, error: "영상에서 제주 스팟을 찾지 못했어요", status: 422 };
     }
 
-    const spots = await geocodeSpots(extracted.spots.slice(0, 12));
+    // 3) 지오코딩 + 제목 스팟 보완을 병렬 실행 (제목 보완은 스팟 이름만 필요 — 좌표 불필요)
+    const gptSpots = extracted.spots.slice(0, 12);
+    const [geocoded, titleExtra] = await Promise.all([
+      geocodeSpots(gptSpots),
+      enrichSpotsFromTitle(meta.title, gptSpots),
+    ]);
+    const spots = [...geocoded, ...titleExtra].slice(0, 15);
 
     const video: JejutubeVideo = {
       videoId,

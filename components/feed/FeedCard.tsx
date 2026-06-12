@@ -115,6 +115,11 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
           )}
         </div>
 
+        {/* 업로드 경과 시간 배지 (우하단) */}
+        <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white/90 backdrop-blur md:bottom-3 md:right-3 md:px-2 md:py-1 md:text-[11px]">
+          {timeAgo(date)}
+        </span>
+
         {/* EXIF (하단) — 모바일 한 줄 truncate */}
         {hasExif && (
           <>

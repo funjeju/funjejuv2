@@ -15,6 +15,13 @@ export async function createGame(g: SpotGame): Promise<void> {
   await getAdminDb().collection(GAMES).doc(g.id).set(g);
 }
 
+export async function updateGame(
+  id: string,
+  updates: Partial<Pick<SpotGame, "title" | "markers" | "layout" | "diffCount">>
+): Promise<void> {
+  await getAdminDb().collection(GAMES).doc(id).update(updates);
+}
+
 export async function getGame(id: string): Promise<SpotGame | null> {
   const snap = await getAdminDb().collection(GAMES).doc(id).get();
   return snap.exists ? (snap.data() as SpotGame) : null;

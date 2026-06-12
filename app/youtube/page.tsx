@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
@@ -17,15 +17,22 @@ function toMySpotCategory(category: string): MySpotCategory {
   return "여행지";
 }
 
+function tsToSec(ts: string): number {
+  const [m, s] = ts.split(":").map(Number);
+  return (m || 0) * 60 + (s || 0);
+}
+
 function SpotChip({
-  spot, saved, saving, onSave,
+  spot, saved, saving, onSave, onSeek,
 }: {
   spot: JejutubeSpot;
   saved: boolean;
   saving: boolean;
   onSave: () => void;
+  onSeek?: (ts: string) => void;
 }) {
   const hasCoord = typeof spot.lat === "number";
+  const hasTs = spot.timestamp && spot.timestamp !== "00:00";
   return (
     <div className="flex items-center gap-2 rounded-xl bg-bg-secondary/50 px-3 py-2">
       <span className="text-base">{spot.emoji}</span>
@@ -33,8 +40,19 @@ function SpotChip({
         <div className="flex flex-wrap items-center gap-1.5">
           <p className="text-xs font-bold text-text-primary">{spot.name}</p>
           <span className="rounded-full bg-bg-card px-1.5 py-0.5 text-[9px] text-text-secondary">{spot.category}</span>
-          {spot.timestamp !== "00:00" && (
-            <span className="text-[9px] text-text-secondary">⏱ {spot.timestamp}</span>
+          {hasTs && (
+            onSeek ? (
+              <button
+                type="button"
+                onClick={() => onSeek(spot.timestamp)}
+                className="rounded-full bg-brand-navy/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-navy hover:bg-brand-navy hover:text-white transition-colors"
+                title="이 시간으로 이동"
+              >
+                ▶ {spot.timestamp}
+              </button>
+            ) : (
+              <span className="text-[9px] text-text-secondary">⏱ {spot.timestamp}</span>
+            )
           )}
         </div>
         <p className="truncate text-[10px] text-text-secondary">{spot.description}</p>
@@ -66,6 +84,14 @@ export default function JejutubePage() {
   const [savedNames, setSavedNames] = useState<Set<string>>(new Set());
   const [savingName, setSavingName] = useState<string | null>(null);
   const [selected, setSelected] = useState<JejutubeVideo | null>(null); // 모달에 열린 영상
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const seekTo = useCallback((ts: string) => {
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func: "seekTo", args: [tsToSec(ts), true] }),
+      "*"
+    );
+  }, []);
   // 유저 영상 등록
   const [url, setUrl] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -248,8 +274,9 @@ export default function JejutubePage() {
           >
             <div className="relative aspect-video bg-black">
               <iframe
+                ref={iframeRef}
                 className="absolute inset-0 h-full w-full"
-                src={`https://www.youtube.com/embed/${selected.videoId}?autoplay=1&playsinline=1&rel=0`}
+                src={`https://www.youtube.com/embed/${selected.videoId}?autoplay=1&playsinline=1&rel=0&enablejsapi=1`}
                 title={selected.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
@@ -287,6 +314,7 @@ export default function JejutubePage() {
                     saved={savedNames.has(spot.name)}
                     saving={savingName === spot.name}
                     onSave={() => handleSave(spot)}
+                    onSeek={seekTo}
                   />
                 ))}
               </div>

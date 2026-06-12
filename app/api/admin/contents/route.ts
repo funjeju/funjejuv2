@@ -7,8 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { listContents, publishContent, deleteContent, createContent } from "@/lib/contents";
+import { listContents, publishContent, deleteContent, createContent, getContentById } from "@/lib/contents";
 import { pickWebzineTopic, generateWebzineDraft } from "@/lib/webzine-ai";
 import { generateBriefingDraft } from "@/lib/briefing-ai";
 import type { ContentStatus } from "@/types/content";
@@ -33,6 +34,12 @@ export async function PATCH(req: NextRequest) {
   const { id } = (await req.json().catch(() => ({}))) as { id?: string };
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   await publishContent(id);
+  // 즉시 ISR 캐시 무효화 (revalidate=3600 대기 없이 바로 반영)
+  revalidatePath("/webzine");
+  revalidatePath("/webzine/[slug]", "page");
+  revalidatePath("/");
+  const content = await getContentById(id);
+  if (content?.slug) revalidatePath(`/webzine/${content.slug}`);
   return NextResponse.json({ ok: true, id, status: "published" });
 }
 

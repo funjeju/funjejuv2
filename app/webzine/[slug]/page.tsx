@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { getContentBySlug, listPublished } from "@/lib/contents";
 
 const SITE_URL = "https://funjeju.com";
-export const revalidate = 3600;
+export const revalidate = 60;
 export const dynamicParams = true; // 새 발행분도 온디맨드 ISR
 
 export async function generateStaticParams() {

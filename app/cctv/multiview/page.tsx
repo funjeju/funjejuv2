@@ -223,11 +223,31 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       }, 2000);
     }
 
+    // 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
+    let pausedByHidden = false;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (!video.paused) {
+          pausedByHidden = true;
+          video.pause();
+        }
+        try { hls?.stopLoad(); } catch { /* ignore */ }
+      } else {
+        try { hls?.startLoad(); } catch { /* ignore */ }
+        if (pausedByHidden) {
+          pausedByHidden = false;
+          video.play().catch(() => { /* ignore */ });
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
       cancelled = true;
       if (delayTimerId) clearTimeout(delayTimerId);
       if (stallTimerId) clearInterval(stallTimerId);
       if (recoveryTimerId) clearTimeout(recoveryTimerId);
+      document.removeEventListener("visibilitychange", handleVisibility);
       hls?.destroy();
       if (video) {
         video.pause();
@@ -349,11 +369,18 @@ export default function MultiviewPage() {
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
   const gridRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [tabHidden, setTabHidden] = useState(false); // 탭 숨김 동안 시청예산 차감 중지
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  useEffect(() => {
+    const onVis = () => setTabHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
   function toggleFullscreen() {
@@ -409,15 +436,16 @@ export default function MultiviewPage() {
 
   // 서버 시청예산 — 멀티뷰는 분할 수만큼 차감 (activeStreams = 동시 HLS 스트림 수)
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
+  const sessionActive = playing && activeHlsStreams > 0 && !tabHidden;
   useCctvSession({
-    cctvId: playing && activeHlsStreams > 0 ? "__multiview__" : null,
+    cctvId: sessionActive ? "__multiview__" : null,
     cctvName: "멀티뷰",
-    isPlaying: playing && activeHlsStreams > 0,
+    isPlaying: sessionActive,
     activeStreams: activeHlsStreams,
     onBudget: setServerBudget,
   });
 
-  const budget = useWatchBudget(activeHlsStreams, serverBudget);
+  const budget = useWatchBudget(sessionActive ? activeHlsStreams : 0, serverBudget);
 
   // 소진되면 재생 자동 정지
   useEffect(() => {

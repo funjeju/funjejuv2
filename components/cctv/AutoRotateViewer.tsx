@@ -132,6 +132,28 @@ function CrossfadePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proxyUrl]);
 
+  // 탭 전환/앱 백그라운드 — 두 레이어 모두 정지 + 다운로드 중단, 복귀 시 재개
+  useEffect(() => {
+    let pausedByHidden = false;
+    const onVis = () => {
+      const videos = [videoARef.current, videoBRef.current];
+      const hlses  = [hlsARef.current, hlsBRef.current];
+      if (document.hidden) {
+        if (videos.some((v) => v && !v.paused)) pausedByHidden = true;
+        videos.forEach((v) => v?.pause());
+        hlses.forEach((h) => { try { h?.stopLoad(); } catch { /* ignore */ } });
+      } else {
+        hlses.forEach((h) => { try { h?.startLoad(); } catch { /* ignore */ } });
+        if (pausedByHidden) {
+          pausedByHidden = false;
+          videos.forEach((v) => v?.play().catch(() => { /* ignore */ }));
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   // 언마운트 시 두 비디오 + HLS 완전 정리
   useEffect(() => {
     return () => {
@@ -228,15 +250,22 @@ export function AutoRotateViewer() {
   const [paused,    setPaused]    = useState(false);
   const [progress,  setProgress]  = useState(0);
   const [activated, setActivated] = useState(false);
+  const [tabHidden, setTabHidden] = useState(false); // 탭 숨김 동안 자동 전환 중지
+
+  useEffect(() => {
+    const onVis = () => setTabHidden(document.hidden);
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
 
   const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
   const cctvs = savedCctvs.length > 0 ? savedCctvs : mockCctvs;
   const isPersonalized = savedCctvs.length > 0;
   const current = cctvs[index % cctvs.length];
 
-  // 자동 전환: activated && !paused일 때만
+  // 자동 전환: activated && !paused && 탭이 보일 때만
   useEffect(() => {
-    if (!activated || paused || cctvs.length <= 1) return;
+    if (!activated || paused || tabHidden || cctvs.length <= 1) return;
     const TICK = 100;
     const totalTicks = (ROTATE_SEC * 1000) / TICK;
     let tickCount = 0;
@@ -253,7 +282,7 @@ export function AutoRotateViewer() {
       }
     }, TICK);
     return () => clearInterval(id);
-  }, [activated, paused, cctvs.length, index]);
+  }, [activated, paused, tabHidden, cctvs.length, index]);
 
   function next() { setIndex((i) => (i + 1) % cctvs.length); setProgress(0); }
   function prev() { setIndex((i) => (i - 1 + cctvs.length) % cctvs.length); setProgress(0); }

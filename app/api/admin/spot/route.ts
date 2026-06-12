@@ -1,7 +1,8 @@
-/** 어드민 — 틀린그림찾기 문제 관리. GET 목록 / POST 생성 / PATCH 발행 / DELETE */
+/** 어드민 — 틀린그림찾기 문제 관리. GET 목록 / POST 생성 / PUT 수정 / PATCH 발행 / DELETE */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { createGame, listGames, setPublished, deleteGame } from "@/lib/spot";
+import { createGame, updateGame, listGames, setPublished, deleteGame } from "@/lib/spot";
 import type { SpotGame, SpotMarker, SpotLayout } from "@/types/spot";
 
 export const runtime = "nodejs";
@@ -46,6 +47,24 @@ export async function PATCH(req: NextRequest) {
   const { id, published } = (await req.json().catch(() => ({}))) as { id?: string; published?: boolean };
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   await setPublished(id, published !== false);
+  revalidatePath("/game/spot");
+  revalidatePath("/game/spot/[id]", "page");
+  return NextResponse.json({ ok: true, id });
+}
+
+export async function PUT(req: NextRequest) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id, title, markers, layout } = (await req.json().catch(() => ({}))) as {
+    id?: string; title?: string; markers?: { x: number; y: number }[]; layout?: string;
+  };
+  if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+  await updateGame(id, {
+    ...(title !== undefined && { title }),
+    ...(markers !== undefined && { markers, diffCount: markers.length }),
+    ...(layout === "stack" || layout === "side" ? { layout } : {}),
+  });
+  revalidatePath("/game/spot");
+  revalidatePath(`/game/spot/${id}`);
   return NextResponse.json({ ok: true, id });
 }
 

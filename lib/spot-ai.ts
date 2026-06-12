@@ -26,17 +26,19 @@ type PctRegion = { x: number; y: number; w: number; h: number; type: string; edi
 type PxRegion = { left: number; top: number; width: number; height: number };
 
 export type VariantResult = {
-  /** 합성된 변형 이미지 (png base64) */
+  /** 합성된 변형 이미지 (jpeg base64) */
   variantBase64: string;
-  /** 정규화된 원본 (png base64) — 변형과 픽셀 단위로 짝이 맞는 버전. 반드시 이걸 저장해야 함 */
+  /** 정규화된 원본 (jpeg base64) — 변형과 짝이 맞는 버전. 반드시 이걸 저장해야 함 */
   origBase64: string;
+  /** base64 이미지 mime 타입 */
+  mimeType: string;
   /** 정답 좌표 (% — 영역 중심점) */
   markers: { x: number; y: number }[];
   /** 검수용 — 각 정답이 무엇이 어떻게 바뀐 것인지 */
   notes: string[];
 };
 
-const MAX_WIDTH = 1600; // 원본 정규화 상한 (저장·전송 비용)
+const MAX_WIDTH = 1024; // 원본 정규화 상한 (OpenAI 4MB 한도·Vercel 4.5MB 응답 한도 고려)
 
 // ── 1단계: 비전 모델이 변경 영역을 고른다 ──────────────────
 const LEVEL_GUIDE: Record<string, string> = {
@@ -306,9 +308,16 @@ export async function generateVariant(opts: {
     flip: "방향 반전",
   };
 
+  // JPEG 압축으로 응답 크기 절감 (Vercel 4.5MB 한도 회피)
+  const [origJpeg, variantJpeg] = await Promise.all([
+    sharp(origPng).jpeg({ quality: 88 }).toBuffer(),
+    sharp(variant).jpeg({ quality: 88 }).toBuffer(),
+  ]);
+
   return {
-    variantBase64: variant.toString("base64"),
-    origBase64: origPng.toString("base64"),
+    variantBase64: variantJpeg.toString("base64"),
+    origBase64: origJpeg.toString("base64"),
+    mimeType: "image/jpeg",
     markers: ok.map((r) => ({
       x: Math.round((r.x + r.w / 2) * 10) / 10,
       y: Math.round((r.y + r.h / 2) * 10) / 10,

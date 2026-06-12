@@ -3,7 +3,7 @@
  * Firestore `contents` 단일 컬렉션. /webzine/[slug] 등으로 ISR 렌더.
  */
 
-export type ContentType = "webzine" | "briefing";
+export type ContentType = "webzine" | "briefing" | "card_news";
 export type ContentStatus = "draft" | "published";
 
 export type ContentSection = {

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { PageHeader } from "@/components/common/PageHeader";
 import { listPublished } from "@/lib/contents";
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "제주 여행 웹진 — 지역별 맛집·코스 큐레이션 | 펀제주",

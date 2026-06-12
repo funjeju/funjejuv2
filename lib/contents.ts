@@ -18,6 +18,11 @@ export async function getContentBySlug(slug: string): Promise<Content | null> {
   return snap.empty ? null : (snap.docs[0].data() as Content);
 }
 
+export async function getContentById(id: string): Promise<Content | null> {
+  const snap = await getAdminDb().collection(COLLECTION).doc(id).get();
+  return snap.exists ? (snap.data() as Content) : null;
+}
+
 export async function publishContent(id: string): Promise<void> {
   await getAdminDb().collection(COLLECTION).doc(id).update({
     status: "published",

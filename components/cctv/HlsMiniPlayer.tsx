@@ -40,6 +40,7 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
     setStatus("loading");
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
+    let cancelled = false; // 동적 import 대기 중 언마운트되면 hls 생성 자체를 막음
 
     const onPlay  = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -49,6 +50,7 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
     async function init() {
       const Hls = (await import("hls.js")).default;
+      if (cancelled) return;
 
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -91,11 +93,32 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
     init();
 
+    // 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
+    let pausedByHidden = false;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (!video.paused) {
+          pausedByHidden = true;
+          video.pause();
+        }
+        try { hls?.stopLoad(); } catch { /* ignore */ }
+      } else {
+        try { hls?.startLoad(); } catch { /* ignore */ }
+        if (pausedByHidden) {
+          pausedByHidden = false;
+          video.play().catch(() => { /* ignore */ });
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     return () => {
+      cancelled = true;
       hls?.destroy();
       video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause",   onPause);
       video.removeEventListener("waiting", onPause);
+      document.removeEventListener("visibilitychange", handleVisibility);
       video.pause();
       video.removeAttribute("src");
       video.load();
