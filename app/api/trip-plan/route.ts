@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { loadAllRestaurants } from "@/lib/restaurants";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { consumeUsage, resolveUser } from "@/lib/usage";
 import { JEJU_LOCATIONS } from "@/constants/jeju-locations";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import type { Restaurant } from "@/types/restaurant";
@@ -276,6 +278,22 @@ export async function POST(req: NextRequest) {
   }
   if (!body.days || body.days < 1) {
     return NextResponse.json({ error: "여행 기간을 확인해주세요" }, { status: 400 });
+  }
+
+  // ── 횟수 게이팅: 여행일정 (복잡/단순 모드별 월 한도) ──
+  const auth = await verifyFirebaseToken(req.headers.get("authorization"));
+  const user = await resolveUser(auth, req.headers.get("x-anon-id"));
+  const feature = body.mode === "detailed" ? "tripComplex" : "tripSimple";
+  const gate = await consumeUsage({ ...user, feature });
+  if (!gate.allowed) {
+    const label = feature === "tripComplex" ? "맞춤(복잡) 일정" : "빠른(단순) 일정";
+    return NextResponse.json(
+      {
+        error: `이번 달 ${label} 생성 횟수를 모두 사용했어요. 다음 달에 충전되거나 요금제를 올리면 더 만들 수 있어요.`,
+        gated: true, used: gate.used, limit: gate.limit,
+      },
+      { status: 429 }
+    );
   }
 
   const ai = new GoogleGenAI({ apiKey });

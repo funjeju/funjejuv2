@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { useAuth } from "@/hooks/useAuth";
+import { usageHeaders } from "@/lib/client-usage";
 import type { DominCard, AiSpotCard } from "@/types/chat";
 
 const SUGGESTIONS = [
@@ -111,6 +113,7 @@ const INITIAL: Message[] = [
 ];
 
 export default function ChatPage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(INITIAL);
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);
@@ -160,7 +163,7 @@ export default function ChatPage() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await usageHeaders(user),
         body: JSON.stringify({
           // 카드 데이터는 서버로 다시 보낼 필요 없음
           messages: history.map((m) => ({ role: m.role, text: m.text })),
@@ -168,6 +171,21 @@ export default function ChatPage() {
           lng: gps?.lng,
         }),
       });
+
+      // 횟수 한도 초과 — 게이팅 안내 메시지로 교체
+      if (res.status === 429) {
+        const d = await res.json().catch(() => ({}));
+        setMessages((prev) => {
+          const next = [...prev];
+          next[next.length - 1] = {
+            role: "model",
+            text: d.error || "오늘 도슨트 대화 횟수를 모두 사용했어요. 내일 다시 충전돼요!",
+          };
+          return next;
+        });
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok || !res.body) throw new Error(`API error: ${res.status}`);
 

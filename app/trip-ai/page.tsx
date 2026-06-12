@@ -7,6 +7,7 @@ import { TripResultView } from "@/components/trip/TripResultView";
 import { AccommodationPicker } from "@/components/trip/AccommodationPicker";
 import { MySpotsSelector } from "@/components/trip/MySpotsSelector";
 import { useAuth } from "@/hooks/useAuth";
+import { usageHeaders } from "@/lib/client-usage";
 import { useSaved } from "@/hooks/useSaved";
 import { saveTripPlan, listTripPlans, getTripPlan, deleteTripPlan } from "@/lib/trip-plans";
 import { listMySpots } from "@/lib/my-spots";
@@ -371,7 +372,7 @@ export default function TripAiPage() {
     try {
       const res = await fetch("/api/trip-plan", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await usageHeaders(user),
         body: JSON.stringify(req),
       });
       const data = await res.json();

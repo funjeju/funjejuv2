@@ -1,6 +1,29 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import {
+  estimateRequests,
+  estimateMonthlyCostUsd,
+  freeQuotaRatio,
+  CF_FREE_REQ_PER_MONTH,
+} from "@/lib/cf-cost";
+
+type CostSummary = {
+  monthSeconds: number;
+  monthSecondsExAdmin: number;
+  todaySeconds: number;
+  adminSeconds: number;
+  userCount: number;
+};
+
+/** 초 → "1시간 23분" / "12분" */
+function fmtSec(sec: number): string {
+  if (sec < 60) return `${Math.round(sec)}초`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}분`;
+  const h = Math.floor(m / 60);
+  return `${h}시간 ${m % 60}분`;
+}
 
 type Event = {
   t: number;
@@ -51,6 +74,7 @@ export default function AdminOriginPage() {
   const [data, setData]       = useState<Stats | null>(null);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(true);
+  const [cost, setCost]       = useState<CostSummary | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -71,6 +95,18 @@ export default function AdminOriginPage() {
     const id = setInterval(load, 3000); // 3초마다 갱신
     return () => clearInterval(id);
   }, [load]);
+
+  // Cloudflare 비용 추정 (시청예산 집계 — 30초마다)
+  useEffect(() => {
+    const loadCost = () =>
+      fetch("/api/admin/cf-cost", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && !d.error) setCost(d); })
+        .catch(() => { /* ignore */ });
+    loadCost();
+    const id = setInterval(loadCost, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   if (loading && !data) {
     return (
@@ -150,6 +186,63 @@ export default function AdminOriginPage() {
           <p className="text-[10px] text-text-secondary">m3u8 {data.m3u8CacheSize} / ts {data.tsCacheSize}</p>
         </div>
       </div>
+
+      {/* Cloudflare 비용 추정 카드 */}
+      {cost && (() => {
+        const reqMonth = estimateRequests(cost.monthSeconds);
+        const reqToday = estimateRequests(cost.todaySeconds);
+        const costUsd = estimateMonthlyCostUsd(reqMonth);
+        const ratio = freeQuotaRatio(reqMonth);
+        const pct = Math.min(100, Math.round(ratio * 100));
+        const over = reqMonth > CF_FREE_REQ_PER_MONTH;
+        return (
+          <section className="mb-6 rounded-2xl border-2 border-brand-navy/20 bg-brand-navy/5 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-black text-text-primary">📊 Cloudflare 비용 추정 (이번 달)</h2>
+              <span className="text-[10px] text-text-secondary">추정치 · 시청 {fmtSec(cost.monthSeconds)} 기준</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="rounded-xl bg-bg-card p-3">
+                <p className="text-[11px] font-bold text-text-secondary">예상 요청</p>
+                <p className="mt-1 text-xl font-black text-text-primary">{reqMonth.toLocaleString()}</p>
+                <p className="text-[10px] text-text-secondary">건 / 이번 달</p>
+              </div>
+              <div className="rounded-xl bg-bg-card p-3">
+                <p className="text-[11px] font-bold text-text-secondary">무료 한도</p>
+                <p className={`mt-1 text-xl font-black ${over ? "text-live-red" : "text-jeju-green"}`}>{pct}%</p>
+                <p className="text-[10px] text-text-secondary">1,000만 건 중</p>
+              </div>
+              <div className="rounded-xl bg-bg-card p-3">
+                <p className="text-[11px] font-bold text-text-secondary">예상 비용</p>
+                <p className={`mt-1 text-xl font-black ${over ? "text-live-red" : "text-jeju-green"}`}>
+                  {costUsd === 0 ? "$0" : `$${costUsd.toFixed(2)}`}
+                </p>
+                <p className="text-[10px] text-text-secondary">{over ? "유료 종량 구간" : "무료 한도 내"}</p>
+              </div>
+              <div className="rounded-xl bg-bg-card p-3">
+                <p className="text-[11px] font-bold text-text-secondary">오늘</p>
+                <p className="mt-1 text-xl font-black text-text-primary">{reqToday.toLocaleString()}</p>
+                <p className="text-[10px] text-text-secondary">건 · {fmtSec(cost.todaySeconds)}</p>
+              </div>
+            </div>
+
+            {/* 무료 한도 게이지 */}
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-bg-secondary">
+              <div
+                className={`h-full ${over ? "bg-live-red" : "bg-jeju-green"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+
+            <p className="mt-2 text-[10px] text-text-secondary">
+              유저 {cost.userCount}명 · 어드민(나) 누적 {fmtSec(cost.adminSeconds)}는 비용 추정에 포함됨
+              {cost.adminSeconds > 0 && ` (제외 시 약 ${estimateRequests(cost.monthSecondsExAdmin).toLocaleString()}건)`}
+              {" "}· 환산: 초당 1.5요청 × $0.30/백만, 실제 청구와 ±차이 있음
+            </p>
+          </section>
+        );
+      })()}
 
       {/* CCTV별 통계 */}
       {cctvList.length > 0 && (

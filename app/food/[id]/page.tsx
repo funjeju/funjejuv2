@@ -10,6 +10,7 @@ import {
   formatHours,
   getAllIds,
 } from "@/lib/restaurants";
+import { getFoodSeo } from "@/lib/food-seo-store";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -30,8 +31,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const r = await getRestaurant(id);
   if (!r) return { title: "맛집 정보 없음 | FunJeju" };
 
-  const desc = stripHtml(r.content, 155);
-  const title = `${r.title} - ${r.region} ${r.menu} | FunJeju 도민맛집`;
+  const seo = await getFoodSeo(r);
+  // 룰 생성 SEO 본문을 우선(키워드 풍부), 부족하면 원본 일부로 보강
+  const desc = `${seo.intro} ${stripHtml(r.content, 80)}`.slice(0, 160);
+  const title = `${r.title} - 제주 ${r.region} ${r.menu} 맛집 | 펀제주 도민맛집`;
   const ogImage = r.images?.[0]
     ? `${SITE_URL}/restaurant-images/${r.images[0]}`
     : `${SITE_URL}/og-default.png`;
@@ -56,7 +59,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: desc,
       images: [ogImage],
     },
-    keywords: [r.region, r.menu, r.title, "제주 맛집", "도민맛집", "펀제주"],
+    keywords: [...seo.keywords, ...seo.longTailKeywords],
   };
 }
 
@@ -74,23 +77,38 @@ export default async function FoodDetailPage({ params }: Props) {
   const options = parseOptions(r.options);
   const hours = formatHours(r.hours);
   const isFunjejuCertified = options.includes("펀제주인증");
+  const seo = await getFoodSeo(r);
 
   // JSON-LD 구조화 데이터 (Restaurant schema)
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
     name: r.title,
-    description: stripHtml(r.content, 200),
+    description: seo.intro,
     image: r.images.map((img) => `${SITE_URL}/restaurant-images/${img}`),
     address: {
       "@type": "PostalAddress",
+      ...(r.address && { streetAddress: r.address }),
       addressLocality: r.region,
       addressRegion: "제주특별자치도",
       addressCountry: "KR",
     },
     servesCuisine: r.menu,
     url: `${SITE_URL}/food/${id}`,
+    keywords: [...seo.keywords, ...seo.longTailKeywords].join(", "),
     ...(hours && { openingHours: hours }),
+    ...(r.prices && { priceRange: r.prices }),
+  };
+
+  // FAQPage JSON-LD (구글 리치결과) — 룰 생성 Q/A
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: seo.faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
   };
 
   return (
@@ -98,6 +116,10 @@ export default async function FoodDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
       {/* Back */}
@@ -169,6 +191,18 @@ export default async function FoodDetailPage({ params }: Props) {
         </section>
       )}
 
+      {/* SEO 소개 (룰 생성 — 제주·지역·메뉴 키워드 본문) */}
+      <section className="mx-4 mt-4 md:mx-0">
+        <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {seo.highlights.map((h) => (
+            <span key={h} className="rounded-full bg-jeju-green/10 px-2.5 py-0.5 text-[11px] font-medium text-jeju-green">
+              {h}
+            </span>
+          ))}
+        </div>
+      </section>
+
       {/* 본문 */}
       <section className="prose prose-sm mx-4 mt-5 max-w-none rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
         <div
@@ -197,6 +231,23 @@ export default async function FoodDetailPage({ params }: Props) {
                   loading="lazy"
                 />
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 자주 묻는 질문 (FAQPage JSON-LD 대응) */}
+      {seo.faqs.length > 0 && (
+        <section className="mt-8 px-4 md:px-0">
+          <h2 className="mb-3 text-sm font-bold text-text-primary">자주 묻는 질문</h2>
+          <div className="space-y-2.5">
+            {seo.faqs.map((f) => (
+              <details key={f.q} className="rounded-2xl border border-border-soft bg-bg-card p-4">
+                <summary className="cursor-pointer list-none text-[13px] font-bold text-text-primary">
+                  Q. {f.q}
+                </summary>
+                <p className="mt-2 text-[12px] leading-6 text-text-secondary">{f.a}</p>
+              </details>
             ))}
           </div>
         </section>

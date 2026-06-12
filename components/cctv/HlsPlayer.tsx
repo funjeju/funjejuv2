@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCctvSession } from "@/hooks/useCctvSession";
-import { useWatchBudget, fmtDuration } from "@/hooks/useWatchBudget";
+import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 
 type Status = "loading" | "playing" | "error" | "offline";
 
@@ -22,16 +22,19 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
+  const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
 
-  // 시청 세션 추적: 비디오가 실제 재생 중일 때만
+  // 시청 세션 추적 + 서버 시청예산: 비디오가 실제 재생 중일 때만 (단일 스트림)
   useCctvSession({
     cctvId: cctvId && isPlaying ? cctvId : null,
     cctvName,
     isPlaying,
+    activeStreams: isPlaying ? 1 : 0,
+    onBudget: setServerBudget,
   });
 
-  // 시청시간 예산 — 멀티뷰와 같은 풀(localStorage) 공유
-  const budget = useWatchBudget(isPlaying ? 1 : 0);
+  // 시청시간 예산 — 서버 권위 + 클라 보간
+  const budget = useWatchBudget(isPlaying ? 1 : 0, serverBudget);
 
   // 소진되면 재생 정지
   useEffect(() => {
@@ -220,6 +223,13 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       {status === "playing" && isPlaying && !budget.unlimited && !budget.exhausted && (
         <span className="absolute right-3 top-3 z-20 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur">
           ⏱ {fmtDuration(budget.remainingSeconds)}
+        </span>
+      )}
+
+      {/* 어드민/무제한 — 차단 없이 오늘 누적 사용량을 위로 카운트 */}
+      {status === "playing" && isPlaying && budget.unlimited && budget.usedSeconds > 0 && (
+        <span className="absolute right-3 top-3 z-20 rounded-full bg-brand-navy/70 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur">
+          ⏱ 오늘 누적 {fmtDuration(budget.usedSeconds)}
         </span>
       )}
 

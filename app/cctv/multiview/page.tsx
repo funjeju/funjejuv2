@@ -5,7 +5,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { useSaved } from "@/hooks/useSaved";
-import { useWatchBudget, fmtDuration } from "@/hooks/useWatchBudget";
+import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
+import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 
@@ -393,7 +394,17 @@ export default function MultiviewPage() {
     }).length;
   }, [playing, slots, slotCount, allCctvs]);
 
-  const budget = useWatchBudget(activeHlsStreams);
+  // 서버 시청예산 — 멀티뷰는 분할 수만큼 차감 (activeStreams = 동시 HLS 스트림 수)
+  const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
+  useCctvSession({
+    cctvId: playing && activeHlsStreams > 0 ? "__multiview__" : null,
+    cctvName: "멀티뷰",
+    isPlaying: playing && activeHlsStreams > 0,
+    activeStreams: activeHlsStreams,
+    onBudget: setServerBudget,
+  });
+
+  const budget = useWatchBudget(activeHlsStreams, serverBudget);
 
   // 소진되면 재생 자동 정지
   useEffect(() => {
@@ -565,6 +576,23 @@ export default function MultiviewPage() {
       <div className="mx-4 mb-3 md:mx-0">
         <BetaPlanNotice />
       </div>
+
+      {/* 어드민/무제한 — 차단 없이 오늘 누적 사용량 위로 카운트 */}
+      {budget.unlimited && budget.usedSeconds > 0 && (
+        <div className="mx-4 mb-3 md:mx-0">
+          <div className="flex items-center gap-2 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 px-4 py-2">
+            <span className="text-sm">⏱</span>
+            <p className="flex-1 text-[11px] text-text-secondary">
+              오늘 누적 시청{" "}
+              <span className="font-black text-brand-navy">{fmtDuration(budget.usedSeconds)}</span>
+              {activeHlsStreams > 1 && (
+                <span className="ml-1 text-text-secondary">· 지금 {activeHlsStreams}배속 누적</span>
+              )}
+              <span className="ml-1 text-text-secondary/70">(어드민 · 무제한)</span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 시청시간 예산 바 */}
       {!budget.unlimited && (

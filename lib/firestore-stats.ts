@@ -1,10 +1,17 @@
 import "server-only";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { Timestamp } from "firebase-admin/firestore";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
+import { getEntitlements } from "@/lib/entitlements";
+import { getUserPlan } from "@/lib/users";
+import type { PlanId } from "@/lib/plans";
 
 export type UserTier = "anonymous" | "free" | "biz" | "admin";
 
 const ACTIVE_THRESHOLD_MS = 90 * 1000; // 90초 이내 ping = 활성
+
+// heartbeat 1회로 누적할 수 있는 최대 초 — 탭 백그라운드 복귀 시 과차감 방지.
+// 정상 ping 간격(30초)의 3배. 이보다 길면 그 사이 안 봤다고 간주.
+const MAX_HEARTBEAT_DELTA_SEC = 90;
 
 export type Session = {
   sessionId: string;
@@ -59,6 +66,151 @@ export async function upsertSession(input: {
       lastPing: now,
     });
   }
+}
+
+// ── 시청예산: heartbeat 기반 계정 단위 누적·판정 ──────────
+//
+// 핵심: 같은 userId의 모든 창/기기가 같은 budget 문서(`{userId}__{date}`)에
+// 누적되므로, 여러 창으로 띄워도 합산되어 우회가 막힌다.
+// delta = (직전 ping 이후 경과초) × activeStreams(분할 수) — 9분할이면 9배 차감.
+
+export type WatchBudgetResult = {
+  usedSeconds: number;   // 오늘 누적 (스트림·초)
+  limitSeconds: number;  // 하루 한도 (스트림·초). -1=무제한
+  exhausted: boolean;
+  unlimited: boolean;
+};
+
+export async function recordHeartbeat(input: {
+  sessionId: string;
+  userId: string;
+  userTier: UserTier;
+  cctvId: string;
+  cctvName: string;
+  activeStreams: number;
+}): Promise<WatchBudgetResult> {
+  const db = getAdminDb();
+  const now = new Date();
+  const streams = Math.max(0, Math.floor(input.activeStreams) || 0);
+
+  // 1) 세션 upsert + 직전 ping 기준 delta 계산
+  const sessRef = db.collection("stats_sessions").doc(input.sessionId);
+  const snap = await sessRef.get();
+  let deltaStreamSec = 0;
+
+  if (snap.exists) {
+    const prevPing = (snap.data()!.lastPing as Timestamp).toDate();
+    const elapsed = Math.min(
+      MAX_HEARTBEAT_DELTA_SEC,
+      Math.max(0, (now.getTime() - prevPing.getTime()) / 1000)
+    );
+    deltaStreamSec = Math.round(elapsed * streams);
+    await sessRef.update({
+      lastPing: now,
+      activeStreams: streams,
+      cctvId: input.cctvId,
+      cctvName: input.cctvName,
+    });
+  } else {
+    await sessRef.set({
+      sessionId: input.sessionId,
+      userId: input.userId,
+      userTier: input.userTier,
+      cctvId: input.cctvId,
+      cctvName: input.cctvName,
+      activeStreams: streams,
+      startedAt: now,
+      lastPing: now,
+    });
+    // 첫 ping은 경과시간이 없으므로 delta=0
+  }
+
+  // 2) 한도 판정 — entitlements 단일 진입점 (베타/정식 모드 자동 반영)
+  //    정식 모드에선 users/{uid}.plan으로 등급별 시청시간 한도 적용 (admin/비회원은 조회 생략)
+  const loggedIn = !input.userId.startsWith("anon_");
+  const isAdmin = input.userTier === "admin";
+  let plan: PlanId | undefined;
+  if (loggedIn && !isAdmin) plan = await getUserPlan(input.userId);
+  const ent = getEntitlements({ loggedIn, plan });
+  const limitMin = ent.limits.cctvMinutesPerDay;
+  const unlimited = isAdmin || limitMin === -1;
+
+  // 3) 누적 (delta>0일 때만, 원자적 increment)
+  //    어드민/무제한도 "얼마나 쓰고 있나"(=Cloudflare 요청·비용 추정)를 보려고 누적은 한다.
+  //    차단(exhausted)만 안 할 뿐. 일반 유저는 한도 대비 차감(아래로), 어드민은 누적 표시(위로).
+  const date = todayDate();
+  const budgetRef = db.collection("stats_watch_budget").doc(`${input.userId}__${date}`);
+
+  if (deltaStreamSec > 0) {
+    await budgetRef.set(
+      {
+        userId: input.userId,
+        userTier: input.userTier,
+        date,
+        usedStreamSeconds: FieldValue.increment(deltaStreamSec),
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+  }
+
+  // 4) 현재 누적값 조회
+  const bsnap = await budgetRef.get();
+  const used = bsnap.exists ? ((bsnap.data()!.usedStreamSeconds as number) ?? 0) : 0;
+
+  if (unlimited) {
+    // 무제한(어드민): 위로 카운트만. 차단 없음.
+    return { usedSeconds: used, limitSeconds: -1, exhausted: false, unlimited: true };
+  }
+
+  const limitSeconds = limitMin * 60;
+  return {
+    usedSeconds: used,
+    limitSeconds,
+    exhausted: used >= limitSeconds,
+    unlimited: false,
+  };
+}
+
+// ── 시청예산 집계 (어드민 Cloudflare 비용 추정용) ──────────
+export type WatchCostSummary = {
+  monthSeconds: number;       // 이번 달 전체 시청 스트림·초
+  monthSecondsExAdmin: number;// 어드민 제외 (실제 유저 비용)
+  todaySeconds: number;       // 오늘 전체
+  adminSeconds: number;       // 어드민(나) 누적
+  userCount: number;          // 이번 달 시청한 고유 유저 수
+};
+
+export async function getWatchCostSummary(): Promise<WatchCostSummary> {
+  const db = getAdminDb();
+  const now = new Date();
+  const monthStart = now.toISOString().slice(0, 7) + "-01"; // YYYY-MM-01
+  const today = todayDate();
+
+  // date는 "YYYY-MM-DD" 문자열 — 사전순=시간순이라 범위 쿼리 가능
+  const snap = await db.collection("stats_watch_budget").where("date", ">=", monthStart).get();
+
+  let monthSeconds = 0, monthSecondsExAdmin = 0, todaySeconds = 0, adminSeconds = 0;
+  const users = new Set<string>();
+
+  for (const d of snap.docs) {
+    const data = d.data();
+    const sec = (data.usedStreamSeconds as number) ?? 0;
+    const isAdmin = data.userTier === "admin";
+    monthSeconds += sec;
+    if (isAdmin) adminSeconds += sec;
+    else monthSecondsExAdmin += sec;
+    if (data.userId) users.add(data.userId as string);
+    if (data.date === today) todaySeconds += sec;
+  }
+
+  return {
+    monthSeconds,
+    monthSecondsExAdmin,
+    todaySeconds,
+    adminSeconds,
+    userCount: users.size,
+  };
 }
 
 // ── 세션 종료 + view log 기록 ───────────────────────────

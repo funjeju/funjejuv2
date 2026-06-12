@@ -2,7 +2,17 @@ import { NextRequest } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { matchLocation, JEJU_LOCATIONS } from "@/constants/jeju-locations";
 import { findRelevantRestaurants, type ChatRestaurant } from "@/lib/restaurants-for-chat";
+import { verifyFirebaseToken } from "@/lib/firebase-admin";
+import { consumeUsage, resolveUser } from "@/lib/usage";
 import type { DominCard, AiSpotCard } from "@/types/chat";
+
+/** 횟수 한도 초과 응답 */
+function gatedResponse(message: string, used: number, limit: number): Response {
+  return new Response(
+    JSON.stringify({ error: message, gated: true, used, limit }),
+    { status: 429, headers: { "Content-Type": "application/json" } }
+  );
+}
 
 const KAKAO_REST_KEY = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
 
@@ -313,6 +323,18 @@ ${restaurantCtx ? `\n${restaurantCtx}\n` : "\n[펀제주 인증 도민맛집: �
 export async function POST(req: NextRequest) {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
   if (!apiKey) return new Response(JSON.stringify({ error: "API 키 미설정" }), { status: 500 });
+
+  // ── 횟수 게이팅: AI 도슨트 챗봇 (하루 한도) ──
+  const auth = await verifyFirebaseToken(req.headers.get("authorization"));
+  const user = await resolveUser(auth, req.headers.get("x-anon-id"));
+  const gate = await consumeUsage({ ...user, feature: "chat" });
+  if (!gate.allowed) {
+    return gatedResponse(
+      "오늘 도슨트 대화 횟수를 모두 사용했어요. 내일 다시 충전되거나 요금제를 올리면 더 쓸 수 있어요.",
+      gate.used,
+      gate.limit
+    );
+  }
 
   const { messages, lat, lng } = (await req.json()) as {
     messages: Message[];
