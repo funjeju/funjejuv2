@@ -36,9 +36,15 @@ type BriefingAI = {
   keywords: string[];
 };
 
+/** KST(UTC+9) 기준 '지금'. Vercel은 UTC라 그대로 쓰면 06시 발행이 어제 날짜로 찍힌다. */
+function kstNow(): Date {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000);
+}
+
 function slugify(): string {
-  const d = new Date();
-  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const d = kstNow();
+  // KST 시각의 Y/M/D를 뽑으려면 UTC 게터로 읽어야 한다 (+9 offset 이미 반영됨)
+  const ymd = `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
   return `daily-${ymd}-${Math.random().toString(36).slice(2, 5)}`;
 }
 
@@ -49,8 +55,8 @@ export async function generateBriefingDraft(): Promise<Content> {
   const withImg = all.filter((r) => r.images?.[0] && r.lat && r.lng);
   const picks = withImg.sort(() => Math.random() - 0.5).slice(0, 4);
 
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
+  const today = kstNow();
+  const dateStr = `${today.getUTCFullYear()}년 ${today.getUTCMonth() + 1}월 ${today.getUTCDate()}일`;
 
   const weatherLine = w
     ? `오늘(${dateStr}) 제주 날씨: ${w.description}, 기온 ${Math.round(w.temperature)}°C(체감 ${Math.round(w.apparentTemp)}°C), 풍속 ${w.windSpeed}m/s(${w.windLabel}), 물때 ${w.tide}.`

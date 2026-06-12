@@ -6,7 +6,7 @@ import type { Content, ContentType } from "@/types/content";
 
 const TYPE_META: Record<ContentType, { label: string; emoji: string; color: string; path: string }> = {
   webzine:  { label: "웹진",      emoji: "📰", color: "bg-brand-orange/10 text-brand-orange border-brand-orange/30", path: "/webzine" },
-  briefing: { label: "모닝브리핑", emoji: "☀️", color: "bg-brand-navy/10 text-brand-navy border-brand-navy/30",     path: "/briefing" },
+  briefing: { label: "모닝브리핑", emoji: "☀️", color: "bg-brand-navy/10 text-brand-navy border-brand-navy/30",     path: "/daily" },
   card_news:{ label: "카드뉴스",   emoji: "🃏", color: "bg-jeju-green/10 text-jeju-green border-jeju-green/30",     path: "/card" },
 };
 

@@ -2,7 +2,7 @@
  * Vercel Cron — AI데일리제주 모닝브리핑 자동 생성 (콘텐츠 엔진 2단계).
  *
  * 매일 아침: 제주 날씨 + 추천 맛집 → Gemini 브리핑 → contents(type=briefing) draft.
- * 기본 반자동(draft) — 어드민 승인 발행. `BRIEFING_AUTO_PUBLISH=true` 면 완전자동.
+ * 기본 완전자동(published) — 검수 거치려면 `BRIEFING_AUTO_PUBLISH=false`.
  *
  * vercel.json: { "path": "/api/cron/briefing", "schedule": "0 22 * * *" } (UTC 22시 = KST 07시)
  */
@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const draft = await generateBriefingDraft();
-    if (process.env.BRIEFING_AUTO_PUBLISH === "true") {
+    // 기본 완전자동 — 명시적으로 "false"일 때만 draft로 떨어뜨리고 어드민 검수
+    if (process.env.BRIEFING_AUTO_PUBLISH !== "false") {
       draft.status = "published";
       draft.publishedAt = new Date().toISOString();
     }
