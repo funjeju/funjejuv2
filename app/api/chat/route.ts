@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { matchLocation, JEJU_LOCATIONS } from "@/constants/jeju-locations";
 import { findRelevantRestaurants, type ChatRestaurant } from "@/lib/restaurants-for-chat";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
@@ -93,6 +93,85 @@ function isNearbyKeyword(text: string): boolean {
 
 function isSpotQuery(text: string): boolean {
   return /관광|명소|볼곳|볼\s*만한|놀곳|놀\s*만한|가볼|일출|일몰|노을|해변|바다|오름|박물관|폭포|섬|올레/.test(text);
+}
+
+// ── AI 지명 판별 (등록 키워드로 못 잡은 지명을 Gemini가 region으로 해석) ──
+const JEJU_REGIONS = [
+  "애월읍", "한림읍", "한경면", "대정읍", "안덕면", "남원읍", "표선면",
+  "성산읍", "구좌읍", "조천읍", "우도면", "제주시 동(洞) 지역", "서귀포시 동(洞) 지역",
+];
+
+const REGION_SYS = `너는 제주 지명 분석기야. 사용자 메시지에서 제주도 지명(장소·해변·마을·명소·카페·맛집 이름 등)을 찾아 그게 어느 행정구역인지 판단해.
+
+[행정구역 목록 — region은 반드시 이 중 하나]
+${JEJU_REGIONS.join(", ")}
+
+[예시]
+- 곽지·한담·금성·고내·하귀 → 애월읍
+- 금능·협재·옹포 → 한림읍
+- 위미·태흥 → 남원읍
+- 색달·중문·천제연 → 서귀포시 동(洞) 지역
+- 광치기·섭지코지 → 성산읍
+- 이호테우·용두암·동문시장 → 제주시 동(洞) 지역
+
+[규칙]
+- 지명이 메시지에 전혀 없으면(예: "맛집 추천해줘", "근처 카페") hasPlace=false, region=""
+- 지명은 있는데 어느 지역인지 확실하지 않으면 confident=false (그러면 사용자에게 되물을 거야)
+- 확실하면 confident=true 로 region을 위 목록에서 정확히 골라`;
+
+const REGION_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    hasPlace: { type: Type.BOOLEAN, description: "메시지에 제주 지명이 있는지" },
+    placeName: { type: Type.STRING, description: "찾은 지명 (없으면 빈 문자열)" },
+    region: { type: Type.STRING, description: "행정구역 (확실할 때만, 아니면 빈 문자열)" },
+    confident: { type: Type.BOOLEAN, description: "지역 판단이 확실한지" },
+  },
+  required: ["hasPlace", "placeName", "region", "confident"],
+};
+
+type RegionGuess = { hasPlace: boolean; placeName: string; region?: string; confident: boolean };
+
+async function resolveRegionViaAI(text: string, ai: GoogleGenAI): Promise<RegionGuess> {
+  try {
+    const res = await ai.models.generateContent({
+      model: "gemini-2.5-flash-lite",
+      contents: [{ role: "user", parts: [{ text: `메시지: "${text}"` }] }],
+      config: {
+        systemInstruction: REGION_SYS,
+        responseMimeType: "application/json",
+        responseSchema: REGION_SCHEMA,
+        temperature: 0,
+        maxOutputTokens: 200,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+    const d = JSON.parse(res.text ?? "{}") as RegionGuess;
+    const region = d.region && JEJU_REGIONS.includes(d.region) ? d.region : undefined;
+    return { hasPlace: !!d.hasPlace, placeName: d.placeName ?? "", region, confident: !!d.confident };
+  } catch {
+    return { hasPlace: false, placeName: "", confident: false };
+  }
+}
+
+/** 지역을 못 정했을 때 사용자에게 되묻는 SSE 응답 */
+function askRegionStream(placeName: string): Response {
+  const encoder = new TextEncoder();
+  const where = placeName ? `'${placeName}'` : "말씀하신 곳";
+  const msg = `${where}이(가) 제주 어느 지역인지 잘 모르겠어요 😅 혹시 어느 읍·면(예: 애월, 성산, 중문)인지 알려주시면 거기 맞춰서 딱 찾아드릴게요!`;
+  const readable = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: msg })}\n\n`));
+      controller.close();
+    },
+  });
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
 
 function extractIntent(text: string): Intent {
@@ -345,6 +424,20 @@ export async function POST(req: NextRequest) {
   const hasGps = typeof lat === "number" && typeof lng === "number";
   const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
   const intent = extractIntent(lastUserText);
+  const ai = new GoogleGenAI({ apiKey });
+
+  // ── 등록 키워드로 region 못 잡았으면 AI가 지명 판별 (곽지→애월읍 등) ──
+  //    "근처/주변" 류가 아니고, 음식·장소 의도가 있을 때만.
+  if (!intent.region && !isNearbyKeyword(lastUserText) && (intent.wantsFood || intent.wantsSpot)) {
+    const guess = await resolveRegionViaAI(lastUserText, ai);
+    if (guess.region) {
+      intent.region = guess.region;
+      if (guess.placeName) intent.locationLabel = guess.placeName;
+    } else if (guess.hasPlace && !guess.confident && !hasGps) {
+      // 지명은 있는데 어딘지 모르고 GPS도 없음 → 추측 말고 사용자에게 되묻기
+      return askRegionStream(guess.placeName);
+    }
+  }
 
   // ★ GPS 좌표 → region 매핑 (제주 안에 있을 때만)
   let gpsInfo: { region?: string; label: string; distanceKm: number } | null = null;
@@ -387,7 +480,6 @@ export async function POST(req: NextRequest) {
   }
 
   // AI 검색 추천은 텍스트 스트림과 병렬로 진행 (음식 질문일 때만)
-  const ai = new GoogleGenAI({ apiKey });
   const aiSpotsPromise: Promise<AiSpotCard[]> = intent.wantsFood
     ? searchAiSpots({
         ai,

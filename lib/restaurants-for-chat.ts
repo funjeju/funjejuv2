@@ -145,7 +145,30 @@ export async function findRelevantRestaurants(
     results = matched.length > 0 ? matched : before;
   }
 
-  // GPS가 있으면 거리 계산 후 가까운 순 정렬 (region 필터보다 우선)
+  // 사용자가 지역을 직접 말했으면("애월 맛집") 그 지역 우선 — GPS(현재 위치)는 무시.
+  // 지역을 안 말했을 때만("근처 맛집") 아래 GPS 거리순으로 빠진다.
+  if (query.region) {
+    const r = query.region;
+    const regionMatched = results.filter((x) => x.region.includes(r) || r.includes(x.region));
+    if (regionMatched.length > 0) {
+      // 지역 안에서도 GPS가 있으면 그 지역 내 가까운 순으로 보조 정렬
+      if (typeof query.userLat === "number" && typeof query.userLng === "number") {
+        const uLat = query.userLat, uLng = query.userLng;
+        return regionMatched
+          .map((x) =>
+            typeof x.lat === "number" && typeof x.lng === "number"
+              ? { ...x, distanceKm: distanceKm(uLat, uLng, x.lat, x.lng) }
+              : x
+          )
+          .sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+          .slice(0, 8);
+      }
+      return regionMatched.sort((a, b) => (a.source === "firestore" ? -1 : 1)).slice(0, 8);
+    }
+    // 지역명에 매칭되는 맛집이 없으면 아래 GPS/기본 로직으로 폴백
+  }
+
+  // GPS가 있으면 거리 계산 후 가까운 순 정렬 ("근처" 류 질문)
   if (typeof query.userLat === "number" && typeof query.userLng === "number") {
     const uLat = query.userLat;
     const uLng = query.userLng;
@@ -175,11 +198,6 @@ export async function findRelevantRestaurants(
     return results.slice(0, 8);
   }
 
-  // GPS 없으면 region 필터 (기존 동작)
-  if (query.region) {
-    const r = query.region;
-    results = results.filter((x) => x.region.includes(r) || r.includes(x.region));
-  }
-
+  // region·GPS 둘 다 없거나, 지역명 매칭이 0이라 폴백된 경우 → 메뉴 필터된 전체에서 반환
   return results.sort((a, b) => (a.source === "firestore" ? -1 : 1)).slice(0, 8);
 }
