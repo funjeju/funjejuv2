@@ -33,9 +33,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!r) return { title: "맛집 정보 없음 | FunJeju" };
 
   const seo = await getFoodSeo(r);
-  // 룰 생성 SEO 본문을 우선(키워드 풍부), 부족하면 원본 일부로 보강
-  const desc = `${seo.intro} ${stripHtml(r.content, 80)}`.slice(0, 160);
-  const title = `${r.title} - 제주 ${r.region} ${r.menu} 맛집 | 펀제주 도민맛집`;
+  // 검색 의도 키워드를 앞에, 가게명을 뒤에 (구글/네이버 기준)
+  const title = `제주 ${r.region} ${r.menu} 맛집 ${r.title} | 펀제주 도민맛집`;
+  // description: 1문단(가장 키워드 밀도 높음) + 원본 보강, 구글 최적 280자
+  const firstPara = seo.intro.split("\n\n")[0] ?? seo.intro;
+  const desc = `${firstPara} ${stripHtml(r.content, 80)}`.slice(0, 280);
   const ogImage = r.images?.[0]
     ? `${SITE_URL}/restaurant-images/${r.images[0]}`
     : `${SITE_URL}/og-default.png`;
@@ -193,10 +195,17 @@ export default async function FoodDetailPage({ params }: Props) {
         </section>
       )}
 
-      {/* SEO 소개 (룰 생성 — 제주·지역·메뉴 키워드 본문) */}
+      {/* SEO 소개 (제주·지역·메뉴 키워드 본문 — 3문단, h2로 크롤러 시그널) */}
       <section className="mx-4 mt-4 md:mx-0">
-        <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <h2 className="mb-3 text-base font-bold text-text-primary">
+          제주 {r.region} {r.menu} 맛집 {r.title} 소개
+        </h2>
+        <div className="space-y-3">
+          {seo.intro.split("\n\n").map((para, i) => (
+            <p key={i} className="text-sm leading-7 text-text-primary">{para}</p>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {seo.highlights.map((h) => (
             <span key={h} className="rounded-full bg-jeju-green/10 px-2.5 py-0.5 text-[11px] font-medium text-jeju-green">
               {h}

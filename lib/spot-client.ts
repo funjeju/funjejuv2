@@ -1,17 +1,28 @@
 "use client";
 
-import { getApps } from "firebase/app";
-import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
-
-/** 틀린그림찾기 이미지 → Firebase Storage 업로드 → 다운로드 URL */
+/** 틀린그림찾기 이미지 → 서버 업로드 API → Firebase Storage → 다운로드 URL */
 export async function uploadSpotImage(blob: Blob, label: string): Promise<string> {
-  const app = getApps()[0];
-  if (!app) throw new Error("Firebase not initialized");
-  const storage = getStorage(app);
-  const path = `spot/${Date.now()}-${label}-${Math.random().toString(36).slice(2, 8)}.png`;
-  const r = ref(storage, path);
-  await uploadBytes(r, blob, { contentType: "image/png" });
-  return getDownloadURL(r);
+  const base64 = await blobToBase64(blob);
+  const res = await fetch("/api/admin/spot/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ base64, mime: blob.type || "image/png", label }),
+  });
+  const d = await res.json();
+  if (!res.ok) throw new Error(d.error || "이미지 업로드 실패");
+  return d.url;
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 /** base64(순수) → Blob */
