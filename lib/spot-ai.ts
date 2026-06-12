@@ -2,8 +2,11 @@ import "server-only";
 import OpenAI, { toFile } from "openai";
 
 /**
- * 원본 이미지 → "정확히 N군데만 다른" 변형 이미지 생성 (gpt-image-1, images/edits).
+ * 원본 이미지 → "정확히 N군데만 다른" 변형 이미지 생성 (gpt-image-2, images/edits).
  * 어드민이 원본만 올리면 AI가 틀린그림을 만들어 줌. (실패 시 어드민이 직접 2장 업로드 폴백)
+ *
+ * gpt-image-2 (2026-04 출시): 한글 텍스트 ~99% 정확 + thinking 편집 →
+ * 메뉴판·간판 텍스트 변형, "정확히 N군데만" 같은 세밀 편집에 유리.
  */
 
 let client: OpenAI | null = null;
@@ -34,7 +37,7 @@ export async function generateVariant(opts: {
   const file = await toFile(bytes, "image.png", { type: opts.mimeType || "image/png" });
 
   const res = await getOpenAI().images.edit({
-    model: "gpt-image-1",
+    model: "gpt-image-2",
     image: file,
     prompt,
     n: 1,

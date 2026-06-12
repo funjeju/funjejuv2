@@ -11,6 +11,8 @@ const NAV = [
   { href: "/admin/food",   label: "🍽️ 도민맛집", short: "맛집"  },
   { href: "/admin/feed",   label: "📸 라이브피드",short: "피드"  },
   { href: "/admin/jejutube", label: "▶ 제주tube", short: "튜브" },
+  { href: "/admin/contents", label: "📝 콘텐츠",  short: "콘텐츠" },
+  { href: "/admin/spot-diff", label: "🔍 틀린그림", short: "틀린그림" },
   { href: "/admin/users",  label: "👥 사용자",   short: "사용자" },
 ];
 
