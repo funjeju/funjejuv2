@@ -3,13 +3,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { SpotGame, SpotScore } from "@/types/spot";
 
-const RING_R = 5;        // 발견 표시 원 반지름 (%)
-const HIT_RADIUS = 7;    // 클릭 허용 반경 (%)
+const RING_R = 5.5;      // 발견 표시 원 반지름 (%)
+const HIT_RADIUS = 9.5;  // 클릭 허용 반경 (%) — 손가락/마우스 모두 타이트하지 않게
 
 export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [found, setFound] = useState<boolean[]>(() => game.markers.map(() => false));
   const [misses, setMisses] = useState<{ side: "L" | "R"; x: number; y: number; key: number }[]>([]);
-  const [hint, setHint] = useState<{ x: number; y: number } | null>(null);
   const [startAt] = useState(() => Date.now());
   const [elapsed, setElapsed] = useState(0);
   const [cleared, setCleared] = useState(false);
@@ -53,20 +52,12 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
 
     if (hitIdx >= 0) {
       setFound((f) => f.map((v, i) => (i === hitIdx ? true : v)));
-      setHint(null);
     } else {
       const key = Date.now();
       setMisses((m) => [...m, { side, x, y, key }]);
       setTimeout(() => setMisses((m) => m.filter((mm) => mm.key !== key)), 600);
     }
   }, [cleared, found, game.markers]);
-
-  function showHint() {
-    const idx = found.findIndex((v) => !v);
-    if (idx < 0) return;
-    setHint(game.markers[idx]);
-    setTimeout(() => setHint(null), 2000);
-  }
 
   async function submit() {
     setSubmitted(true);
@@ -92,11 +83,24 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       <img ref={side === "L" ? imgRef : undefined} src={src} alt={label} className="block w-full select-none" style={{ pointerEvents: "none" }} />
       <span className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[12px] font-bold text-white">{label}</span>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+        <defs>
+          {/* 분필 손그림 느낌 — turbulence + displacement로 선을 거칠게 흔듬 */}
+          <filter id="chalk" x="-10%" y="-10%" width="120%" height="120%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" />
+            <feDisplacementMap in="SourceGraphic" scale="1.4" />
+          </filter>
+        </defs>
         {game.markers.map((m, i) => found[i] && (
-          <g key={i}><circle cx={m.x} cy={m.y} r={RING_R} fill="rgba(255,60,60,0.18)" stroke="#ff3333" strokeWidth={3} /><text x={m.x} y={m.y + 0.6} textAnchor="middle" dominantBaseline="middle" fontSize={4} fontWeight="bold" fill="#cc2222">{i + 1}</text></g>
+          <g key={i} filter="url(#chalk)" opacity={0.92}>
+            {/* 두 겹으로 그어 분필이 두 번 휘갈긴 듯한 손맛 */}
+            <circle cx={m.x} cy={m.y} r={RING_R} fill="none" stroke="#ff4d4d" strokeWidth={1.6} strokeLinecap="round" strokeDasharray="3 1.2" />
+            <circle cx={m.x} cy={m.y} r={RING_R - 0.4} fill="none" stroke="#ff6b6b" strokeWidth={0.9} strokeLinecap="round" strokeDasharray="2 2" opacity={0.7} />
+            <text x={m.x} y={m.y + 0.8} textAnchor="middle" dominantBaseline="middle" fontSize={4.5} fontWeight="bold" fill="#ff4d4d" stroke="#ff4d4d" strokeWidth={0.15}>{i + 1}</text>
+          </g>
         ))}
-        {hint && <circle cx={hint.x} cy={hint.y} r={RING_R + 1} fill="rgba(201,168,76,0.15)" stroke="#c9a84c" strokeWidth={2.5} strokeDasharray="6 4" />}
-        {misses.filter((mm) => mm.side === side).map((mm) => (<circle key={mm.key} cx={mm.x} cy={mm.y} r={3.5} fill="rgba(150,150,150,0.2)" stroke="#999" strokeWidth={2} opacity={0.6} />))}
+        {misses.filter((mm) => mm.side === side).map((mm) => (
+          <circle key={mm.key} cx={mm.x} cy={mm.y} r={3.5} fill="rgba(150,150,150,0.2)" stroke="#999" strokeWidth={1.5} opacity={0.55} filter="url(#chalk)" />
+        ))}
       </svg>
     </div>
   );
@@ -116,7 +120,6 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-soft bg-bg-secondary px-5 py-3">
         <span className="text-sm font-black text-text-primary">발견 <span className="text-brand-orange">{foundCount}</span> / {game.markers.length}</span>
         <span className="text-sm font-bold text-text-secondary">⏱ {fmtTime(elapsed)}</span>
-        <button onClick={showHint} className="rounded-full border border-stone-400 px-3 py-1 text-[12px] text-text-secondary hover:bg-stone-100">💡 힌트</button>
       </div>
 
       {/* 클리어 → 기록 입력 */}

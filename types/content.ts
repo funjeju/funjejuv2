@@ -11,6 +11,11 @@ export type ContentSection = {
   body: string;
   restaurantId?: string; // 도민맛집 연결 (내부링크/이미지)
   image?: string;
+  // 모닝브리핑 뉴스 카드용 — 원문/매체/발행시각/카테고리
+  sourceUrl?: string;
+  source?: string;
+  newsPublishedAt?: string;
+  category?: string;
 };
 
 export type Content = {
