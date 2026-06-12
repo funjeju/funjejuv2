@@ -30,19 +30,25 @@ export interface Env {
   ORIGIN_PROXY_KEY?: string;
 }
 
-const CORS = {
-  // 우리 도메인에서만 재생 가능 (타 사이트 임베드 차단의 1차 방어)
-  "Access-Control-Allow-Origin": "https://funjeju.com",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Range",
-  "Access-Control-Expose-Headers": "Content-Length, Content-Range",
-  "Vary": "Origin",
-};
-
 // 허용 도메인 목록 (ALLOWED_ORIGIN 콤마 구분, 미설정 시 기본값)
 function allowedHosts(env: Env): string[] {
   const raw = env.ALLOWED_ORIGIN || "https://funjeju.com,https://www.funjeju.com";
   return raw.split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
+}
+
+// 동적 CORS — 요청 Origin이 허용 목록이면 그대로 echo (아니면 첫 도메인).
+// isAllowed 가드가 보안을 담당하므로 echo해도 안전.
+function corsFor(request: Request, env: Env): Record<string, string> {
+  const hosts = allowedHosts(env);
+  const origin = (request.headers.get("Origin") || "").replace(/\/$/, "");
+  const allow = hosts.includes(origin) ? origin : hosts[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Range",
+    "Access-Control-Expose-Headers": "Content-Length, Content-Range",
+    "Vary": "Origin",
+  };
 }
 
 // 요청 출처 검증 — Origin(우선) 또는 Referer가 허용 도메인이어야 함.
@@ -87,26 +93,28 @@ function logEvent(req: Request, cctvId: string, type: string, result: string) {
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const cors = corsFor(request, env);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS });
+      return new Response(null, { status: 204, headers: cors });
     }
 
     const url = new URL(request.url);
 
     // /stats 엔드포인트 (어드민 모니터링)
     if (url.pathname === "/stats") {
-      return statsResponse();
+      return statsResponse(cors);
     }
     if (url.pathname === "/" || url.pathname === "") {
-      return new Response("FunJeju CCTV Worker Proxy v2", { headers: CORS });
+      return new Response("FunJeju CCTV Worker Proxy v2", { headers: cors });
     }
 
     const segments = url.pathname.split("/").filter(Boolean);
-    if (segments[0] !== "cctv" || !segments[1]) return jsonError(404, "Not found");
+    if (segments[0] !== "cctv" || !segments[1]) return jsonError(404, "Not found", cors);
 
     // 출처 가드 — 우리 도메인에서 온 스트림 요청만 허용 (타 사이트 임베드·직접 스크래핑 차단)
     if (!isAllowed(request, env)) {
-      return jsonError(403, "Forbidden");
+      return jsonError(403, "Forbidden", cors);
     }
 
     const id = segments[1];
@@ -114,8 +122,8 @@ export default {
 
     // KV 조회 (isolate별 1초 캐시로 read 비용 절감)
     const meta = await getCctvMeta(env, id);
-    if (!meta) return jsonError(404, `CCTV '${id}' not found`);
-    if (!meta.active) return jsonError(503, `CCTV '${id}' offline`);
+    if (!meta) return jsonError(404, `CCTV '${id}' not found`, cors);
+    if (!meta.active) return jsonError(503, `CCTV '${id}' offline`, cors);
 
     // 체인 모드: origin이 CF 엣지 IP를 차단하므로 Vultr 프록시를 origin으로 사용
     const chainBase = (env.ORIGIN_PROXY_BASE || "").replace(/\/$/, "");
@@ -129,9 +137,9 @@ export default {
           headers: proxyKey ? { "x-proxy-key": proxyKey } : undefined,
           signal: AbortSignal.timeout(5000),
         });
-        return json({ id, online: r.ok, status: r.status });
+        return json({ id, online: r.ok, status: r.status }, 200, cors);
       } catch {
-        return json({ id, online: false, status: 0 });
+        return json({ id, online: false, status: 0 }, 200, cors);
       }
     }
 
@@ -140,7 +148,7 @@ export default {
     // ── 세그먼트 (chunklist 또는 ts) ───────────────────────────
     if (action === "seg") {
       const segPath = url.searchParams.get("path");
-      if (!segPath) return jsonError(400, "Missing ?path");
+      if (!segPath) return jsonError(400, "Missing ?path", cors);
       const originSegUrl = resolveUrl(segPath, effectiveOrigin);
       const isM3u8 = segPath.includes(".m3u8");
 
@@ -149,7 +157,7 @@ export default {
           cacheKeyId: `chunklist:${id}`,
           ttlSec:     M3U8_TTL_SEC,
           originUrl:  originSegUrl,
-          proxyKey,
+          proxyKey, cors,
           ctx, request, cctvId: id, type: "chunklist",
           transform: async (text) => rewriteM3u8(text, originSegUrl, workerBase),
           contentType: "application/vnd.apple.mpegurl",
@@ -162,7 +170,7 @@ export default {
           cacheKeyId: `ts:${id}:${chunkNum}`,
           ttlSec:     TS_TTL_SEC,
           originUrl:  originSegUrl,
-          proxyKey,
+          proxyKey, cors,
           ctx, request, cctvId: id, type: "ts",
           contentType: "video/MP2T",
           passThroughRange: true,
@@ -175,7 +183,7 @@ export default {
       cacheKeyId: `m3u8:${id}`,
       ttlSec:     M3U8_TTL_SEC,
       originUrl:  effectiveOrigin,
-      proxyKey,
+      proxyKey, cors,
       ctx, request, cctvId: id, type: "m3u8",
       transform: async (text) => rewriteM3u8(text, effectiveOrigin, workerBase),
       contentType: "application/vnd.apple.mpegurl",
@@ -192,6 +200,8 @@ async function cachedFetch(opts: {
   originUrl: string;
   /** 체인 모드: Vultr 프록시 출처 가드 통과 키 */
   proxyKey?: string;
+  /** 동적 CORS 헤더 (요청 origin 기반) */
+  cors: Record<string, string>;
   ctx: ExecutionContext;
   request: Request;
   cctvId: string;
@@ -207,7 +217,7 @@ async function cachedFetch(opts: {
   const cached = await cache.match(cacheReq);
   if (cached) {
     logEvent(opts.request, opts.cctvId, opts.type, "hit");
-    return withCors(cached);
+    return withCors(cached, opts.cors);
   }
 
   // 2) Origin fetch
@@ -230,12 +240,12 @@ async function cachedFetch(opts: {
   } catch (e) {
     // origin 실패 — stale 캐시라도 있으면 (없으면 502)
     logEvent(opts.request, opts.cctvId, opts.type, "error");
-    return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`);
+    return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`, opts.cors);
   }
 
   if (!originRes.ok && originRes.status !== 206) {
     logEvent(opts.request, opts.cctvId, opts.type, "error");
-    return jsonError(originRes.status, `Origin returned ${originRes.status}`);
+    return jsonError(originRes.status, `Origin returned ${originRes.status}`, opts.cors);
   }
 
   logEvent(opts.request, opts.cctvId, opts.type, "origin");
@@ -250,7 +260,7 @@ async function cachedFetch(opts: {
   }
 
   const responseHeaders: Record<string, string> = {
-    ...CORS,
+    ...opts.cors,
     "Content-Type": opts.contentType,
     "Cache-Control": `public, max-age=${opts.ttlSec}`,
   };
@@ -302,7 +312,7 @@ function resolveUrl(path: string, base: string): string {
 // ─────────────────────────────────────────────────────────────
 // /stats — 어드민용
 // ─────────────────────────────────────────────────────────────
-function statsResponse(): Response {
+function statsResponse(cors: Record<string, string>): Response {
   const perCctv: Record<string, {
     totalOrigin: number; totalHit: number; uniqueIps: number;
     recent1min: { origin: number; hit: number };
@@ -331,25 +341,25 @@ function statsResponse(): Response {
     events: [...events].reverse().slice(0, 200),
     perCctv,
     _note: "Workers PoP isolate별 카운터라 정확하지 않음. 트렌드 참고용.",
-  });
+  }, 200, cors);
 }
 
 // ─────────────────────────────────────────────────────────────
 // 유틸
 // ─────────────────────────────────────────────────────────────
-function withCors(res: Response): Response {
+function withCors(res: Response, cors: Record<string, string>): Response {
   const h = new Headers(res.headers);
-  for (const [k, v] of Object.entries(CORS)) h.set(k, v);
+  for (const [k, v] of Object.entries(cors)) h.set(k, v);
   return new Response(res.body, { status: res.status, headers: h });
 }
 
-function json(data: unknown, status = 200): Response {
+function json(data: unknown, status = 200, cors: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 }
 
-function jsonError(status: number, message: string): Response {
-  return json({ error: message }, status);
+function jsonError(status: number, message: string, cors: Record<string, string> = {}): Response {
+  return json({ error: message }, status, cors);
 }

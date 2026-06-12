@@ -11,7 +11,7 @@ id = "a2e7fee994e94d9f9a5f1972201fcbc3"
 
 [vars]
 # 콤마로 여러 도메인 허용 가능 (출처 가드용)
-ALLOWED_ORIGIN = "https://funjeju.com,https://www.funjeju.com"
+ALLOWED_ORIGIN = "https://funjeju.com,https://www.funjeju.com,https://funjejuv2.vercel.app"
 
 # 체인 모드 — CCTV origin이 Cloudflare 엣지 IP를 차단(522)해서,
 # 한국 고정 IP 프록시(Vultr 서울)를 origin으로 경유한다.
