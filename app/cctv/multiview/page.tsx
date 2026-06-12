@@ -121,9 +121,11 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
     let cancelled = false;
     let delayTimerId: ReturnType<typeof setTimeout> | null = null;
     let stallTimerId: ReturnType<typeof setInterval> | null = null;
+    let recoveryTimerId: ReturnType<typeof setTimeout> | null = null;
     let restartCount = 0;
     const MAX_RESTARTS = 5;
     const STALL_THRESHOLD = 8000; // 8초 동안 currentTime 변화 없으면 = 죽음
+    const RECOVERY_INTERVAL = 60_000; // 연결 실패 후 1분마다 조용히 재시도 (origin 복구 감지)
 
     // 초기 상태 설정
     setStatus(initDelay > 0 ? "waiting" : "loading");
@@ -139,8 +141,17 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
     function hardRestart(reason: string) {
       if (cancelled) return;
       if (restartCount >= MAX_RESTARTS) {
-        console.warn(`[SlotPlayer ${cctv?.id}] 재시도 한도 초과 (${reason})`);
+        console.warn(`[SlotPlayer ${cctv?.id}] 재시도 한도 초과 (${reason}) → 1분 후 재시도 예약`);
         setStatus("error");
+        // 5번 즉시 재시도 실패 → "연결 실패" 표시 후 1분마다 조용히 재시도.
+        // origin이 되살아나면 자동 부활. 슬롯 삭제/교체 시 cleanup에서 멈춤.
+        if (recoveryTimerId) clearTimeout(recoveryTimerId);
+        recoveryTimerId = setTimeout(() => {
+          if (cancelled) return;
+          restartCount = 0;
+          setStatus("loading");
+          init();
+        }, RECOVERY_INTERVAL);
         return;
       }
       restartCount++;
@@ -216,6 +227,7 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       cancelled = true;
       if (delayTimerId) clearTimeout(delayTimerId);
       if (stallTimerId) clearInterval(stallTimerId);
+      if (recoveryTimerId) clearTimeout(recoveryTimerId);
       hls?.destroy();
       if (video) {
         video.pause();
