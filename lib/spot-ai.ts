@@ -115,14 +115,15 @@ x,y는 박스 좌상단, w,h는 폭·높이. 모두 이미지 대비 % (0~100).`
 function toPx(r: PctRegion, w: number, h: number): PxRegion {
   const padX = (r.w / 100) * w * 0.12;
   const padY = (r.h / 100) * h * 0.12;
-  const left = Math.max(0, Math.round((r.x / 100) * w - padX));
-  const top = Math.max(0, Math.round((r.y / 100) * h - padY));
-  return {
-    left,
-    top,
-    width: Math.max(8, Math.min(w - left, Math.round((r.w / 100) * w + padX * 2))),
-    height: Math.max(8, Math.min(h - top, Math.round((r.h / 100) * h + padY * 2))),
-  };
+  const left0 = Math.max(0, Math.round((r.x / 100) * w - padX));
+  const top0  = Math.max(0, Math.round((r.y / 100) * h - padY));
+  // 최솟값 8px 보장 단, 이미지 크기 초과 금지
+  const width  = Math.min(w, Math.max(8, Math.round((r.w / 100) * w + padX * 2)));
+  const height = Math.min(h, Math.max(8, Math.round((r.h / 100) * h + padY * 2)));
+  // 8px 최솟값 적용 후 overflow 시 left/top을 왼쪽/위로 이동
+  const left = Math.max(0, Math.min(left0, w - width));
+  const top  = Math.max(0, Math.min(top0,  h - height));
+  return { left, top, width, height };
 }
 
 /** OpenAI용 마스크: 전체 불투명 + 편집 영역만 투명 구멍 */

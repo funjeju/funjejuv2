@@ -58,7 +58,7 @@ export default function AdminSpotDiffPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origBase64: base64, mimeType: mime, count, level, extra }),
       });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({ error: `서버 오류 (HTTP ${r.status})` }));
       if (!r.ok) throw new Error(d.error || "생성 실패");
       // 정답 마커가 자동으로 내려옴. origBase64(정규화 원본)로 교체해야 변형과 픽셀이 짝 맞음
       if (d.origBase64) setOrig(`data:image/png;base64,${d.origBase64}`);
