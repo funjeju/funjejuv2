@@ -13,6 +13,12 @@ id = "a2e7fee994e94d9f9a5f1972201fcbc3"
 # 콤마로 여러 도메인 허용 가능 (출처 가드용)
 ALLOWED_ORIGIN = "https://funjeju.com,https://www.funjeju.com"
 
+# 체인 모드 — CCTV origin이 Cloudflare 엣지 IP를 차단(522)해서,
+# 한국 고정 IP 프록시(Vultr 서울)를 origin으로 경유한다.
+# 비우면 KV originUrl(진짜 CCTV) 직접 fetch로 원복.
+ORIGIN_PROXY_BASE = "https://stream.funjeju.com"
+ORIGIN_PROXY_KEY = "funjeju-chain-key-9271"
+
 # 커스텀 도메인 — workers.dev 주소를 우리 도메인 뒤로 숨김.
 # 클라이언트 video src가 stream.funjeju.com만 가리키게 됨 (Cloudflare 정체 은닉).
 # 사전 준비: Cloudflare 대시보드 → Workers & Pages → 이 워커 → Settings → Domains & Routes

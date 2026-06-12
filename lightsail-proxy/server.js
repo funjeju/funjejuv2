@@ -167,8 +167,15 @@ function logEvent(req, cctvId, type, result) {
 const ALLOWED_HOSTS = (process.env.ALLOWED_ORIGIN || "https://funjeju.com,https://www.funjeju.com")
   .split(",").map((s) => s.trim().replace(/\/$/, "")).filter(Boolean);
 
-// 출처 검증 — 우리 도메인에서 온 요청만 (타 사이트 임베드·직접 스크래핑 차단)
+// 체인 모드: Cloudflare 워커가 이 키를 헤더로 보내면 출처 검증 통과.
+// (워커는 서버사이드 fetch라 Origin/Referer가 없어 일반 가드에 막히기 때문)
+const PROXY_KEY = process.env.PROXY_KEY || "";
+
+// 출처 검증 — 워커(프록시 키) 또는 우리 도메인에서 온 요청만
 function isAllowed(req) {
+  // 1) 체인: 워커가 보낸 프록시 키
+  if (PROXY_KEY && req.headers["x-proxy-key"] === PROXY_KEY) return true;
+  // 2) 브라우저 직접 접근 (Origin/Referer)
   const origin = req.headers["origin"];
   if (origin) return ALLOWED_HOSTS.includes(origin.replace(/\/$/, ""));
   const referer = req.headers["referer"];
@@ -187,6 +194,10 @@ app.use((req, res, next) => {
   if (req.method === "OPTIONS") return res.sendStatus(204);
   // /stats, "/" 등 비스트림 경로는 통과, /cctv/* 스트림만 가드
   if (req.path.startsWith("/cctv/") && !isAllowed(req)) {
+    console.log("[guard 403]", req.path,
+      "recvKey=", JSON.stringify(req.headers["x-proxy-key"]),
+      "expectKey=", JSON.stringify(PROXY_KEY),
+      "origin=", JSON.stringify(req.headers["origin"]));
     return res.status(403).json({ error: "Forbidden" });
   }
   next();

@@ -19,6 +19,15 @@
 export interface Env {
   CCTV_ORIGINS: KVNamespace;
   ALLOWED_ORIGIN: string; // 콤마 구분 허용 도메인 (예: "https://funjeju.com,https://www.funjeju.com")
+  /**
+   * 체인 모드: CCTV origin이 Cloudflare 엣지 IP를 차단해서,
+   * 진짜 origin 대신 한국 고정 IP 프록시(Vultr 서울)를 경유한다.
+   * 예: "http://141.164.53.216" → 워커는 {base}/cctv/{id} 로 fetch.
+   * 비우면 KV originUrl(진짜 CCTV)로 직접 fetch (기존 동작).
+   */
+  ORIGIN_PROXY_BASE?: string;
+  /** Vultr 프록시 출처 가드 통과용 키 (server.js PROXY_KEY와 동일 값) */
+  ORIGIN_PROXY_KEY?: string;
 }
 
 const CORS = {
@@ -108,9 +117,18 @@ export default {
     if (!meta) return jsonError(404, `CCTV '${id}' not found`);
     if (!meta.active) return jsonError(503, `CCTV '${id}' offline`);
 
+    // 체인 모드: origin이 CF 엣지 IP를 차단하므로 Vultr 프록시를 origin으로 사용
+    const chainBase = (env.ORIGIN_PROXY_BASE || "").replace(/\/$/, "");
+    const effectiveOrigin = chainBase ? `${chainBase}/cctv/${id}` : meta.originUrl;
+    const proxyKey = env.ORIGIN_PROXY_KEY || "";
+
     if (action === "status") {
       try {
-        const r = await fetch(meta.originUrl, { method: "HEAD" });
+        const r = await fetch(effectiveOrigin, {
+          method: "HEAD",
+          headers: proxyKey ? { "x-proxy-key": proxyKey } : undefined,
+          signal: AbortSignal.timeout(5000),
+        });
         return json({ id, online: r.ok, status: r.status });
       } catch {
         return json({ id, online: false, status: 0 });
@@ -123,7 +141,7 @@ export default {
     if (action === "seg") {
       const segPath = url.searchParams.get("path");
       if (!segPath) return jsonError(400, "Missing ?path");
-      const originSegUrl = resolveUrl(segPath, meta.originUrl);
+      const originSegUrl = resolveUrl(segPath, effectiveOrigin);
       const isM3u8 = segPath.includes(".m3u8");
 
       if (isM3u8) {
@@ -131,6 +149,7 @@ export default {
           cacheKeyId: `chunklist:${id}`,
           ttlSec:     M3U8_TTL_SEC,
           originUrl:  originSegUrl,
+          proxyKey,
           ctx, request, cctvId: id, type: "chunklist",
           transform: async (text) => rewriteM3u8(text, originSegUrl, workerBase),
           contentType: "application/vnd.apple.mpegurl",
@@ -143,6 +162,7 @@ export default {
           cacheKeyId: `ts:${id}:${chunkNum}`,
           ttlSec:     TS_TTL_SEC,
           originUrl:  originSegUrl,
+          proxyKey,
           ctx, request, cctvId: id, type: "ts",
           contentType: "video/MP2T",
           passThroughRange: true,
@@ -154,9 +174,10 @@ export default {
     return cachedFetch({
       cacheKeyId: `m3u8:${id}`,
       ttlSec:     M3U8_TTL_SEC,
-      originUrl:  meta.originUrl,
+      originUrl:  effectiveOrigin,
+      proxyKey,
       ctx, request, cctvId: id, type: "m3u8",
-      transform: async (text) => rewriteM3u8(text, meta.originUrl, workerBase),
+      transform: async (text) => rewriteM3u8(text, effectiveOrigin, workerBase),
       contentType: "application/vnd.apple.mpegurl",
     });
   },
@@ -169,6 +190,8 @@ async function cachedFetch(opts: {
   cacheKeyId: string;
   ttlSec: number;
   originUrl: string;
+  /** 체인 모드: Vultr 프록시 출처 가드 통과 키 */
+  proxyKey?: string;
   ctx: ExecutionContext;
   request: Request;
   cctvId: string;
@@ -189,6 +212,7 @@ async function cachedFetch(opts: {
 
   // 2) Origin fetch
   const headers: Record<string, string> = { "User-Agent": SAFE_UA };
+  if (opts.proxyKey) headers["x-proxy-key"] = opts.proxyKey;
   if (opts.passThroughRange) {
     const range = opts.request.headers.get("Range");
     if (range) headers["Range"] = range;
@@ -196,7 +220,13 @@ async function cachedFetch(opts: {
 
   let originRes: Response;
   try {
-    originRes = await fetch(opts.originUrl, { headers, redirect: "follow" });
+    // 타임아웃 필수 — origin이 hang하면 워커도 같이 hang → CF 522.
+    // 빠른 실패(502)가 차라리 낫다 (클라 HLS.js가 재시도).
+    originRes = await fetch(opts.originUrl, {
+      headers,
+      redirect: "follow",
+      signal: AbortSignal.timeout(8000),
+    });
   } catch (e) {
     // origin 실패 — stale 캐시라도 있으면 (없으면 502)
     logEvent(opts.request, opts.cctvId, opts.type, "error");
