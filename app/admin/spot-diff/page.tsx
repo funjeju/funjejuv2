@@ -17,6 +17,7 @@ export default function AdminSpotDiffPage() {
   const [count, setCount] = useState(5);
   const [level, setLevel] = useState("medium");
   const [extra, setExtra] = useState("");
+  const [notes, setNotes] = useState<string[]>([]); // AI 생성 시 변경 내역 (검수용)
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
 
@@ -37,14 +38,14 @@ export default function AdminSpotDiffPage() {
       const img = new Image();
       img.onload = () => { setLayout(img.naturalWidth >= img.naturalHeight ? "stack" : "side"); };
       img.src = url;
-      setOrig(url); setVariant(null); setMarkers([]);
+      setOrig(url); setVariant(null); setMarkers([]); setNotes([]);
     };
     reader.readAsDataURL(file);
   }
 
   function onVariantFile(file: File) {
     const reader = new FileReader();
-    reader.onload = (e) => { setVariant(e.target?.result as string); setMarkers([]); };
+    reader.onload = (e) => { setVariant(e.target?.result as string); setMarkers([]); setNotes([]); };
     reader.readAsDataURL(file);
   }
 
@@ -59,9 +60,12 @@ export default function AdminSpotDiffPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "생성 실패");
+      // 정답 마커가 자동으로 내려옴. origBase64(정규화 원본)로 교체해야 변형과 픽셀이 짝 맞음
+      if (d.origBase64) setOrig(`data:image/png;base64,${d.origBase64}`);
       setVariant(`data:image/png;base64,${d.variantBase64}`);
-      setMarkers([]);
-      setMsg("✅ 변형 생성 완료 — 틀린 곳을 클릭해 표시하세요");
+      setMarkers(d.markers ?? []);
+      setNotes(d.notes ?? []);
+      setMsg(`✅ 변형 + 정답 ${d.markers?.length ?? 0}개 자동 생성 — 마커를 검수하세요 (클릭 추가 / 원 클릭 삭제)`);
       setStep(2);
     } catch (e) {
       setMsg(`❌ ${e instanceof Error ? e.message : "실패"} (직접 변형 이미지를 업로드해도 됩니다)`);
@@ -89,7 +93,7 @@ export default function AdminSpotDiffPage() {
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "저장 실패");
       setMsg("✅ 저장 완료 (검수 대기) — 아래에서 발행하세요");
-      setOrig(null); setVariant(null); setMarkers([]); setTitle(""); setStep(0);
+      setOrig(null); setVariant(null); setMarkers([]); setNotes([]); setTitle(""); setStep(0);
       await loadGames();
     } catch (e) {
       setMsg(`❌ ${e instanceof Error ? e.message : "저장 실패"}`);
@@ -162,6 +166,14 @@ export default function AdminSpotDiffPage() {
       {step === 2 && orig && variant && (
         <div className="rounded-2xl border border-border-soft bg-bg-card p-5">
           <p className="mb-3 text-xs text-text-secondary">변형 이미지에서 <strong>틀린 곳을 클릭</strong>하세요. 원을 클릭하면 삭제됩니다. (표시 {markers.length}개)</p>
+          {notes.length > 0 && (
+            <div className="mb-3 rounded-xl bg-bg-secondary px-4 py-3">
+              <p className="mb-1 text-[11px] font-bold text-text-primary">🤖 AI 변경 내역 (검수용)</p>
+              <ol className="space-y-0.5 text-[11px] text-text-secondary">
+                {notes.map((n, i) => <li key={i}>{i + 1}. {n}</li>)}
+              </ol>
+            </div>
+          )}
           <div className={`grid gap-3 ${layout === "stack" ? "grid-cols-1" : "grid-cols-2"}`}>
             <div className="overflow-hidden rounded-lg border border-border-soft">
               <div className="bg-bg-secondary px-3 py-1.5 text-[11px] font-bold">① 원본</div>

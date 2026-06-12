@@ -65,7 +65,7 @@ export default function JejutubePage() {
   const [loading, setLoading] = useState(true);
   const [savedNames, setSavedNames] = useState<Set<string>>(new Set());
   const [savingName, setSavingName] = useState<string | null>(null);
-  const [playing, setPlaying] = useState<string | null>(null); // 재생 중인 videoId
+  const [selected, setSelected] = useState<JejutubeVideo | null>(null); // 모달에 열린 영상
   // 유저 영상 등록
   const [url, setUrl] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -209,68 +209,91 @@ export default function JejutubePage() {
             <p className="mt-1 text-xs text-text-secondary">곧 멋진 제주 영상들이 올라올 예정이에요!</p>
           </div>
         ) : (
-          videos.map((v) => (
-            <div key={v.videoId} className="overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
-              {/* 영상 영역 */}
-              {playing === v.videoId ? (
-                <div className="relative aspect-video bg-black">
-                  <iframe
-                    className="absolute inset-0 h-full w-full"
-                    src={`https://www.youtube.com/embed/${v.videoId}?autoplay=1&playsinline=1&rel=0`}
-                    title={v.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPlaying(v.videoId)}
-                  className="group relative block aspect-video w-full bg-gray-900"
-                >
+          // 그리드: PC 4열 / 모바일 2열 — 썸네일 카드, 클릭 시 모달
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {videos.map((v) => (
+              <button
+                key={v.videoId}
+                type="button"
+                onClick={() => setSelected(v)}
+                className="group overflow-hidden rounded-2xl border border-border-soft bg-bg-card text-left shadow-card transition-transform hover:scale-[1.02]"
+              >
+                <div className="relative aspect-video bg-gray-900">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover" />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/30 transition-colors group-hover:bg-black/40">
-                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-xl text-white shadow-lg transition-transform group-hover:scale-110">▶</span>
+                  <img src={v.thumbnail} alt={v.title} className="h-full w-full object-cover" loading="lazy" />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/25 transition-colors group-hover:bg-black/40">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-sm text-white shadow-lg transition-transform group-hover:scale-110">▶</span>
                   </span>
-                </button>
-              )}
-
-              <div className="p-4">
-                <p className="text-sm font-bold text-text-primary">{v.title}</p>
-                <p className="mt-0.5 text-[11px] text-text-secondary">
-                  {v.author}
-                  {v.addedByName && <span className="ml-1.5 text-brand-orange">· 🙋 {v.addedByName}님이 공유</span>}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-text-secondary">{v.summary}</p>
-                {v.tags.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {v.tags.map((t) => (
-                      <span key={t} className="rounded-full bg-bg-secondary px-2 py-0.5 text-[9px] font-medium text-text-secondary">#{t}</span>
-                    ))}
-                  </div>
-                )}
-
-                {/* 스팟 목록 */}
-                <div className="mt-3 space-y-1.5">
-                  <p className="text-[10px] font-bold text-brand-navy">
-                    📍 영상 속 스팟 {v.spots.length}곳
-                  </p>
-                  {v.spots.map((spot) => (
-                    <SpotChip
-                      key={`${v.videoId}-${spot.name}`}
-                      spot={spot}
-                      saved={savedNames.has(spot.name)}
-                      saving={savingName === spot.name}
-                      onSave={() => handleSave(spot)}
-                    />
-                  ))}
+                  <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/65 px-1.5 py-0.5 text-[9px] font-bold text-white">📍 {v.spots.length}</span>
                 </div>
-              </div>
-            </div>
-          ))
+                <div className="p-2.5">
+                  <p className="line-clamp-2 text-[12px] font-bold leading-snug text-text-primary">{v.title}</p>
+                  {v.addedByName && <p className="mt-1 text-[9px] text-brand-orange">🙋 {v.addedByName}</p>}
+                </div>
+              </button>
+            ))}
+          </div>
         )}
       </div>
+
+      {/* ── 상세 모달: 영상 + 스팟 목록 ── */}
+      {selected && (
+        <div
+          className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/65 p-0 md:p-6"
+          onClick={() => setSelected(null)}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded-none bg-bg-card md:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative aspect-video bg-black">
+              <iframe
+                className="absolute inset-0 h-full w-full"
+                src={`https://www.youtube.com/embed/${selected.videoId}?autoplay=1&playsinline=1&rel=0`}
+                title={selected.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="max-h-[55vh] overflow-y-auto p-4">
+              <p className="text-sm font-bold text-text-primary">{selected.title}</p>
+              <p className="mt-0.5 text-[11px] text-text-secondary">
+                {selected.author}
+                {selected.addedByName && <span className="ml-1.5 text-brand-orange">· 🙋 {selected.addedByName}님이 공유</span>}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">{selected.summary}</p>
+              {selected.tags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {selected.tags.map((t) => (
+                    <span key={t} className="rounded-full bg-bg-secondary px-2 py-0.5 text-[9px] font-medium text-text-secondary">#{t}</span>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-3 space-y-1.5">
+                <p className="text-[10px] font-bold text-brand-navy">📍 영상 속 스팟 {selected.spots.length}곳</p>
+                {selected.spots.map((spot) => (
+                  <SpotChip
+                    key={`${selected.videoId}-${spot.name}`}
+                    spot={spot}
+                    saved={savedNames.has(spot.name)}
+                    saving={savingName === spot.name}
+                    onSave={() => handleSave(spot)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

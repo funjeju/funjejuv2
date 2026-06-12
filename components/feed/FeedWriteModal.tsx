@@ -30,6 +30,10 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [filter,      setFilter]      = useState<FeedFilter>("none");
   const [region,      setRegion]      = useState<JejuRegion | null>(null);
   const [gps,         setGps]         = useState<{ lat: number; lng: number } | null>(null);
+  // GPS로 매칭한 업소
+  const [placeName,   setPlaceName]   = useState("");
+  const [placeCands,  setPlaceCands]  = useState<{ name: string; category: string; distance: number }[]>([]);
+  const [editingPlace, setEditingPlace] = useState(false);
   const [exifMissing, setExifMissing] = useState(false);
   const [exifMissingReason, setExifMissingReason] = useState<"gps" | "camera" | "both">("both");
   const [status,      setStatus]      = useState<"idle" | "analyzing" | "uploading" | "done">("idle");
@@ -43,6 +47,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setFile(null); setPreviewUrl(null); setExif({});
       setAiCopy(""); setUserCopy(""); setFilter("none");
       setRegion(null); setGps(null); setExifMissing(false);
+      setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
       setStatus("idle"); setError("");
     }
@@ -108,6 +113,17 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       const matched = findNearestRegion(lat as number, lng as number);
       if (matched) setRegion(matched);
 
+      // 근처 업소 매칭 — "이 업소 맞나요?" 확인용
+      fetch(`/api/feed/place?lat=${lat}&lng=${lng}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.candidates?.length) {
+            setPlaceCands(d.candidates);
+            setPlaceName(d.candidates[0].name); // 가장 가까운 곳을 기본 제안
+          }
+        })
+        .catch(() => {});
+
       const parsed: ExifData = {};
       if (data.Make || data.Model) parsed.camera = `${data.Make ?? ""} ${data.Model ?? ""}`.trim();
       if (data.LensModel)     parsed.lens         = data.LensModel;
@@ -172,6 +188,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         imageUrl, exif, aiCopy: finalCopy, filter, category,
         ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
         ...(gps && { gps }),
+        ...(placeName.trim() && { placeName: placeName.trim() }),
       });
       setStatus("done");
       onPosted?.();
@@ -460,6 +477,41 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                   </p>
                 )}
               </div>
+
+              {/* ── 업소 확인 — GPS로 매칭, 확인 또는 직접 편집 ── */}
+              {(placeCands.length > 0 || placeName || editingPlace) && (
+                <div className="rounded-xl border border-brand-orange/30 bg-brand-orange/5 p-3">
+                  {!editingPlace ? (
+                    <>
+                      <p className="text-xs font-bold text-text-primary">📍 이 업소가 맞나요?</p>
+                      <p className="mt-1 text-sm font-black text-brand-navy">{placeName || "(매칭된 업소 없음)"}</p>
+                      <div className="mt-2 flex gap-2">
+                        {placeName && <span className="rounded-full bg-jeju-green/15 px-3 py-1.5 text-[11px] font-bold text-jeju-green">✓ 맞아요 (이대로 올라가요)</span>}
+                        <button type="button" onClick={() => setEditingPlace(true)} className="rounded-full border border-border-soft px-3 py-1.5 text-[11px] font-semibold text-text-secondary hover:bg-bg-secondary">✏️ 아니요, 직접 입력</button>
+                      </div>
+                      {placeCands.length > 1 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <span className="text-[10px] text-text-secondary">다른 후보:</span>
+                          {placeCands.slice(0, 4).map((c) => (
+                            <button key={c.name} type="button" onClick={() => setPlaceName(c.name)}
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${placeName === c.name ? "bg-brand-navy text-white" : "bg-bg-card text-text-secondary hover:bg-bg-secondary"}`}>
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="mb-1.5 text-xs font-bold text-text-primary">✏️ 업소명 직접 입력</p>
+                      <input type="text" value={placeName} onChange={(e) => setPlaceName(e.target.value.slice(0, 30))}
+                        placeholder="예: 협재 흑돼지 OO집 (비워두면 업소명 없이 올라가요)"
+                        className="w-full rounded-lg border border-border-soft bg-bg-card px-3 py-2 text-sm outline-none focus:border-brand-orange" />
+                      <button type="button" onClick={() => setEditingPlace(false)} className="mt-1.5 text-[11px] font-semibold text-brand-orange">완료</button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* ── 카테고리 — AI 자동, 수정 가능 ── */}
               <div>

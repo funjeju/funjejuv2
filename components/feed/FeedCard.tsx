@@ -108,6 +108,11 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
               📍 {feed.regionName}
             </span>
           )}
+          {feed.placeName && (
+            <span className="rounded-full bg-brand-orange/90 px-1 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
+              🏪 {feed.placeName}
+            </span>
+          )}
         </div>
 
         {/* EXIF (하단) — 모바일 한 줄 truncate */}

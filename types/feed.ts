@@ -26,6 +26,7 @@ export type Feed = {
   regionName?: string;        // "한림읍" (표시용)
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
+  placeName?: string;         // 업소명 (GPS로 매칭 후 확인/편집)
   createdAt: Timestamp | null;
   likes: number;
 };
