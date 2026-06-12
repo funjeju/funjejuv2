@@ -11,6 +11,7 @@ import {
   getAllIds,
 } from "@/lib/restaurants";
 import { getFoodSeo } from "@/lib/food-seo-store";
+import { findWebzinesByRestaurant } from "@/lib/contents";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -78,6 +79,7 @@ export default async function FoodDetailPage({ params }: Props) {
   const hours = formatHours(r.hours);
   const isFunjejuCertified = options.includes("펀제주인증");
   const seo = await getFoodSeo(r);
+  const relatedWebzines = await findWebzinesByRestaurant(r.id);
 
   // JSON-LD 구조화 데이터 (Restaurant schema)
   const jsonLd = {
@@ -231,6 +233,25 @@ export default async function FoodDetailPage({ params }: Props) {
                   loading="lazy"
                 />
               </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 이 맛집이 소개된 웹진 (맛집→웹진 역링크) */}
+      {relatedWebzines.length > 0 && (
+        <section className="mt-8 px-4 md:px-0">
+          <h2 className="mb-3 text-sm font-bold text-text-primary">📖 이 맛집이 소개된 여행 웹진</h2>
+          <div className="space-y-2">
+            {relatedWebzines.map((w) => (
+              <Link
+                key={w.id}
+                href={`/webzine/${w.slug}`}
+                className="block rounded-2xl border border-border-soft bg-bg-card p-3.5 shadow-card transition-colors hover:border-brand-navy"
+              >
+                <span className="text-[10px] font-bold text-brand-navy">📍 {w.region} {w.menu}</span>
+                <p className="mt-0.5 text-[13px] font-bold text-text-primary">{w.title}</p>
+              </Link>
             ))}
           </div>
         </section>

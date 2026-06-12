@@ -29,17 +29,25 @@ export async function deleteContent(id: string): Promise<void> {
   await getAdminDb().collection(COLLECTION).doc(id).delete();
 }
 
-/** 어드민 목록 (status 필터, 최신순) */
+/** 어드민 목록 (status 필터, 최신순) — 복합 인덱스 회피 위해 메모리 정렬 */
 export async function listContents(opts?: {
   status?: ContentStatus;
   type?: ContentType;
   limit?: number;
 }): Promise<Content[]> {
-  let q = getAdminDb().collection(COLLECTION).orderBy("createdAt", "desc") as FirebaseFirestore.Query;
+  let q = getAdminDb().collection(COLLECTION) as FirebaseFirestore.Query;
   if (opts?.status) q = q.where("status", "==", opts.status);
   if (opts?.type) q = q.where("type", "==", opts.type);
-  const snap = await q.limit(opts?.limit ?? 100).get();
-  return snap.docs.map((d) => d.data() as Content);
+  const snap = await q.limit(opts?.limit ?? 200).get();
+  return snap.docs
+    .map((d) => d.data() as Content)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/** 특정 맛집이 소개된 발행 웹진 (맛집→웹진 역링크 — 트랙 C 양방향) */
+export async function findWebzinesByRestaurant(restaurantId: string, limit = 3): Promise<Content[]> {
+  const all = await listPublished("webzine", 200);
+  return all.filter((c) => c.sourceIds.includes(restaurantId)).slice(0, limit);
 }
 
 /** 퍼블릭 — 발행된 것만 (sitemap/목록용) */

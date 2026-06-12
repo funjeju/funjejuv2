@@ -106,11 +106,18 @@ export default async function WebzineDetailPage({
           ))}
         </div>
 
-        <div className="mt-8 pb-8">
-          <Link href="/webzine" className="block w-full rounded-2xl border border-border-soft bg-bg-card py-3 text-center text-sm font-semibold text-text-primary hover:bg-bg-secondary transition-colors">
-            ← 제주 여행 웹진 목록
+        {/* 교차 내부링크 (웹진 → 다른 SEO 자산) */}
+        <nav className="mt-8 grid grid-cols-3 gap-2 pb-8">
+          <Link href="/webzine" className="rounded-2xl border border-border-soft bg-bg-card py-3 text-center text-[12px] font-semibold text-text-primary hover:bg-bg-secondary transition-colors">
+            📖 웹진 더보기
           </Link>
-        </div>
+          <Link href="/food" className="rounded-2xl border border-border-soft bg-bg-card py-3 text-center text-[12px] font-semibold text-text-primary hover:bg-bg-secondary transition-colors">
+            🍽️ 도민맛집
+          </Link>
+          <Link href="/guide" className="rounded-2xl border border-border-soft bg-bg-card py-3 text-center text-[12px] font-semibold text-text-primary hover:bg-bg-secondary transition-colors">
+            📚 이용 가이드
+          </Link>
+        </nav>
       </div>
     </article>
   );

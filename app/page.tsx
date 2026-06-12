@@ -1,7 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
 import { HomeFeedSection } from "@/components/feed/HomeFeedSection";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { listPublished } from "@/lib/contents";
+
+export const revalidate = 600;
 
 const quickLinks = [
   { href: "/cctv",    label: "실시간 CCTV",    emoji: "📷", bg: "bg-blue-50",   color: "text-blue-600"   },
@@ -11,7 +15,8 @@ const quickLinks = [
   { href: "/food",    label: "도민맛집",        emoji: "🍽️", bg: "bg-orange-50", color: "text-orange-500" },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const webzines = await listPublished("webzine", 4).catch(() => []);
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <div className="flex gap-5">
@@ -59,6 +64,34 @@ export default function HomePage() {
 
           <AutoRotateViewer />
           <HomeFeedSection />
+
+          {/* 최신 웹진 (홈 → 웹진 내부링크 · 발견성) */}
+          {webzines.length > 0 && (
+            <section className="px-4 md:px-0">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-black text-text-primary">📖 제주 여행 웹진</h2>
+                <Link href="/webzine" className="text-xs font-medium text-brand-orange">더보기 →</Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {webzines.map((w) => (
+                  <Link key={w.id} href={`/webzine/${w.slug}`}
+                    className="group overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card transition-transform hover:scale-[1.01]">
+                    {w.coverImage && (
+                      <div className="relative aspect-[16/9] bg-bg-secondary">
+                        <Image src={w.coverImage} alt={w.title} fill sizes="(max-width:768px) 50vw, 300px" className="object-cover" loading="lazy" />
+                      </div>
+                    )}
+                    <div className="p-3">
+                      {w.region && (
+                        <span className="text-[10px] font-bold text-brand-navy">📍 {w.region} {w.menu}</span>
+                      )}
+                      <p className="mt-0.5 line-clamp-2 text-[12px] font-bold text-text-primary">{w.title}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 모바일 마스코트 배너 */}
           <section className="mx-4 mb-4 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-yellow/20 to-brand-orange/10 p-4 md:hidden">

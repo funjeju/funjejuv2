@@ -50,13 +50,10 @@ type WebzineAIResult = {
   keywords: string[];
 };
 
-function slugify(region: string, menu: string): string {
-  const base = `${region}-${menu}`
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-  return `${base}-${Math.random().toString(36).slice(2, 7)}`;
+// slug는 ASCII만 — 한글 slug는 URL 인코딩 왕복에서 라우팅 매칭이 불안정.
+// SEO 키워드는 title·메타·본문이 담당하므로 URL 키워드 손실 영향은 작다.
+function slugify(_region: string, _menu: string): string {
+  return `wz-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 }
 
 const SYS = `너는 제주 여행 매거진 에디터다. 주어진 도민맛집 목록으로 검색 최적화된 여행 큐레이션 글을 쓴다.

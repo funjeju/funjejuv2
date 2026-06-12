@@ -16,6 +16,7 @@ import { getEntitlements } from "@/lib/entitlements";
  */
 
 const KEY = "cctvWatchBudget:v1";
+const ADMIN_EMAIL = "naggu1999@gmail.com";
 
 /** 서버(recordHeartbeat)가 돌려주는 예산 결과 */
 export type WatchBudgetResult = {
@@ -63,6 +64,8 @@ export function useWatchBudget(
   const { user } = useAuth();
   const ent = getEntitlements({ loggedIn: !!user });
   const maxSplit = ent.limits.maxSplit;
+  // 어드민은 서버 응답 전(localStorage fallback) 구간에서도 무제한 — 데드락 방지
+  const isAdmin = !!user?.email && user.email === ADMIN_EMAIL;
 
   // 서버값 수신 기준점 (보간 origin)
   const [base, setBase] = useState<{ used: number; at: number } | null>(null);
@@ -85,12 +88,13 @@ export function useWatchBudget(
 
   const srv = serverRef.current ?? server ?? null;
 
-  // 무제한 (admin / 무제한 플랜) — 차단 없이 "오늘 누적 사용량"을 위로 카운트
-  if (srv?.unlimited) {
+  // 무제한 (admin / 무제한 플랜) — 차단 없이 "오늘 누적 사용량"을 위로 카운트.
+  // 어드민은 서버 응답이 오기 전에도 무제한으로 처리(클라 판정)해 데드락을 막는다.
+  if (srv?.unlimited || isAdmin) {
     const elapsed = base ? Math.max(0, (Date.now() - base.at) / 1000) : 0;
     const used = base
       ? Math.round(base.used + elapsed * Math.max(0, activeStreams))
-      : (srv.usedSeconds ?? 0);
+      : (srv?.usedSeconds ?? 0);
     return {
       limitSeconds: -1, usedSeconds: used, remainingSeconds: -1,
       exhausted: false, maxSplit, unlimited: true,
