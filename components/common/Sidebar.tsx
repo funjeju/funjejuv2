@@ -124,12 +124,22 @@ export function Sidebar() {
           >
             도슨트에게 물어보기 💬
           </Link>
-          <div className="mt-3 flex justify-center gap-2 text-sm text-text-secondary">
-            <span>📸</span>
-            <span>▶️</span>
-            <span>🎵</span>
+          <a
+            href="mailto:naggu1999@naver.com"
+            className="mt-3 inline-flex items-center justify-center gap-1 text-[11px] font-medium text-text-secondary hover:text-brand-orange transition-colors"
+          >
+            <span>✉️</span> Contact us
+          </a>
+
+          {/* 사업자 정보 (전자상거래법 고지) */}
+          <div className="mt-4 border-t border-border-soft pt-3 text-left text-[9px] leading-relaxed text-text-secondary">
+            <p className="font-semibold text-text-secondary">(주)펀제주</p>
+            <p>대표 : 심대훈</p>
+            <p>사업자등록번호 : 213-86-43462</p>
+            <p>주소 : 제주특별자치도 ○○ (준비중)</p>
+            <p>문의 : 010-4434-2483 / naggu1999@naver.com</p>
+            <p className="mt-2">© 2025 FunJeju. All rights reserved.</p>
           </div>
-          <p className="mt-3 text-[9px] text-text-secondary">© 2025 FunJeju</p>
         </div>
       </div>
     </aside>

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { AppShell } from "@/components/common/AppShell";
+
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://funjeju.com"),
@@ -51,6 +54,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <AppShell>{children}</AppShell>
       </body>
+      {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
     </html>
   );
 }

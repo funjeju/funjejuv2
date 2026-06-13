@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { CctvIcon } from "@/components/common/CctvIcon";
+import { TubeIcon } from "@/components/common/TubeIcon";
 
-const items = [
+const items: ({ href: string; label: string; emoji?: string; icon?: ReactNode } | null)[] = [
   { href: "/", label: "홈", emoji: "🏠" },
-  { href: "/cctv", label: "CCTV", emoji: "📷" },
+  { href: "/cctv", label: "CCTV", icon: <CctvIcon size={22} /> },
   null, // center 피드 버튼
-  { href: "/youtube", label: "제주tube", emoji: "▶️" },
+  { href: "/youtube", label: "제주tube", icon: <TubeIcon size={22} /> },
   { href: "/mypage", label: "마이", emoji: "👤" },
 ];
 
@@ -23,10 +26,10 @@ export function BottomNavigation() {
         {items.map((item, i) => {
           if (!item) {
             const feedActive = pathname.startsWith("/feed");
-            // /feed에 있으면 업로드(+), 아니면 피드로 이동(🖼️)
+            // /feed에 있으면 업로드(+), 아니면 피드로 이동(📷)
             const circle = (
               <span className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange text-2xl text-white shadow-soft">
-                {feedActive ? "+" : "🖼️"}
+                {feedActive ? "+" : "📷"}
               </span>
             );
             const label = (
@@ -57,8 +60,8 @@ export function BottomNavigation() {
               href={item.href}
               className="flex flex-col items-center gap-0.5"
             >
-              <span className={["text-xl transition-transform", active ? "scale-110" : "opacity-50"].join(" ")}>
-                {item.emoji}
+              <span className={["flex h-6 items-center text-xl transition-transform", active ? "scale-110 text-brand-orange" : "opacity-50"].join(" ")}>
+                {item.icon ?? item.emoji}
               </span>
               <span
                 className={[
