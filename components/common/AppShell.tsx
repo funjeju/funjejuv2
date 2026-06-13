@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/common/Sidebar";
 import { AppHeader } from "@/components/common/AppHeader";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
+import { FloatingChat } from "@/components/common/FloatingChat";
 import { usePageViewTracker } from "@/hooks/usePageViewTracker";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
         </div>
       </div>
+      <FloatingChat />
       <BottomNavigation />
     </>
   );

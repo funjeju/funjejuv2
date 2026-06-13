@@ -107,23 +107,23 @@ export function MySpotsManager() {
       </div>
 
       <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
-        {/* 검색 추가 */}
-        <div className="flex gap-2">
+        {/* 검색 추가 — input에 min-w-0를 줘야 좁은 화면에서 버튼이 안 잘림 */}
+        <div className="flex gap-1.5">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
-            placeholder="스팟 이름·주소 검색 (카카오맵)"
-            className="flex-1 rounded-xl border border-border-soft bg-bg-secondary px-3 py-2 text-xs outline-none focus:border-brand-orange"
+            placeholder="이름·주소 검색 (카카오맵)"
+            className="min-w-0 flex-1 rounded-xl border border-border-soft bg-bg-secondary px-2.5 py-2 text-[11px] outline-none focus:border-brand-orange"
           />
           <button
             type="button"
             onClick={handleSearch}
             disabled={!query.trim() || searching}
-            className="shrink-0 rounded-xl bg-brand-navy px-4 py-2 text-xs font-bold text-white hover:bg-brand-navy/90 disabled:opacity-40 transition-colors"
+            className="shrink-0 rounded-xl bg-brand-navy px-2.5 py-2 text-[11px] font-bold text-white hover:bg-brand-navy/90 disabled:opacity-40 transition-colors"
           >
-            {searching ? "검색 중..." : "🔍 검색"}
+            {searching ? "검색…" : "🔍 검색"}
           </button>
         </div>
 
@@ -188,14 +188,14 @@ export function MySpotsManager() {
         {/* 필터 + 목록 */}
         {spots.length > 0 && (
           <>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="mt-3 flex flex-wrap gap-1">
               {(["전체", ...MY_SPOT_CATEGORIES] as const).map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setFilter(c)}
                   className={[
-                    "rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors",
+                    "rounded-full px-2 py-0.5 text-[9px] font-bold transition-colors",
                     filter === c ? "bg-brand-navy text-white" : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                   ].join(" ")}
                 >

@@ -54,6 +54,8 @@ export async function createFeed(input: {
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
   placeName?: string;
+  homepageSlug?: string;
+  homepageName?: string;
 }): Promise<string> {
   const db = getFirebaseDb();
   const id = `feed_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;

@@ -25,9 +25,9 @@ export function BottomNavigation() {
             return (
               <Link
                 key="plus"
-                href="/feed?write=1"
+                href="/feed"
                 className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange text-2xl text-white shadow-soft"
-                aria-label="라이브 피드 업로드"
+                aria-label="라이브 피드"
               >
                 +
               </Link>

@@ -44,6 +44,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
   const [liked,     setLiked]     = useState(false);
   const [likeCount, setLikeCount] = useState(feed.likes);
   const [deleting,  setDeleting]  = useState(false);
+  const [zoomed,    setZoomed]    = useState(false);
 
   const { isSpot, toggle: toggleSpot } = useMySpot();
   const isOwner = !!user && user.uid === feed.authorId;
@@ -101,8 +102,11 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
-      {/* 이미지 + 오버레이 */}
-      <div className="relative aspect-[4/5] bg-gray-900 overflow-hidden">
+      {/* 이미지 + 오버레이 — 탭하면 전체화면 */}
+      <div
+        className="relative aspect-[4/5] cursor-zoom-in bg-gray-900 overflow-hidden"
+        onClick={() => setZoomed(true)}
+      >
         <Image
           src={feed.imageUrl}
           alt={feed.aiCopy}
@@ -224,6 +228,16 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         </div>
       )}
 
+      {/* 연결된 홈페이지 바로가기 (피드 업로드 시 선택) */}
+      {feed.homepageSlug && (
+        <a
+          href={`/biz/${feed.homepageSlug}`}
+          className="mx-2.5 mb-2 block rounded-lg bg-brand-navy py-1.5 text-center text-[11px] font-bold text-white transition-colors hover:bg-brand-navy/90 md:mx-4 md:mb-3 md:rounded-xl md:py-2.5 md:text-xs"
+        >
+          🏠 {feed.homepageName || "홈페이지"} 보기 →
+        </a>
+      )}
+
       {/* 비즈니스 CTA */}
       {author?.isBusiness && author.ctaData?.text && author.ctaData.url && (
         <a
@@ -239,6 +253,36 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         >
           {author.ctaData.text} →
         </a>
+      )}
+
+      {/* 전체화면 뷰어 */}
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-2"
+          onClick={() => setZoomed(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label="닫기"
+            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-lg text-white backdrop-blur hover:bg-white/25"
+          >
+            ✕
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={feed.imageUrl}
+            alt={feed.aiCopy}
+            className="max-h-full max-w-full object-contain"
+            style={{ filter: filterStyle }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {feed.aiCopy && (
+            <p className="absolute inset-x-0 bottom-6 px-6 text-center text-sm font-bold text-white drop-shadow-lg">
+              {feed.aiCopy}
+            </p>
+          )}
+        </div>
       )}
     </article>
   );

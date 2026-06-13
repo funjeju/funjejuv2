@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthButton } from "@/components/common/AuthButton";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 export function AppHeader() {
   const router = useRouter();
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border-soft bg-bg-card/95 px-4 backdrop-blur md:hidden">
-      <Link href="/" className="flex items-center gap-0.5">
+      <Link href="/" className="flex items-center gap-1">
+        <DolmangyiIcon size={28} className="shrink-0" />
         <span className="text-lg font-black text-brand-orange">Fun</span>
         <span className="text-lg font-black text-brand-navy">jeju</span>
       </Link>

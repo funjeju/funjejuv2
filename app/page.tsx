@@ -8,11 +8,14 @@ import { listPublished } from "@/lib/contents";
 export const revalidate = 600;
 
 const quickLinks = [
-  { href: "/cctv",    label: "실시간 CCTV",    emoji: "📷", bg: "bg-blue-50",   color: "text-blue-600"   },
-  { href: "/feed",    label: "라이브 피드",     emoji: "🖼️", bg: "bg-yellow-50", color: "text-yellow-600" },
-  { href: "/chat",    label: "AI 도슨트 챗봇", emoji: "🤖", bg: "bg-purple-50", color: "text-purple-600" },
-  { href: "/trip-ai", label: "AI 여행 일정",   emoji: "🗓️", bg: "bg-green-50",  color: "text-green-600"  },
-  { href: "/food",    label: "도민맛집",        emoji: "🍽️", bg: "bg-orange-50", color: "text-orange-500" },
+  { href: "/cctv",      label: "실시간 CCTV",  emoji: "📷", bg: "bg-blue-50",    color: "text-blue-600"   },
+  { href: "/feed",      label: "라이브 피드",   emoji: "🖼️", bg: "bg-yellow-50",  color: "text-yellow-600" },
+  { href: "/chat",      label: "도슨트 챗봇",   emoji: "🤖", bg: "bg-purple-50",  color: "text-purple-600" },
+  { href: "/trip-ai",   label: "AI 여행 일정", emoji: "🗓️", bg: "bg-green-50",   color: "text-green-600"  },
+  { href: "/food",      label: "도민맛집",      emoji: "🍽️", bg: "bg-orange-50",  color: "text-orange-500" },
+  { href: "/webzine",   label: "여행 웹진",     emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
+  { href: "/game/spot", label: "틀린그림찾기",  emoji: "🔍", bg: "bg-teal-50",    color: "text-teal-600"   },
+  { href: "/youtube",   label: "제주tube",      emoji: "▶️", bg: "bg-red-50",     color: "text-red-600"    },
 ];
 
 export default async function HomePage() {
@@ -23,8 +26,8 @@ export default async function HomePage() {
         {/* ── Main Column ── */}
         <div className="min-w-0 flex-1 space-y-5">
 
-          {/* Hero Banner */}
-          <section className="relative overflow-hidden rounded-none md:rounded-2xl">
+          {/* Hero Banner — 모바일에선 숨김(메뉴를 위로), PC만 노출 */}
+          <section className="relative hidden overflow-hidden rounded-none md:block md:rounded-2xl">
             <div className="relative h-40 bg-gradient-to-r from-sky-300 via-blue-200 to-teal-100 md:h-60">
               {/* 텍스트 — 모바일에선 캐릭터 침범 안 받게 max-w 제한 */}
               <div className="absolute inset-y-0 left-0 flex max-w-[60%] flex-col justify-center px-4 md:max-w-none md:px-12">
@@ -46,9 +49,9 @@ export default async function HomePage() {
             </div>
           </section>
 
-          {/* Quick Links */}
-          <section className="px-4 md:px-0">
-            <div className="grid grid-cols-5 gap-2 md:gap-3">
+          {/* Quick Links — 모바일 4×2, PC는 한 줄(8열) */}
+          <section className="px-4 pt-3 md:px-0 md:pt-0">
+            <div className="grid grid-cols-4 gap-2 md:grid-cols-8 md:gap-3">
               {quickLinks.map((link) => (
                 <Link key={link.href} href={link.href} className="flex flex-col items-center gap-1.5">
                   <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${link.bg} md:h-14 md:w-14`}>

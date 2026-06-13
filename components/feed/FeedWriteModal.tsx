@@ -41,6 +41,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   // 가로 사진 처리
   const [isLandscape, setIsLandscape] = useState(false);
   const [cropX,       setCropX]       = useState(50); // 0~100, 좌우 크롭 위치
+  // 비즈 홈페이지 연결 (관리자/영업사원이 대신 올릴 때)
+  const [bizSites,    setBizSites]    = useState<{ slug: string; name: string }[]>([]);
+  const [homepageSlug, setHomepageSlug] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -49,9 +52,23 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setRegion(null); setGps(null); setExifMissing(false);
       setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
+      setHomepageSlug("");
       setStatus("idle"); setError("");
     }
   }, [open]);
+
+  // 등록된 비즈 홈페이지 목록 (있으면 피드에 연결 선택지 노출)
+  useEffect(() => {
+    if (!open || !user) return;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/biz/list", { headers: { Authorization: `Bearer ${token}` } });
+        const d = await res.json();
+        setBizSites((d.items ?? []).map((s: { slug: string; name: string }) => ({ slug: s.slug, name: s.name })));
+      } catch { setBizSites([]); }
+    })();
+  }, [open, user]);
 
   if (!open) return null;
 
@@ -189,6 +206,10 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
         ...(gps && { gps }),
         ...(placeName.trim() && { placeName: placeName.trim() }),
+        ...(homepageSlug && {
+          homepageSlug,
+          homepageName: bizSites.find((b) => b.slug === homepageSlug)?.name,
+        }),
       });
       setStatus("done");
       onPosted?.();
@@ -529,6 +550,33 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                   ))}
                 </div>
               </div>
+
+              {/* ── 연결할 홈페이지 (등록된 비즈 홈페이지가 있을 때만) ── */}
+              {bizSites.length > 0 && (
+                <div>
+                  <p className="mb-2 text-xs font-bold text-text-secondary">
+                    🏠 연결할 홈페이지
+                    <span className="ml-1 font-normal text-text-secondary">(선택 · 피드에 바로가기 버튼이 붙어요)</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setHomepageSlug("")}
+                      className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                        homepageSlug === "" ? "bg-brand-navy text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}
+                    >
+                      연결 안 함
+                    </button>
+                    {bizSites.map((b) => (
+                      <button key={b.slug} type="button" onClick={() => setHomepageSlug(b.slug)}
+                        className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                          homepageSlug === b.slug ? "bg-brand-orange text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}>
+                        {b.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <p className="rounded-xl bg-live-red/10 px-3 py-2 text-[11px] font-semibold text-live-red">
