@@ -62,8 +62,10 @@ function isAllowed(request: Request, env: Env): boolean {
   return false;
 }
 
-const M3U8_TTL_SEC = 6;
-const TS_TTL_SEC = 30;
+// chunklist는 느린 카메라(세그먼트 길이>6s)도 캐시 재사용되도록 12초로.
+// ts는 불변 데이터(이미 녹화된 조각)라 길게 잡아도 안전 → 180초로 늘려 Vultr 대역폭 절감 극대화.
+const M3U8_TTL_SEC = 12;
+const TS_TTL_SEC = 180;
 
 // 정상 브라우저 UA (봇 탐지 회피)
 const SAFE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -227,12 +229,11 @@ async function cachedFetch(opts: {
   }
 
   // 2) Origin fetch
+  // ⚠️ Range를 origin에 넘기지 않는다. 넘기면 origin이 206(Partial)으로 응답하고,
+  // Cloudflare는 206 응답을 cache.put으로 저장하지 않음 → ts가 영원히 캐시 안 됨 → 항상 ORIGIN.
+  // 대신 항상 전체(200)로 받아 캐시 → 재요청 시 HIT. (ts 조각은 작아서 전체 전송이 문제 없음)
   const headers: Record<string, string> = { "User-Agent": SAFE_UA };
   if (opts.proxyKey) headers["x-proxy-key"] = opts.proxyKey;
-  if (opts.passThroughRange) {
-    const range = opts.request.headers.get("Range");
-    if (range) headers["Range"] = range;
-  }
 
   let originRes: Response;
   try {
