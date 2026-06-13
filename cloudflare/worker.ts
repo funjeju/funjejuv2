@@ -211,7 +211,11 @@ async function cachedFetch(opts: {
   passThroughRange?: boolean;
 }): Promise<Response> {
   const cache = caches.default;
-  const cacheReq = new Request(`https://cache.funjeju.internal/${opts.cacheKeyId}`);
+  // ⚠️ 캐시 키는 반드시 "워커 자기 존(custom domain)" 안의 URL이어야 cache.put이 실제 저장됨.
+  // 가짜 호스트(cache.funjeju.internal)는 존 밖이라 Cloudflare가 저장을 무시 → 항상 MISS.
+  const cacheReq = new Request(
+    new URL(`/__cache/${encodeURIComponent(opts.cacheKeyId)}`, opts.request.url).toString()
+  );
 
   // 1) 캐시 확인
   const cached = await cache.match(cacheReq);
