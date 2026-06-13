@@ -344,19 +344,24 @@ export default function MyPage() {
             </p>
           </div>
 
+          {/* 홈페이지 만들기 — 눈에 띄는 메인 액션 */}
+          <Link
+            href="/biz/create"
+            className="mx-4 mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-br from-brand-orange to-amber-500 px-5 py-4 text-white shadow-card transition-transform hover:scale-[1.01] md:mx-0"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/20 text-2xl">🏠</span>
+            <div className="flex-1">
+              <p className="text-base font-black">홈페이지 만들기</p>
+              <p className="text-[11px] text-white/85">상호명만 입력하면 AI가 1분 만에 홈페이지를 만들어드려요</p>
+            </div>
+            <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-black text-brand-orange">시작하기 →</span>
+          </Link>
+
           {/* CTA 설정 — 비즈니스 전용 */}
           <BusinessCtaSettings />
 
           {/* 비즈니스 메뉴 */}
           <div className="mx-4 mt-2 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
-            <Link href="/biz/create" className="flex items-center gap-3 border-b border-border-soft px-4 py-4 hover:bg-bg-secondary transition-colors">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange/10 text-xl">🏠</span>
-              <div className="flex-1">
-                <span className="block text-sm font-semibold text-text-primary">홈페이지 만들기</span>
-                <span className="text-[10px] text-text-secondary">AI로 비즈니스 홈페이지 자동 생성</span>
-              </div>
-              <span className="text-text-secondary">›</span>
-            </Link>
             <Link href="/feed" className="flex items-center gap-3 border-b border-border-soft px-4 py-4 hover:bg-bg-secondary transition-colors">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">📸</span>
               <span className="flex-1 text-sm font-semibold text-text-primary">내 피드 관리</span>

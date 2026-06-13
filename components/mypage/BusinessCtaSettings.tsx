@@ -134,21 +134,23 @@ export function BusinessCtaSettings() {
             />
           </div>
 
-          {/* 미리보기 */}
+          {/* 미리보기 — 실제 클릭 버튼이 아니라 피드에 이렇게 보인다는 예시 */}
           {text && url && (
-            <div className="rounded-xl bg-bg-secondary p-3">
-              <p className="mb-2 text-[10px] font-bold text-text-secondary">미리보기</p>
-              <button
-                type="button"
+            <div className="rounded-xl border border-dashed border-border-soft bg-bg-secondary p-3">
+              <p className="mb-2 flex items-center gap-1 text-[10px] font-bold text-text-secondary">
+                👀 미리보기 <span className="font-normal text-text-secondary/70">— 내 피드에 이렇게 노출돼요</span>
+              </p>
+              <div
+                aria-hidden
                 className={[
-                  "block w-full rounded-xl py-2.5 text-center text-xs font-bold transition-colors",
+                  "pointer-events-none block w-full select-none rounded-xl py-2.5 text-center text-xs font-bold",
                   variant === "outline"
                     ? "border-2 border-brand-orange text-brand-orange"
                     : "bg-brand-orange text-white shadow-soft",
                 ].join(" ")}
               >
                 {text} →
-              </button>
+              </div>
             </div>
           )}
 
