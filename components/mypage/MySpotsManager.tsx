@@ -194,8 +194,9 @@ export function MySpotsManager() {
                   key={c}
                   type="button"
                   onClick={() => setFilter(c)}
+                  style={{ fontSize: "11px" }}
                   className={[
-                    "rounded-full px-2 py-0.5 text-[9px] font-bold transition-colors",
+                    "rounded-full px-2 py-0.5 font-bold transition-colors",
                     filter === c ? "bg-brand-navy text-white" : "bg-bg-secondary text-text-secondary hover:text-text-primary",
                   ].join(" ")}
                 >
