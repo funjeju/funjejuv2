@@ -334,7 +334,7 @@ function EmptySlot({
   isDragOver: boolean;
   setDragOver: (v: boolean) => void;
 }) {
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDrop(e: DragEvent<HTMLButtonElement>) {
     e.preventDefault();
     const id = e.dataTransfer.getData("cctv-id");
     if (id) onDrop(id);
