@@ -34,13 +34,19 @@ export async function PATCH(req: NextRequest) {
   const { id } = (await req.json().catch(() => ({}))) as { id?: string };
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   await publishContent(id);
-  // 즉시 ISR 캐시 무효화 (revalidate=3600 대기 없이 바로 반영)
-  revalidatePath("/webzine");
-  revalidatePath("/webzine/[slug]", "page");
-  revalidatePath("/");
   const content = await getContentById(id);
-  if (content?.slug) revalidatePath(`/webzine/${content.slug}`);
-  return NextResponse.json({ ok: true, id, status: "published" });
+  // 즉시 ISR 캐시 무효화 (revalidate 대기 없이 바로 반영) — 타입에 맞는 경로
+  revalidatePath("/");
+  if (content?.type === "briefing") {
+    revalidatePath("/daily");
+    revalidatePath("/daily/[slug]", "page");
+    if (content.slug) revalidatePath(`/daily/${content.slug}`);
+  } else {
+    revalidatePath("/webzine");
+    revalidatePath("/webzine/[slug]", "page");
+    if (content?.slug) revalidatePath(`/webzine/${content.slug}`);
+  }
+  return NextResponse.json({ ok: true, id, status: "published", slug: content?.slug });
 }
 
 export async function DELETE(req: NextRequest) {

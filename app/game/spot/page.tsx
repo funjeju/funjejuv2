@@ -3,7 +3,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { listGames } from "@/lib/spot";
 
-export const revalidate = 60;
+// 새 문제·플레이 횟수가 바로 반영되도록 매 요청 렌더 (Firestore 단순 조회라 가벼움)
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "제주 틀린그림찾기 — 제주 사진으로 즐기는 게임 | 펀제주",

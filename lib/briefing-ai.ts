@@ -1,6 +1,7 @@
 import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { fetchJejuNewsEnriched, type EnrichedNewsItem } from "@/lib/news-fetch";
+import { listFeedPhotos } from "@/lib/feed-server";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -92,6 +93,9 @@ cards의 sourceIndex는 위 [0], [1], ... 번호와 일치해야 한다. 선정�
 
   const ai = await generateJSON<BriefingAI>(SYS, prompt);
 
+  // 제주피드 사진을 매거진 표지·카드 배경으로 (내용 무관 데코 — 사용자 합의됨)
+  const feedPhotos = await listFeedPhotos(12);
+
   // AI가 만든 카드 → ContentSection 매핑 (sourceIndex로 원본 뉴스와 결합)
   const sections: ContentSection[] = (ai.cards ?? [])
     .map((c): ContentSection | null => {
@@ -125,6 +129,14 @@ cards의 sourceIndex는 위 [0], [1], ... 번호와 일치해야 한다. 선정�
     }
   });
 
+  // 카드마다 피드 사진을 순환 배정 (있을 때만). 표지는 첫 사진.
+  if (feedPhotos.length > 0) {
+    sections.forEach((s, i) => {
+      s.image = feedPhotos[i % feedPhotos.length].imageUrl;
+    });
+  }
+  const coverImage = feedPhotos[0]?.imageUrl;
+
   const now = new Date().toISOString();
 
   return {
@@ -135,6 +147,7 @@ cards의 sourceIndex는 위 [0], [1], ... 번호와 일치해야 한다. 선정�
     title: ai.title || `${dateStr} 제주 오늘의 뉴스 ${news.length}선`,
     subtitle: ai.subtitle || "오늘 제주 주요 뉴스 한눈에",
     intro: ai.intro || "",
+    ...(coverImage ? { coverImage } : {}),
     sections,
     keywords: [
       ...(ai.keywords ?? []),

@@ -1,15 +1,17 @@
 import "server-only";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import type { SpotGame, SpotScore } from "@/types/spot";
+import type { SpotGame, SpotScore, SpotComment } from "@/types/spot";
 
 /**
  * 틀린그림찾기 저장소 (Admin SDK).
  * spot_games — 문제(이미지·좌표). spot_scores — 플레이 기록(최단시간 랭킹).
+ * spot_comments — 클리어한 플레이어만 작성/열람 가능한 댓글.
  */
 
 const GAMES = "spot_games";
 const SCORES = "spot_scores";
+const COMMENTS = "spot_comments";
 
 export async function createGame(g: SpotGame): Promise<void> {
   await getAdminDb().collection(GAMES).doc(g.id).set(g);
@@ -62,5 +64,20 @@ export async function topScores(gameId: string, limit = 10): Promise<SpotScore[]
   return snap.docs
     .map((d) => d.data() as SpotScore)
     .sort((a, b) => a.timeMs - b.timeMs)
+    .slice(0, limit);
+}
+
+/** 댓글 작성 (클리어한 플레이어만 — API에서 게이팅) */
+export async function addComment(c: SpotComment): Promise<SpotComment[]> {
+  await getAdminDb().collection(COMMENTS).add(c);
+  return listComments(c.gameId);
+}
+
+/** 문제별 댓글 최신순 (단일 where + 메모리 정렬) */
+export async function listComments(gameId: string, limit = 50): Promise<SpotComment[]> {
+  const snap = await getAdminDb().collection(COMMENTS).where("gameId", "==", gameId).limit(200).get();
+  return snap.docs
+    .map((d) => d.data() as SpotComment)
+    .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit);
 }

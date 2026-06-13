@@ -30,3 +30,11 @@ export type SpotScore = {
   timeMs: number;   // 클리어 소요 시간
   createdAt: number;
 };
+
+/** 댓글 — 클리어한 플레이어만 작성/열람 (스포일러 방지) */
+export type SpotComment = {
+  gameId: string;
+  name: string;     // 작성자 닉네임
+  text: string;     // 댓글 내용
+  createdAt: number;
+};

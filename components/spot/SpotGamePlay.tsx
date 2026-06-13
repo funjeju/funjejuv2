@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { SpotGame, SpotScore } from "@/types/spot";
+import type { SpotGame, SpotScore, SpotComment } from "@/types/spot";
 
 const RING_R = 5.5;      // 발견 표시 원 반지름 (%)
 const HIT_RADIUS = 6.0;  // 클릭 허용 반경 (%) — 정답 범위 타이트하게
@@ -15,6 +15,9 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [name, setName] = useState("");
   const [rankings, setRankings] = useState<SpotScore[]>([]);
   const [submitted, setSubmitted] = useState(false);
+  const [comments, setComments] = useState<SpotComment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const foundCount = found.filter(Boolean).length;
@@ -27,6 +30,14 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
     return () => clearInterval(iv);
   }, [cleared, startAt]);
 
+  // 플레이 횟수 카운트 — 마운트 시 1회 (StrictMode 중복 방지)
+  const playCounted = useRef(false);
+  useEffect(() => {
+    if (playCounted.current) return;
+    playCounted.current = true;
+    fetch(`/api/spot/${game.id}/play`, { method: "POST" }).catch(() => {});
+  }, [game.id]);
+
   // 클리어 처리
   useEffect(() => {
     if (allFound && !cleared) {
@@ -34,6 +45,28 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       setElapsed(Date.now() - startAt);
     }
   }, [allFound, cleared, startAt]);
+
+  // 클리어하면 댓글 열람 (스포일러 방지)
+  useEffect(() => {
+    if (cleared) {
+      fetch(`/api/spot/${game.id}/comments`).then((r) => r.json()).then((d) => setComments(d.comments ?? [])).catch(() => {});
+    }
+  }, [cleared, game.id]);
+
+  async function submitComment() {
+    const text = commentText.trim();
+    if (!text || commentSending) return;
+    setCommentSending(true);
+    try {
+      const r = await fetch(`/api/spot/${game.id}/comments`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() || "익명", text, cleared: true }),
+      });
+      const d = await r.json();
+      if (d.comments) { setComments(d.comments); setCommentText(""); }
+    } catch { /* ignore */ }
+    setCommentSending(false);
+  }
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>, side: "L" | "R") => {
     if (cleared) return;
@@ -168,6 +201,51 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           </div>
         </div>
       )}
+
+      {/* 댓글 — 클리어해야 작성·열람 가능 (스포일러 방지) */}
+      <div className="border-t border-border-soft p-5">
+        <h2 className="mb-2 text-sm font-black text-text-primary">💬 댓글</h2>
+        {!cleared ? (
+          <div className="rounded-2xl bg-bg-secondary px-4 py-6 text-center text-sm text-text-secondary">
+            🔒 다 찾으면 댓글을 쓰고 다른 사람 댓글도 볼 수 있어요!
+          </div>
+        ) : (
+          <>
+            <div className="mb-3 flex gap-2">
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") submitComment(); }}
+                maxLength={300}
+                placeholder="후기를 남겨보세요"
+                className="flex-1 rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-sm outline-none focus:border-brand-orange"
+              />
+              <button
+                onClick={submitComment}
+                disabled={commentSending || !commentText.trim()}
+                className="shrink-0 rounded-full bg-brand-orange px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+              >등록</button>
+            </div>
+            {comments.length === 0 ? (
+              <p className="py-4 text-center text-[13px] text-text-secondary">첫 댓글의 주인공이 되어보세요!</p>
+            ) : (
+              <div className="space-y-2.5">
+                {comments.map((c, i) => (
+                  <div key={i} className="rounded-xl bg-bg-secondary px-3.5 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-bold text-text-primary">{c.name}</span>
+                      <span className="text-[10px] text-text-secondary/70">
+                        {new Date(c.createdAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] text-text-secondary">{c.text}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

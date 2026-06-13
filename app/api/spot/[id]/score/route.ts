@@ -1,6 +1,6 @@
 /** 퍼블릭 — 틀린그림찾기 점수 기록 + 랭킹 조회. GET 랭킹 / POST 기록 */
 import { NextRequest, NextResponse } from "next/server";
-import { addScore, topScores, incrementPlay, getGame } from "@/lib/spot";
+import { addScore, topScores, getGame } from "@/lib/spot";
 
 export const runtime = "nodejs";
 
@@ -21,7 +21,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!game || game.status !== "published") {
     return NextResponse.json({ error: "문제를 찾을 수 없습니다." }, { status: 404 });
   }
-  await incrementPlay(id);
   const rankings = await addScore({
     gameId: id,
     name: (name?.trim() || "익명").slice(0, 12),

@@ -79,7 +79,7 @@ export default function AdminContentsPage() {
           </button>
           <button type="button" onClick={() => generate("briefing")} disabled={busy === "gen-briefing"}
             className="rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
-            {busy === "gen-briefing" ? "생성 중…" : "☀️ 브리핑 초안"}
+            {busy === "gen-briefing" ? "생성 중…" : "☀️ 브리핑 생성"}
           </button>
         </div>
       </div>
@@ -118,9 +118,15 @@ export default function AdminContentsPage() {
               <h3 className="mt-1.5 text-sm font-bold text-text-primary">{c.title}</h3>
               <p className="mt-0.5 line-clamp-2 text-[12px] text-text-secondary">{c.intro}</p>
               <div className="mt-2 flex gap-2">
+                {c.type === "briefing" && (
+                  <Link href={`/admin/contents/preview/${c.slug}`}
+                    className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-bold text-white">
+                    👁 미리보기
+                  </Link>
+                )}
                 <button type="button" onClick={() => publish(c.id)} disabled={busy === c.id}
                   className="rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white disabled:opacity-50">
-                  ✓ 발행
+                  🚀 배포
                 </button>
                 <button type="button" onClick={() => remove(c.id)} disabled={busy === c.id}
                   className="rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">

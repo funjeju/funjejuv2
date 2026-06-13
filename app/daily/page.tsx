@@ -4,7 +4,7 @@ import Image from "next/image";
 import { PageHeader } from "@/components/common/PageHeader";
 import { listPublished } from "@/lib/contents";
 
-export const revalidate = 1800;
+export const revalidate = 60; // 새 브리핑이 빨리 노출되도록 (기존 30분 → 1분)
 
 export const metadata: Metadata = {
   title: "AI데일리제주 — 오늘의 제주 날씨와 추천 | 펀제주",
