@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
-import { HomeFeedSection } from "@/components/feed/HomeFeedSection";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { listPublished } from "@/lib/contents";
+import { listGames } from "@/lib/spot";
 
 export const revalidate = 600;
 
@@ -20,6 +20,7 @@ const quickLinks = [
 
 export default async function HomePage() {
   const webzines = await listPublished("webzine", 4).catch(() => []);
+  const spotGames = await listGames({ publishedOnly: true, limit: 2 }).catch(() => []);
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <div className="flex gap-5">
@@ -66,7 +67,32 @@ export default async function HomePage() {
           </section>
 
           <AutoRotateViewer />
-          <HomeFeedSection />
+
+          {/* 최근 틀린그림찾기 (피드 자리 대체) */}
+          {spotGames.length > 0 && (
+            <section className="px-4 md:px-0">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-black text-text-primary">🔍 제주 틀린그림찾기</h2>
+                <Link href="/game/spot" className="text-xs font-medium text-brand-orange">더보기 →</Link>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {spotGames.map((g) => (
+                  <Link key={g.id} href={`/game/spot/${g.id}`}
+                    className="group overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card transition-transform hover:scale-[1.01]">
+                    <div className="relative aspect-square bg-bg-secondary">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={g.variantImage} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
+                      <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">틀린곳 {g.diffCount}</span>
+                    </div>
+                    <div className="p-2.5">
+                      <p className="line-clamp-1 text-[13px] font-bold text-text-primary">{g.title}</p>
+                      <p className="text-[10px] text-text-secondary">플레이 {g.playCount ?? 0}회</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* 최신 웹진 (홈 → 웹진 내부링크 · 발견성) */}
           {webzines.length > 0 && (
