@@ -143,28 +143,28 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         {/* 상단 그라데이션 (가독성) */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
 
-        {/* AI 카피 (우상단) */}
-        <div className="absolute right-1.5 top-1.5 max-w-[55%] md:right-4 md:top-4 md:max-w-[60%]">
+        {/* AI 카피 — 가운데 정렬, 상단에서 살짝 아래, 글자 키움 */}
+        <div className="absolute inset-x-0 top-8 z-[1] px-4 md:top-12">
           <p
-            className="line-clamp-2 text-right text-[11px] font-bold leading-tight text-white drop-shadow-lg md:line-clamp-none md:text-xl md:leading-7"
-            style={{ textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
+            className="line-clamp-2 text-center text-[14px] font-bold leading-snug text-white drop-shadow-lg md:text-2xl md:leading-8"
+            style={{ textShadow: "0 2px 8px rgba(0,0,0,0.7)" }}
           >
             {feed.aiCopy}
           </p>
         </div>
 
-        {/* 카테고리 + 지역 뱃지 (좌상단) */}
-        <div className="absolute left-1.5 top-1.5 flex flex-col items-center gap-0.5 md:left-3 md:top-3 md:gap-1">
-          <span className="rounded-full bg-white/90 px-1 py-0 text-[8px] font-bold text-text-primary backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
+        {/* 카테고리 + 지역 + 업소 뱃지 (좌상단, 한 줄) */}
+        <div className="absolute left-1.5 top-1.5 flex flex-row flex-wrap items-center gap-1 md:left-3 md:top-3">
+          <span className="rounded-full bg-white/90 px-1.5 py-0 text-[8px] font-bold text-text-primary backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
             {feed.category}
           </span>
           {feed.regionName && (
-            <span className="rounded-full bg-brand-navy/90 px-1 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
+            <span className="rounded-full bg-brand-navy/90 px-1.5 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
               📍 {feed.regionName}
             </span>
           )}
           {feed.placeName && (
-            <span className="rounded-full bg-brand-orange/90 px-1 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
+            <span className="rounded-full bg-brand-orange/90 px-1.5 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
               🏪 {feed.placeName}
             </span>
           )}

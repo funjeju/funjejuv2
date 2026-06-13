@@ -80,6 +80,15 @@ export default async function WebzineDetailPage({
             📍 제주 {c.region} {c.menu}
           </span>
         )}
+        {/* 글 시작 — 출처 안내 (실제 도민맛집 DB 기반 AI 작성) */}
+        <div className="mt-4 flex gap-2 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 px-4 py-3">
+          <span className="text-base">🗿</span>
+          <p className="text-[12px] leading-5 text-text-secondary">
+            이 글은 <Link href="/food" className="font-bold text-brand-navy underline">펀제주닷컴에 등록된 <b>도민맛집 DB</b></Link>를 기반으로 AI가 작성했습니다.
+            실제 검증된 도민 추천 맛집 정보를 바탕으로 하지만, <b className="text-text-primary">방문 전 현재 영업 중인지 꼭 확인</b>해주세요.
+          </p>
+        </div>
+
         <p className="mt-3 text-sm leading-7 text-text-primary">{c.intro}</p>
 
         {/* 맛집 섹션 — 내부링크(트랙 C: 웹진 → 도민맛집) */}
@@ -104,6 +113,15 @@ export default async function WebzineDetailPage({
               </div>
             </section>
           ))}
+        </div>
+
+        {/* 글 끝 — 출처 재안내 */}
+        <div className="mt-8 flex gap-2 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3">
+          <span className="text-base">📌</span>
+          <p className="text-[12px] leading-5 text-text-secondary">
+            본 콘텐츠는 <b className="text-text-primary">펀제주닷컴 도민맛집 데이터베이스</b>를 근거로 AI가 정리한 글입니다.
+            메뉴·영업시간·휴무는 변동될 수 있으니, <b className="text-text-primary">찾아가기 전 반드시 현재 영업 여부를 확인</b>하시기 바랍니다.
+          </p>
         </div>
 
         {/* 교차 내부링크 (웹진 → 다른 SEO 자산) */}
