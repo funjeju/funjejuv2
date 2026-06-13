@@ -31,6 +31,7 @@ type Event = {
   cctvId: string;
   type: "m3u8" | "chunklist" | "ts" | "start" | "stop" | "leave";
   result: "origin" | "hit" | "client";
+  seg?: string;
 };
 
 type CctvStats = {
@@ -310,6 +311,7 @@ export default function AdminOriginPage() {
                   <span className="text-gray-400 shrink-0">←</span>
                   <span className="text-yellow-300 shrink-0">IP-{ev.ip}</span>
                   <span className="text-gray-400 shrink-0">[{ev.type}]</span>
+                  {ev.seg && <span className="text-blue-300 shrink-0">#{ev.seg}</span>}
                   <span className={[
                     "shrink-0 font-bold",
                     ev.result === "origin" ? "text-orange-400"

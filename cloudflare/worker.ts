@@ -73,7 +73,7 @@ const SAFE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (K
 // ── isolate 레벨 통계 (PoP당 카운터, 100% 정확하진 않지만 트렌드 파악 충분) ──
 type CctvCounter = { origin: number; hit: number; lastAccess: number; uniqueIps: Set<string> };
 const counters: Record<string, CctvCounter> = {};
-const events: Array<{ t: number; ip: string; cctvId: string; type: string; result: string }> = [];
+const events: Array<{ t: number; ip: string; cctvId: string; type: string; result: string; seg?: string }> = [];
 const EVENT_MAX = 200;
 
 function shortIp(ipRaw?: string): string {
@@ -83,9 +83,9 @@ function shortIp(ipRaw?: string): string {
   return (Math.abs(h) % 10000).toString().padStart(4, "0");
 }
 
-function logEvent(req: Request, cctvId: string, type: string, result: string) {
+function logEvent(req: Request, cctvId: string, type: string, result: string, seg?: string) {
   const ip = shortIp(req.headers.get("cf-connecting-ip") || req.headers.get("x-forwarded-for") || "");
-  events.push({ t: Date.now(), ip, cctvId, type, result });
+  events.push({ t: Date.now(), ip, cctvId, type, result, seg });
   if (events.length > EVENT_MAX) events.shift();
   if (!counters[cctvId]) counters[cctvId] = { origin: 0, hit: 0, lastAccess: 0, uniqueIps: new Set() };
   counters[cctvId][result === "origin" ? "origin" : "hit"]++;
@@ -218,11 +218,13 @@ async function cachedFetch(opts: {
   const cacheReq = new Request(
     new URL(`/__cache/${encodeURIComponent(opts.cacheKeyId)}`, opts.request.url).toString()
   );
+  // 로그용 세그먼트 식별자 (ts:gwakji:3877 → "3877")
+  const seg = opts.cacheKeyId.split(":").slice(2).join(":") || undefined;
 
   // 1) 캐시 확인
   const cached = await cache.match(cacheReq);
   if (cached) {
-    logEvent(opts.request, opts.cctvId, opts.type, "hit");
+    logEvent(opts.request, opts.cctvId, opts.type, "hit", seg);
     const hitRes = withCors(cached, opts.cors);
     hitRes.headers.set("X-Cache", "HIT");
     return hitRes;
@@ -246,16 +248,16 @@ async function cachedFetch(opts: {
     });
   } catch (e) {
     // origin 실패 — stale 캐시라도 있으면 (없으면 502)
-    logEvent(opts.request, opts.cctvId, opts.type, "error");
+    logEvent(opts.request, opts.cctvId, opts.type, "error", seg);
     return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`, opts.cors);
   }
 
   if (!originRes.ok && originRes.status !== 206) {
-    logEvent(opts.request, opts.cctvId, opts.type, "error");
+    logEvent(opts.request, opts.cctvId, opts.type, "error", seg);
     return jsonError(originRes.status, `Origin returned ${originRes.status}`, opts.cors);
   }
 
-  logEvent(opts.request, opts.cctvId, opts.type, "origin");
+  logEvent(opts.request, opts.cctvId, opts.type, "origin", seg);
 
   // 3) Transform (m3u8 URL 재작성)
   let body: BodyInit;
