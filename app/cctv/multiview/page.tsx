@@ -325,10 +325,12 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
 /** 빈 슬롯 - 드롭 영역 */
 function EmptySlot({
   onDrop,
+  onPick,
   isDragOver,
   setDragOver,
 }: {
   onDrop: (id: string) => void;
+  onPick: () => void;
   isDragOver: boolean;
   setDragOver: (v: boolean) => void;
 }) {
@@ -340,22 +342,22 @@ function EmptySlot({
   }
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onPick}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
       className={[
-        "flex h-full w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed transition-all",
+        "flex h-full w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed transition-all",
         isDragOver
           ? "border-brand-orange bg-brand-orange/10 scale-[0.98]"
-          : "border-border-soft bg-bg-secondary/40",
+          : "border-border-soft bg-bg-secondary/40 hover:border-brand-orange hover:bg-brand-orange/5",
       ].join(" ")}
     >
-      <span className="text-xl opacity-30 md:text-3xl">📺</span>
-      <p className="hidden text-xs text-text-secondary md:block">
-        CCTV를 끌어다 놓으세요
-      </p>
-    </div>
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange/15 text-xl font-bold text-brand-orange md:h-10 md:w-10 md:text-2xl">+</span>
+      <p className="text-[9px] text-text-secondary md:text-xs">탭해서 CCTV 추가</p>
+    </button>
   );
 }
 
@@ -366,6 +368,7 @@ export default function MultiviewPage() {
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [pickerIdx, setPickerIdx] = useState<number | null>(null); // + 버튼으로 연 슬롯
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
   const gridRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -705,6 +708,7 @@ export default function MultiviewPage() {
                 ) : (
                   <EmptySlot
                     onDrop={(id) => handleDrop(idx, id)}
+                    onPick={() => setPickerIdx(idx)}
                     isDragOver={isDragOver}
                     setDragOver={(v) => setDragOverIdx(v ? idx : null)}
                   />
@@ -774,6 +778,49 @@ export default function MultiviewPage() {
           향후 멀티뷰는 프리미엄 회원 전용 기능이 될 예정이에요. 지금은 모두 무료!
         </p>
       </div>
+
+      {/* CCTV 선택 모달 (+ 버튼) */}
+      {pickerIdx !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm md:items-center"
+          onClick={() => setPickerIdx(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-bg-card shadow-2xl md:rounded-3xl"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-5 py-4">
+              <h2 className="text-sm font-black text-text-primary">📺 {pickerIdx + 1}번 칸에 넣을 CCTV</h2>
+              <button type="button" onClick={() => setPickerIdx(null)} className="text-2xl text-text-secondary hover:text-text-primary">×</button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto p-4 sm:grid-cols-3">
+              {availableCctvs.map((cctv) => {
+                const inUse = slots.slice(0, slotCount).includes(cctv.id);
+                return (
+                  <button
+                    key={cctv.id}
+                    type="button"
+                    onClick={() => { handleDrop(pickerIdx, cctv.id); setPickerIdx(null); }}
+                    className={[
+                      "rounded-lg border border-border-soft bg-bg-secondary p-2 text-left transition-all hover:border-brand-orange hover:bg-brand-orange/5",
+                      inUse ? "opacity-50" : "",
+                    ].join(" ")}
+                  >
+                    <div className="relative flex aspect-video items-center justify-center rounded bg-gray-800 text-2xl">
+                      🏝️
+                      {cctv.youtubeId && (
+                        <span className="absolute left-1 top-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[7px] font-bold text-white">▶ YouTube</span>
+                      )}
+                    </div>
+                    <p className="mt-1 truncate text-[11px] font-semibold text-text-primary">{cctv.name}</p>
+                    <p className="truncate text-[9px] text-text-secondary">{cctv.region}{inUse ? " · 시청 중" : ""}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
