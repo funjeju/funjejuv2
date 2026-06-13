@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/common/PageHeader";
 import { FeedCard } from "@/components/feed/FeedCard";
 import { FeedWriteModal } from "@/components/feed/FeedWriteModal";
 import { subscribeFeeds } from "@/lib/feed";
@@ -47,6 +46,16 @@ export default function FeedPage() {
     }
   }, []);
 
+  // 하단 네비 피드(=올리기) 버튼이 보내는 이벤트 — 이미 /feed에 있을 때 업로드 모달 오픈
+  useEffect(() => {
+    const handler = () => {
+      if (!user) { signInWithGoogle(); return; }
+      setShowWriter(true);
+    };
+    window.addEventListener("funjeju:feed-write", handler);
+    return () => window.removeEventListener("funjeju:feed-write", handler);
+  }, [user, signInWithGoogle]);
+
   // 카테고리 + 지역 필터
   const filtered = feeds.filter((f) => {
     if (activeCategory !== "전체" && f.category !== activeCategory) return false;
@@ -60,28 +69,10 @@ export default function FeedPage() {
   const { 제주시: jejuRegions, 서귀포시: seogwipoRegions } = groupRegionsByCity();
 
   return (
-    <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      <PageHeader
-        title="라이브 피드"
-        subtitle="제주 여행자들의 실시간 순간"
-        emoji="✨"
-        right={
-          <button
-            type="button"
-            onClick={() => {
-              if (!user) return signInWithGoogle();
-              setShowWriter(true);
-            }}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors md:gap-1.5 md:px-4 md:py-2 md:text-xs"
-          >
-            <span>+</span> <span className="hidden sm:inline">피드 </span>올리기
-          </button>
-        }
-      />
-
+    <div className="mx-auto max-w-screen-xl px-0 pt-3 md:px-4 md:py-6">
       {/* 콘텐츠 카테고리 */}
       <div className="px-4 md:px-0">
-        <p className="mb-1 text-[10px] font-bold text-text-secondary">🏷️ 카테고리</p>
+        <p className="mb-1 text-[9px] font-bold text-text-secondary">🏷️ 카테고리</p>
         <div className="flex gap-1 overflow-x-auto pb-1.5">
           {CATEGORIES.map((cat) => (
             <button
@@ -89,7 +80,7 @@ export default function FeedPage() {
               type="button"
               onClick={() => setActiveCategory(cat)}
               className={[
-                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
                 activeCategory === cat
                   ? "bg-text-primary text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
@@ -104,7 +95,7 @@ export default function FeedPage() {
       {/* 지역 필터 */}
       <div className="mb-3 px-4 md:px-0">
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-[10px] font-bold text-text-secondary">📍 지역</p>
+          <p className="text-[9px] font-bold text-text-secondary">📍 지역</p>
           <button
             type="button"
             onClick={() => setRegionPanelOpen((v) => !v)}
@@ -122,7 +113,7 @@ export default function FeedPage() {
               type="button"
               onClick={() => setActiveRegion(c)}
               className={[
-                "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
                 activeRegion === c
                   ? "bg-brand-navy text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",

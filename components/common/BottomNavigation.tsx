@@ -23,22 +23,30 @@ export function BottomNavigation() {
         {items.map((item, i) => {
           if (!item) {
             const feedActive = pathname.startsWith("/feed");
-            return (
-              <Link
+            // /feed에 있으면 업로드(+), 아니면 피드로 이동(🖼️)
+            const circle = (
+              <span className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange text-2xl text-white shadow-soft">
+                {feedActive ? "+" : "🖼️"}
+              </span>
+            );
+            const label = (
+              <span className={["text-[10px] font-medium", feedActive ? "text-brand-orange font-semibold" : "text-text-secondary"].join(" ")}>
+                {feedActive ? "올리기" : "피드"}
+              </span>
+            );
+            return feedActive ? (
+              <button
                 key="feed"
-                href="/feed"
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("funjeju:feed-write"))}
                 className="flex flex-col items-center gap-0.5"
-                aria-label="라이브 피드"
+                aria-label="피드 올리기"
               >
-                <span className={[
-                  "-mt-5 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-soft transition-transform",
-                  feedActive ? "bg-brand-orange scale-105" : "bg-brand-orange",
-                ].join(" ")}>
-                  🖼️
-                </span>
-                <span className={["text-[10px] font-medium", feedActive ? "text-brand-orange font-semibold" : "text-text-secondary"].join(" ")}>
-                  피드
-                </span>
+                {circle}{label}
+              </button>
+            ) : (
+              <Link key="feed" href="/feed" className="flex flex-col items-center gap-0.5" aria-label="라이브 피드">
+                {circle}{label}
               </Link>
             );
           }
