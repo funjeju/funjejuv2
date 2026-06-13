@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
 const CHAT_EXPIRE_MS = 3 * 60 * 60 * 1000; // 3시간
 
@@ -156,7 +157,7 @@ export function LiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps
       >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <span className="text-3xl">🗿</span>
+            <DolmangyiIcon size={44} />
             <p className="mt-2 text-xs font-semibold text-text-primary">
               첫 메시지를 남겨보세요!
             </p>

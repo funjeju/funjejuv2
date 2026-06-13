@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFeedImage, createFeed, resizeImageForUpload, getAuthor } from "@/lib/feed";
+import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import type { ExifData, FeedFilter } from "@/types/feed";
 import { findNearestRegion, type JejuRegion } from "@/constants/jeju-regions";
 
@@ -290,7 +291,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         <div className="flex-1 overflow-y-auto p-5">
           {!user ? (
             <div className="flex flex-col items-center py-12 text-center">
-              <span className="text-4xl">🗿</span>
+              <DolmangyiIcon size={52} />
               <p className="mt-3 text-sm font-bold text-text-primary">로그인이 필요해요</p>
               <button type="button" onClick={signInWithGoogle}
                 className="mt-4 rounded-full bg-brand-navy px-5 py-2.5 text-sm font-bold text-white">

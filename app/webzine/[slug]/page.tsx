@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getContentBySlug, listPublished } from "@/lib/contents";
+import { ShareButton } from "@/components/common/ShareButton";
 
 const SITE_URL = "https://funjeju.com";
 export const revalidate = 60;
@@ -72,7 +73,12 @@ export default async function WebzineDetailPage({
         </div>
       )}
 
-      <PageHeader title={c.title} subtitle={c.subtitle} emoji="📖" />
+      <PageHeader
+        title={c.title}
+        subtitle={c.subtitle}
+        emoji="📖"
+        right={<ShareButton title={`${c.title} | 펀제주 여행 웹진`} url={`${SITE_URL}/webzine/${c.slug}`} description={c.subtitle} imageUrl={c.coverImage ? (/^https?:\/\//.test(c.coverImage) ? c.coverImage : `${SITE_URL}${c.coverImage}`) : undefined} />}
+      />
 
       <div className="px-4 md:px-0">
         {c.region && (

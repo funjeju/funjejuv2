@@ -213,7 +213,7 @@ export default function MyPage() {
         <>
           {/* Mascot CTA */}
           <div className="mx-4 mb-5 flex items-center gap-3 rounded-2xl border border-brand-yellow/30 bg-brand-yellow/20 px-4 py-3 md:mx-0">
-            <span className="text-3xl">🗿</span>
+            <DolmangyiIcon size={40} className="shrink-0" />
             <div>
               <p className="text-sm font-bold text-text-primary">돌맹이가 일정을 추천해드릴게요!</p>
               <p className="text-[11px] text-text-secondary">마이스팟 {mySpotIds.size}개로 최적 동선 만들기</p>

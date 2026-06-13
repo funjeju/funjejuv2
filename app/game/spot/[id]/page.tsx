@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGame } from "@/lib/spot";
 import { SpotGamePlay } from "@/components/spot/SpotGamePlay";
+import { ShareButton } from "@/components/common/ShareButton";
 
 export const revalidate = 60;
 export const dynamicParams = true;
@@ -37,7 +38,10 @@ export default async function SpotPlayPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Link href="/game/spot" className="mb-3 inline-block text-xs font-medium text-brand-orange">← 게임 갤러리</Link>
+      <div className="mb-3 flex items-center justify-between">
+        <Link href="/game/spot" className="inline-block text-xs font-medium text-brand-orange">← 게임 갤러리</Link>
+        <ShareButton title={`${g.title} — 제주 틀린그림찾기 | 펀제주`} url={`https://funjeju.com/game/spot/${id}`} description={`다른 ${g.diffCount}곳을 찾아보세요!`} />
+      </div>
       <SpotGamePlay game={game} />
     </div>
   );
