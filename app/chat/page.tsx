@@ -324,7 +324,8 @@ export default function ChatPage() {
                 key={s.label}
                 type="button"
                 onClick={() => sendMessage(s.label)}
-                className="rounded-xl border border-border-soft bg-bg-card px-2.5 py-1.5 text-left text-[10px] font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
+                style={{ fontSize: "11px" }}
+                className="rounded-xl border border-border-soft bg-bg-card px-2.5 py-1.5 text-left font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
               >
                 <span className="mr-1">{s.emoji}</span>{s.label}
               </button>
