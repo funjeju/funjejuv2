@@ -65,7 +65,7 @@ function isAllowed(request: Request, env: Env): boolean {
 // chunklist는 느린 카메라(세그먼트 길이>6s)도 캐시 재사용되도록 12초로.
 // ts는 불변 데이터(이미 녹화된 조각)라 길게 잡아도 안전 → 180초로 늘려 Vultr 대역폭 절감 극대화.
 const M3U8_TTL_SEC = 12;
-const TS_TTL_SEC = 180;
+const TS_TTL_SEC = 600; // ts는 불변 → 길게(10분) 잡아 시청자 시차 흡수폭 ↑ → HIT률 ↑
 
 // 정상 브라우저 UA (봇 탐지 회피)
 const SAFE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -165,9 +165,11 @@ export default {
           contentType: "application/vnd.apple.mpegurl",
         });
       } else {
-        // ts URL에서 chunk 번호 추출 → 사용자/세션별 prefix 무시
-        const m = segPath.match(/_(\d+)\.ts/);
-        const chunkNum = m ? m[1] : segPath;
+        // ts 캐시 키 = ".ts 앞 숫자(세그먼트 순번)"만 사용.
+        // 언더바 유무·세션토큰(media_w123_)·쿼리스트링 전부 무시 → 시청자 달라도 같은 순번이면 같은 키.
+        // 모든 .ts 앞 숫자 중 "마지막" 것을 순번으로 (토큰 숫자가 앞에 와도 순번이 뒤라 안전).
+        const matches = segPath.match(/(\d+)\.ts/g);
+        const chunkNum = matches ? matches[matches.length - 1].replace(".ts", "") : segPath.split("?")[0];
         return cachedFetch({
           cacheKeyId: `ts:${id}:${chunkNum}`,
           ttlSec:     TS_TTL_SEC,
