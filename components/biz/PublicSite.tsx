@@ -5,11 +5,11 @@ import { BlockRenderer } from "./blocks/BlockRenderer";
 import { Phone, MessageCircle, MapPin, Navigation, ExternalLink } from "lucide-react";
 
 const CTA_STYLE: Record<CtaButton["type"], { cls: string; icon: typeof Phone }> = {
-  call: { cls: "bg-gray-900 text-white", icon: Phone },
-  naver: { cls: "bg-[#03C75A] text-white", icon: MapPin },
-  directions: { cls: "bg-[#3B82F6] text-white", icon: Navigation },
-  kakao: { cls: "bg-[#FEE500] text-[#3B1E08]", icon: MessageCircle },
-  link: { cls: "bg-gray-700 text-white", icon: ExternalLink },
+  call: { cls: "bg-gray-900 !text-white", icon: Phone },
+  naver: { cls: "bg-[#03C75A] !text-white", icon: MapPin },
+  directions: { cls: "bg-[#3B82F6] !text-white", icon: Navigation },
+  kakao: { cls: "bg-[#FEE500] !text-[#3B1E08]", icon: MessageCircle },
+  link: { cls: "bg-gray-700 !text-white", icon: ExternalLink },
 };
 
 /**
