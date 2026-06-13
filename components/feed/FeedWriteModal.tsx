@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
-import { uploadFeedImage, createFeed, resizeImageForUpload } from "@/lib/feed";
+import { uploadFeedImage, createFeed, resizeImageForUpload, getAuthor } from "@/lib/feed";
 import type { ExifData, FeedFilter } from "@/types/feed";
 import { findNearestRegion, type JejuRegion } from "@/constants/jeju-regions";
 
@@ -46,9 +46,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   // 가로 사진 처리
   const [isLandscape, setIsLandscape] = useState(false);
   const [cropX,       setCropX]       = useState(50); // 0~100, 좌우 크롭 위치
-  // 비즈 홈페이지 연결 (관리자/영업사원이 대신 올릴 때)
-  const [bizSites,    setBizSites]    = useState<{ slug: string; name: string }[]>([]);
-  const [homepageSlug, setHomepageSlug] = useState("");
+  // 홈페이지 연결 — 생성 홈페이지(/biz/..) + 외부 URL을 한 목록으로
+  const [homeOptions, setHomeOptions] = useState<{ name: string; url: string }[]>([]);
+  const [homepageUrl, setHomepageUrl] = useState("");
 
   useEffect(() => {
     if (!open) {
@@ -57,7 +57,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setRegion(null); setGps(null); setExifMissing(false);
       setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
-      setHomepageSlug("");
+      setHomepageUrl("");
       setExtras([]); setExtraErr("");
       setStatus("idle"); setError("");
     }
@@ -84,16 +84,26 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setExtras((prev) => [...prev, ...added].slice(0, 4));
   }
 
-  // 등록된 비즈 홈페이지 목록 (있으면 피드에 연결 선택지 노출)
+  // 홈페이지 선택지 = 생성 홈페이지(/biz/..) + 프로필 외부 URL CTA, 한 목록으로 합침
   useEffect(() => {
     if (!open || !user) return;
     (async () => {
+      const opts: { name: string; url: string }[] = [];
       try {
         const token = await user.getIdToken();
         const res = await fetch("/api/biz/list", { headers: { Authorization: `Bearer ${token}` } });
         const d = await res.json();
-        setBizSites((d.items ?? []).map((s: { slug: string; name: string }) => ({ slug: s.slug, name: s.name })));
-      } catch { setBizSites([]); }
+        for (const s of (d.items ?? []) as { slug: string; name: string }[]) {
+          opts.push({ name: s.name, url: `/biz/${s.slug}` });
+        }
+      } catch { /* ignore */ }
+      try {
+        const author = await getAuthor(user.uid);
+        if (author?.ctaData?.url) {
+          opts.push({ name: author.ctaData.text || "내 홈페이지", url: author.ctaData.url });
+        }
+      } catch { /* ignore */ }
+      setHomeOptions(opts);
     })();
   }, [open, user]);
 
@@ -243,9 +253,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
         ...(gps && { gps }),
         ...(placeName.trim() && { placeName: placeName.trim() }),
-        ...(homepageSlug && {
-          homepageSlug,
-          homepageName: bizSites.find((b) => b.slug === homepageSlug)?.name,
+        ...(homepageUrl && {
+          homepageUrl,
+          homepageName: homeOptions.find((o) => o.url === homepageUrl)?.name,
         }),
       });
       setStatus("done");
@@ -628,27 +638,27 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 {extraErr && <p className="mt-1 text-[10px] text-live-red">{extraErr}</p>}
               </div>
 
-              {/* ── 연결할 홈페이지 (등록된 비즈 홈페이지가 있을 때만) ── */}
-              {bizSites.length > 0 && (
+              {/* ── 연결할 홈페이지 (생성 홈페이지 + 외부 URL 통합 목록) ── */}
+              {homeOptions.length > 0 && (
                 <div>
                   <p className="mb-2 text-xs font-bold text-text-secondary">
                     🏠 연결할 홈페이지
-                    <span className="ml-1 font-normal text-text-secondary">(선택 · 피드에 바로가기 버튼이 붙어요)</span>
+                    <span className="ml-1 font-normal text-text-secondary">(선택 · 피드 버튼이 이곳으로 연결돼요)</span>
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setHomepageSlug("")}
+                      onClick={() => setHomepageUrl("")}
                       className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                        homepageSlug === "" ? "bg-brand-navy text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}
+                        homepageUrl === "" ? "bg-brand-navy text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}
                     >
                       연결 안 함
                     </button>
-                    {bizSites.map((b) => (
-                      <button key={b.slug} type="button" onClick={() => setHomepageSlug(b.slug)}
+                    {homeOptions.map((o) => (
+                      <button key={o.url} type="button" onClick={() => setHomepageUrl(o.url)}
                         className={["rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
-                          homepageSlug === b.slug ? "bg-brand-orange text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}>
-                        {b.name}
+                          homepageUrl === o.url ? "bg-brand-orange text-white" : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary"].join(" ")}>
+                        {o.url.startsWith("/biz/") ? "🏠" : "🔗"} {o.name}
                       </button>
                     ))}
                   </div>

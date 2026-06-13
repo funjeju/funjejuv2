@@ -97,7 +97,7 @@ export async function createFeed(input: {
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
   placeName?: string;
-  homepageSlug?: string;
+  homepageUrl?: string;
   homepageName?: string;
 }): Promise<string> {
   const db = getFirebaseDb();

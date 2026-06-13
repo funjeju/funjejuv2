@@ -252,14 +252,20 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
       )}
 
       {/* 연결된 홈페이지 바로가기 (피드 업로드 시 선택) */}
-      {feed.homepageSlug && (
-        <a
-          href={`/biz/${feed.homepageSlug}`}
-          className="mx-2.5 mb-2 block rounded-lg bg-brand-navy py-1.5 text-center text-[11px] font-bold text-white transition-colors hover:bg-brand-navy/90 md:mx-4 md:mb-3 md:rounded-xl md:py-2.5 md:text-xs"
-        >
-          🏠 {feed.homepageName || "홈페이지"} 보기 →
-        </a>
-      )}
+      {(() => {
+        const homeUrl = feed.homepageUrl ?? (feed.homepageSlug ? `/biz/${feed.homepageSlug}` : null);
+        if (!homeUrl) return null;
+        const external = !homeUrl.startsWith("/");
+        return (
+          <a
+            href={homeUrl}
+            {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            className="mx-2.5 mb-2 block rounded-lg bg-brand-navy py-1.5 text-center text-[11px] font-bold !text-white transition-colors hover:bg-brand-navy/90 md:mx-4 md:mb-3 md:rounded-xl md:py-2.5 md:text-xs"
+          >
+            🏠 {feed.homepageName || "홈페이지"} 보기 →
+          </a>
+        );
+      })()}
 
       {/* 비즈니스 CTA */}
       {author?.isBusiness && author.ctaData?.text && author.ctaData.url && (

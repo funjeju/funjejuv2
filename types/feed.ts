@@ -28,9 +28,11 @@ export type Feed = {
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
   placeName?: string;         // 업소명 (GPS로 매칭 후 확인/편집)
-  /** 연결된 비즈 홈페이지 — 관리자/영업사원이 대신 올릴 때 등록된 홈페이지 중 선택 */
-  homepageSlug?: string;
+  /** 연결된 홈페이지 — 생성 홈페이지(/biz/..) 또는 외부 URL. 둘을 한 목록에서 선택 */
+  homepageUrl?: string;
   homepageName?: string;
+  /** @deprecated homepageUrl로 대체. 옛 피드 호환용 */
+  homepageSlug?: string;
   createdAt: Timestamp | null;
   likes: number;
 };
