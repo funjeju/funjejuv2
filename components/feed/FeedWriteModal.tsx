@@ -100,7 +100,12 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       } catch { /* ignore */ }
       try {
         const author = await getAuthor(user.uid);
-        if (author?.ctaData?.url) {
+        // 외부 홈페이지 링크들(여러 개)
+        for (const l of author?.externalHomepages ?? []) {
+          if (l.url) opts.push({ name: l.name || "외부 홈페이지", url: l.url });
+        }
+        // 레거시 단일 CTA URL (중복 아니면)
+        if (author?.ctaData?.url && !opts.some((o) => o.url === author.ctaData!.url)) {
           opts.push({ name: author.ctaData.text || "내 홈페이지", url: author.ctaData.url });
         }
       } catch { /* ignore */ }

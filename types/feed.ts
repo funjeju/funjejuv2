@@ -47,4 +47,6 @@ export type FeedAuthor = {
     url: string;
     variant: "primary" | "outline";
   };
+  /** 외부 홈페이지 링크들 — 생성 홈페이지와 함께 피드 연결 선택지로 노출 (여러 개) */
+  externalHomepages?: { name: string; url: string }[];
 };

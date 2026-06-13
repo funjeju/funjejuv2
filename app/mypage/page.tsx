@@ -14,6 +14,7 @@ import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
 import { MyBizSites } from "@/components/mypage/MyBizSites";
+import { ExternalHomepagesManager } from "@/components/mypage/ExternalHomepagesManager";
 import { MySpotsManager } from "@/components/mypage/MySpotsManager";
 import type { FeedAuthor } from "@/types/feed";
 import type { SavedTripPlan } from "@/types/trip";
@@ -360,8 +361,9 @@ export default function MyPage() {
             <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-black text-brand-orange">시작하기 →</span>
           </Link>
 
-          {/* 내 홈페이지 목록 */}
+          {/* 내 홈페이지 목록 (생성형) + 외부 홈페이지 링크 */}
           <MyBizSites />
+          <ExternalHomepagesManager />
 
           {/* CTA 설정 — 비즈니스 전용 */}
           <BusinessCtaSettings />

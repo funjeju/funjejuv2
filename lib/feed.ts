@@ -167,13 +167,14 @@ export async function getAuthor(uid: string): Promise<FeedAuthor | null> {
     photoURL: data.photoURL ?? null,
     isBusiness: !!data.isBusiness,
     ctaData: data.ctaData,
+    externalHomepages: Array.isArray(data.externalHomepages) ? data.externalHomepages : [],
   };
 }
 
 /** 사용자 프로필 저장 (마이페이지에서 호출) */
 export async function updateUserProfile(
   uid: string,
-  data: { displayName?: string; photoURL?: string | null; ctaData?: FeedAuthor["ctaData"] }
+  data: { displayName?: string; photoURL?: string | null; ctaData?: FeedAuthor["ctaData"]; externalHomepages?: FeedAuthor["externalHomepages"] }
 ): Promise<void> {
   const db = getFirebaseDb();
   const ref = doc(db, "users", uid);
