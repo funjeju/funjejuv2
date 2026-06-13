@@ -36,17 +36,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "상호명을 입력해주세요." }, { status: 400 });
   }
 
-  // 사이트 개수 제한 (비즈 회원당 5개) — 남용 방지
-  try {
-    const existing = await listSitesByOwner(auth.uid);
-    if (existing.length >= 5) {
-      return NextResponse.json(
-        { error: "생성 가능한 홈페이지 개수(5개)를 초과했습니다." },
-        { status: 429 }
-      );
+  // 사이트 개수 제한 (비즈 회원당 5개) — 남용 방지. 어드민은 무제한.
+  const isAdmin = auth.email === "naggu1999@gmail.com";
+  if (!isAdmin) {
+    try {
+      const existing = await listSitesByOwner(auth.uid);
+      if (existing.length >= 5) {
+        return NextResponse.json(
+          { error: "생성 가능한 홈페이지 개수(5개)를 초과했습니다." },
+          { status: 429 }
+        );
+      }
+    } catch (err) {
+      console.error("[biz/generate] owner site count failed:", err);
     }
-  } catch (err) {
-    console.error("[biz/generate] owner site count failed:", err);
   }
 
   try {

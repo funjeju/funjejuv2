@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
+import { MyBizSites } from "@/components/mypage/MyBizSites";
 import type { CtaButton, CtaButtonType } from "@/lib/biz/types";
 
 const CATEGORIES = ["카페", "식당", "숙소", "쇼핑", "체험", "관광지", "기타"];
@@ -170,6 +171,9 @@ export default function BizCreatePage() {
   return (
     <div className="mx-auto max-w-screen-sm px-4 py-6">
       <PageHeader title="홈페이지 만들기" subtitle="AI가 자동으로 비즈니스 홈페이지를 생성해드려요" emoji="🏠" />
+
+      {/* 내가 만든 홈페이지 목록 (생성 화면에서 바로 확인·이동) */}
+      <MyBizSites />
 
       {/* 진행 단계 */}
       <div className="mb-6 flex items-center gap-2 px-1">
