@@ -1,7 +1,7 @@
 /**
  * CCTV별 SEO 데이터
  * - 핵심 키워드: 지역명 + 시설명 + 의도 키워드
- * - 롱테일: 검색 의도 (날씨/파도/혼잡도/실시간/오늘/지금)
+ * - 롱테일: 검색 의도 (날씨/파도/물때/실시간/오늘/지금)
  * - intro: 본문 콘텐츠 (네이버 봇이 좋아하는 풍부한 텍스트)
  */
 
@@ -48,7 +48,7 @@ export function generateCommonKeywords(name: string, region: string, category: s
     `${cleanName} 실시간 날씨`,
     `${cleanName} 파도 상황`,
     `${cleanName} 사람 많나요`,
-    `${cleanName} 혼잡도`,
+    `${cleanName} 물때`,
     `${cleanName} 주차장`,
     `${cleanName} 가는 길`,
     `${cleanName} 오늘 어때요`,
@@ -71,7 +71,7 @@ export function generateCommonKeywords(name: string, region: string, category: s
 const CATEGORY_DESC: Record<string, { intro: string; tips: string[]; bestTime: string }> = {
   해변: {
     intro:
-      "에메랄드빛 제주 바다를 실시간으로 만나보세요. 파도 상황, 날씨, 혼잡도까지 한눈에 확인할 수 있어 방문 전 체크에 좋습니다. 일출·일몰 시간대에는 환상적인 풍경이 펼쳐집니다.",
+      "에메랄드빛 제주 바다를 실시간으로 만나보세요. 파도 상황, 날씨, 물때까지 한눈에 확인할 수 있어 방문 전 체크에 좋습니다. 일출·일몰 시간대에는 환상적인 풍경이 펼쳐집니다.",
     tips: [
       "여름 성수기엔 오전 10시 이전 또는 오후 4시 이후 방문 추천",
       "물놀이 전 실시간 파도 상황 확인 필수",

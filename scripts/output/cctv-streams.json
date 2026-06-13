@@ -1,0 +1,930 @@
+[
+  {
+    "postId": 1,
+    "name": "제주 공항 실시간 CCTV",
+    "slug": "jejugonghang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/1",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jejugonghang.php",
+    "m3u8": "http://123.140.197.51/stream/33/play.m3u8"
+  },
+  {
+    "postId": 2,
+    "name": "제주 성산일출봉 실시간 CCTV",
+    "slug": "seongsanilchulbong",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/2",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seongsanilchulbong.php",
+    "m3u8": "http://123.140.197.51/stream/34/play.m3u8"
+  },
+  {
+    "postId": 3,
+    "name": "제주 어승생 실시간 CCTV",
+    "slug": "eoseungsaeng",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/3",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/eoseungsaeng.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-45.stream/playlist.m3u8"
+  },
+  {
+    "postId": 4,
+    "name": "제주 절물 실시간 CCTV",
+    "slug": "jeolmul",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/4",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jeolmul.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-41.stream/playlist.m3u8"
+  },
+  {
+    "postId": 5,
+    "name": "제주 한라생태숲 실시간 CCTV",
+    "slug": "saengtaesup",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/5",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/saengtaesup.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-42.stream/playlist.m3u8"
+  },
+  {
+    "postId": 6,
+    "name": "제주 성판악 실시간 CCTV",
+    "slug": "seongpanak",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/6",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seongpanak.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-48.stream/playlist.m3u8"
+  },
+  {
+    "postId": 7,
+    "name": "제주 한라산 백록담 실시간 CCTV",
+    "slug": "baengnokdam",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/7",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/baengnokdam.php",
+    "m3u8": "http://119.65.216.155:1935/live/cctv01.stream_360p/playlist.m3u8"
+  },
+  {
+    "postId": 8,
+    "name": "제주 한라산 영실 실시간 CCTV",
+    "slug": "yeongsil",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/8",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/yeongsil.php",
+    "m3u8": "http://59.8.86.15:1935/live/44.stream/playlist.m3u8"
+  },
+  {
+    "postId": 9,
+    "name": "제주 한라산 왕관릉 실시간 CCTV",
+    "slug": "wanggwalleung",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/9",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/wanggwalleung.php",
+    "m3u8": "http://119.65.216.155:1935/live/cctv02.stream_360p/playlist.m3u8"
+  },
+  {
+    "postId": 10,
+    "name": "제주 한라산 윗세오름 실시간 CCTV",
+    "slug": "witseoreum",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/10",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/witseoreum.php",
+    "m3u8": "http://119.65.216.155:1935/live/cctv03.stream_360p/playlist.m3u8"
+  },
+  {
+    "postId": 11,
+    "name": "제주 한라산 어승생악 실시간 CCTV",
+    "slug": "eoseungsaengak",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/11",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/eoseungsaengak.php",
+    "m3u8": "http://119.65.216.155:1935/live/cctv04.stream_360p/playlist.m3u8"
+  },
+  {
+    "postId": 12,
+    "name": "제주 한라산 1100도로(1100고지) 실시간 CCTV",
+    "slug": "1100doro",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/12",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/1100doro.php",
+    "m3u8": "http://119.65.216.155:1935/live/cctv05.stream_360p/playlist.m3u8"
+  },
+  {
+    "postId": 13,
+    "name": "제주 관음사 실시간 CCTV",
+    "slug": "gwaneumsa",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/13",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gwaneumsa.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-44.stream/playlist.m3u8"
+  },
+  {
+    "postId": 14,
+    "name": "제주도 추자 대서리 실시간 CCTV",
+    "slug": "chujadaeseo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/14",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/chujadaeseo.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-26.stream/playlist.m3u8"
+  },
+  {
+    "postId": 15,
+    "name": "제주도 추자 묵리항 실시간 CCTV",
+    "slug": "chujamukri",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/15",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/chujamukri.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-27.stream/playlist.m3u8"
+  },
+  {
+    "postId": 16,
+    "name": "제주도 추자 신양항 실시간 CCTV",
+    "slug": "chujasinyang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/16",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/chujasinyang.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-28.stream/playlist.m3u8"
+  },
+  {
+    "postId": 17,
+    "name": "제주도 추자 예초항 실시간 CCTV",
+    "slug": "chujayecho",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/17",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/chujayecho.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-29.stream/playlist.m3u8"
+  },
+  {
+    "postId": 18,
+    "name": "제주도 삼양 해수욕장 실시간 CCTV",
+    "slug": "samyangbeach",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/18",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/samyangbeach.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-14.stream/playlist.m3u8"
+  },
+  {
+    "postId": 19,
+    "name": "제주도 탑동 서부두 실시간 CCTV",
+    "slug": "tapdongseobudu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/19",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/tapdongseobudu.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-11.stream/playlist.m3u8"
+  },
+  {
+    "postId": 20,
+    "name": "제주도 동한두기 실시간 CCTV",
+    "slug": "donghandugi",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/20",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/donghandugi.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-12.stream/playlist.m3u8"
+  },
+  {
+    "postId": 21,
+    "name": "제주도 도두항 실시간 CCTV",
+    "slug": "doduhang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/21",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/doduhang.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-13.stream/playlist.m3u8"
+  },
+  {
+    "postId": 22,
+    "name": "제주도 이호 해수욕장 실시간 CCTV",
+    "slug": "iho",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/22",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/iho.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-30T.stream/playlist.m3u8"
+  },
+  {
+    "postId": 23,
+    "name": "제주도 애월 하귀 가문동포구 실시간 CCTV",
+    "slug": "hagwi",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/23",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hagwi.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-15.stream/playlist.m3u8"
+  },
+  {
+    "postId": 24,
+    "name": "제주도 용두암 해안 실시간 CCTV",
+    "slug": "yongduam",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/24",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/yongduam.php",
+    "m3u8": "http://59.8.86.15:1935/live/51.stream/playlist.m3u8"
+  },
+  {
+    "postId": 25,
+    "name": "제주도 탑동 해안 실시간 CCTV",
+    "slug": "tapdong",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/25",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/tapdong.php",
+    "m3u8": "http://59.8.86.15:1935/live/52.stream/playlist.m3u8"
+  },
+  {
+    "postId": 26,
+    "name": "제주도 제주 공항 실시간 CCTV",
+    "slug": "jejugonghang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/26",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jejugonghang.php",
+    "m3u8": "http://123.140.197.51/stream/33/play.m3u8"
+  },
+  {
+    "postId": 27,
+    "name": "제주도 첨단로 실시간 CCTV",
+    "slug": "cheomdanro",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/27",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/cheomdanro.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-43.stream/playlist.m3u8"
+  },
+  {
+    "postId": 28,
+    "name": "제주도 대흘 실시간 CCTV",
+    "slug": "daeheul",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/28",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/daeheul.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-47.stream/playlist.m3u8"
+  },
+  {
+    "postId": 29,
+    "name": "제주도 버으내 교차로 실시간 CCTV",
+    "slug": "beoeunae",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/29",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/beoeunae.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-50.stream/playlist.m3u8"
+  },
+  {
+    "postId": 30,
+    "name": "제주도 덕흥사 실시간 CCTV",
+    "slug": "deokeungsa",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/30",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/deokeungsa.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-49.stream/playlist.m3u8"
+  },
+  {
+    "postId": 31,
+    "name": "제주도 서귀포항 실시간 CCTV",
+    "slug": "seogwipohang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/31",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seogwipohang.php",
+    "m3u8": "http://59.8.86.15:1935/live/53.stream/playlist.m3u8"
+  },
+  {
+    "postId": 32,
+    "name": "제주도 법환 포구 실시간 CCTV",
+    "slug": "beopwanpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/32",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/beopwanpogu.php",
+    "m3u8": "http://59.8.86.15:1935/live/54.stream/playlist.m3u8"
+  },
+  {
+    "postId": 33,
+    "name": "제주도 법환 해안 실시간 CCTV",
+    "slug": "beopwanhaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/33",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/beopwanhaean.php",
+    "m3u8": "http://59.8.86.15:1935/live/55.stream/playlist.m3u8"
+  },
+  {
+    "postId": 34,
+    "name": "제주도 중문 해수욕장 실시간 CCTV",
+    "slug": "jungmunhaesuyokjang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/34",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jungmunhaesuyokjang.php",
+    "m3u8": "http://59.8.86.15:1935/live/59.stream/playlist.m3u8"
+  },
+  {
+    "postId": 35,
+    "name": "제주도 남원 해안 실시간 CCTV",
+    "slug": "namwonhaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/35",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/namwonhaean.php",
+    "m3u8": "http://59.8.86.15:1935/live/62.stream/playlist.m3u8"
+  },
+  {
+    "postId": 36,
+    "name": "제주도 태흥 포구 실시간 CCTV",
+    "slug": "taeheungpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/36",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/taeheungpogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-146.stream/playlist.m3u8"
+  },
+  {
+    "postId": 37,
+    "name": "제주도 세천 포구 실시간 CCTV",
+    "slug": "secheonpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/37",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/secheonpogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8"
+  },
+  {
+    "postId": 38,
+    "name": "제주도 남조로 실시간 CCTV",
+    "slug": "namjoro",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/38",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/namjoro.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-163.stream/playlist.m3u8"
+  },
+  {
+    "postId": 39,
+    "name": "제주도 보목 포구 실시간 CCTV",
+    "slug": "bomokpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/39",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/bomokpogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-152.stream/playlist.m3u8"
+  },
+  {
+    "postId": 40,
+    "name": "제주도 쇠소깍 다리 실시간 CCTV",
+    "slug": "hyodoncheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/40",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hyodoncheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-41.stream/playlist.m3u8"
+  },
+  {
+    "postId": 41,
+    "name": "제주도 원앙 폭포 실시간 CCTV",
+    "slug": "wonangpokpo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/41",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/wonangpokpo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-31.stream/playlist.m3u8"
+  },
+  {
+    "postId": 42,
+    "name": "제주도 남서교 실시간 CCTV",
+    "slug": "namseogyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/42",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/namseogyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-121.stream/playlist.m3u8"
+  },
+  {
+    "postId": 43,
+    "name": "제주도 솔오름 전망대 실시간 CCTV",
+    "slug": "sororeum",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/43",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sororeum.php",
+    "m3u8": "http://211.34.191.215:1935/live/11-26.stream/playlist.m3u8"
+  },
+  {
+    "postId": 44,
+    "name": "제주도 천지연 폭포 실시간 CCTV",
+    "slug": "cheonjiyeonpokpo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/44",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/cheonjiyeonpokpo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-72.stream/playlist.m3u8"
+  },
+  {
+    "postId": 45,
+    "name": "제주도 솜반천 실시간 CCTV",
+    "slug": "sombancheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/45",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sombancheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-50.stream/playlist.m3u8"
+  },
+  {
+    "postId": 46,
+    "name": "제주도 강정천 실시간 CCTV",
+    "slug": "gangjeongcheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/46",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gangjeongcheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-70.stream/playlist.m3u8"
+  },
+  {
+    "postId": 47,
+    "name": "제주도 대포 포구 실시간 CCTV",
+    "slug": "daepopogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/47",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/daepopogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-115.stream/playlist.m3u8"
+  },
+  {
+    "postId": 48,
+    "name": "제주도 중문 포구 실시간 CCTV",
+    "slug": "jungmunpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/48",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jungmunpogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/22.stream/playlist.m3u8"
+  },
+  {
+    "postId": 49,
+    "name": "제주도 우도 비양도 실시간 CCTV",
+    "slug": "udohaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/49",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/udohaean.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-25.stream/playlist.m3u8"
+  },
+  {
+    "postId": 50,
+    "name": "제주도 우도 천진항 실시간 CCTV",
+    "slug": "udocheonjinhang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/50",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/udocheonjinhang.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-24.stream/playlist.m3u8"
+  },
+  {
+    "postId": 51,
+    "name": "제주도 우도 하우목동항 실시간 CCTV",
+    "slug": "udohaumokdonghang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/51",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/udohaumokdonghang.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-23.stream/playlist.m3u8"
+  },
+  {
+    "postId": 52,
+    "name": "제주도 함덕 해수욕장 실시간 CCTV",
+    "slug": "hamdeok",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/52",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hamdeok.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-19.stream/playlist.m3u8"
+  },
+  {
+    "postId": 53,
+    "name": "제주도 김녕리 포구 실시간 CCTV",
+    "slug": "gimnyeongpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/53",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gimnyeongpogu.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-20.stream/playlist.m3u8"
+  },
+  {
+    "postId": 54,
+    "name": "제주도 월정리 해수욕장 실시간 CCTV",
+    "slug": "woljeongri",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/54",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/woljeongri.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-21.stream/playlist.m3u8"
+  },
+  {
+    "postId": 55,
+    "name": "제주도 평대리 해안 실시간 CCTV",
+    "slug": "pyeongdaehaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/55",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/pyeongdaehaean.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-22.stream/playlist.m3u8"
+  },
+  {
+    "postId": 56,
+    "name": "제주도 온평 해안 실시간 CCTV",
+    "slug": "onpyeonghaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/56",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/onpyeonghaean.php",
+    "m3u8": "http://59.8.86.15:1935/live/56.stream/playlist.m3u8"
+  },
+  {
+    "postId": 57,
+    "name": "제주도 성산 일출봉 실시간 CCTV",
+    "slug": "seongsanilchulbong",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/57",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seongsanilchulbong.php",
+    "m3u8": "http://123.140.197.51/stream/34/play.m3u8"
+  },
+  {
+    "postId": 58,
+    "name": "제주도 표선 평화교 실시간 CCTV",
+    "slug": "pyeonghwpgyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/58",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/pyeonghwpgyo.php",
+    "m3u8": "http://59.8.86.15:1935/live/61.stream/playlist.m3u8"
+  },
+  {
+    "postId": 59,
+    "name": "제주도 구좌읍 사무소 실시간 CCTV",
+    "slug": "gujwaeupsamuso",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/59",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gujwaeupsamuso.php",
+    "m3u8": "http://59.8.86.15:1935/live/57.stream/playlist.m3u8"
+  },
+  {
+    "postId": 60,
+    "name": "제주도 성산항 실시간 CCTV",
+    "slug": "seongsanhang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/60",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seongsanhang.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-140.stream/playlist.m3u8"
+  },
+  {
+    "postId": 61,
+    "name": "제주도 수마 포구 실시간 CCTV",
+    "slug": "sumapogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/61",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sumapogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-76.stream/playlist.m3u8"
+  },
+  {
+    "postId": 62,
+    "name": "제주도 섭지코지 실시간 CCTV",
+    "slug": "seopjikoji",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/62",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seopjikoji.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-116.stream/playlist.m3u8"
+  },
+  {
+    "postId": 63,
+    "name": "제주도 신산 포구 실시간 CCTV",
+    "slug": "sinsanpogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/63",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sinsanpogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-143.stream/playlist.m3u8"
+  },
+  {
+    "postId": 64,
+    "name": "제주도 번영로 실시간 CCTV",
+    "slug": "beonyeongro",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/64",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/beonyeongro.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-65.stream/playlist.m3u8"
+  },
+  {
+    "postId": 65,
+    "name": "제주도 큰물교 실시간 CCTV",
+    "slug": "keunmulgyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/65",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/keunmulgyo.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-46.stream/playlist.m3u8"
+  },
+  {
+    "postId": 66,
+    "name": "제주도 표선항 실시간 CCTV",
+    "slug": "pyoseonhang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/66",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/pyoseonhang.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-77.stream/playlist.m3u8"
+  },
+  {
+    "postId": 67,
+    "name": "제주도 곽지 해수욕장 실시간 CCTV",
+    "slug": "gwakji",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/67",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gwakji.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-16.stream/playlist.m3u8"
+  },
+  {
+    "postId": 68,
+    "name": "제주도 협재 해수욕장 실시간 CCTV",
+    "slug": "hyeopjae",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/68",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hyeopjae.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-17.stream/playlist.m3u8"
+  },
+  {
+    "postId": 69,
+    "name": "제주도 판포리 포구 실시간 CCTV",
+    "slug": "panpo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/69",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/panpo.php",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-18.stream/playlist.m3u8"
+  },
+  {
+    "postId": 70,
+    "name": "제주도 신창 해안 실시간 CCTV",
+    "slug": "sinchanghaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/70",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sinchanghaean.php",
+    "m3u8": "http://59.8.86.15:1935/live/63.stream/playlist.m3u8"
+  },
+  {
+    "postId": 71,
+    "name": "제주도 화순 해안 실시간 CCTV",
+    "slug": "hwasunhaean",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/71",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hwasunhaean.php",
+    "m3u8": "http://59.8.86.15:1935/live/60.stream/playlist.m3u8"
+  },
+  {
+    "postId": 72,
+    "name": "제주도 옹포항 실시간 CCTV",
+    "slug": "ongpohang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/72",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/ongpohang.php",
+    "m3u8": "http://59.8.86.15:1935/live/58.stream/playlist.m3u8"
+  },
+  {
+    "postId": 73,
+    "name": "제주도 마라도 실시간 CCTV",
+    "slug": "marado",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/73",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/marado.php",
+    "m3u8": "https://cctvsec.ktict.co.kr:8082/livekbs/9982/chunks.m3u8"
+  },
+  {
+    "postId": 74,
+    "name": "제주도 대정 해안 실시간 CCTV",
+    "slug": "daejeonghasucheorijang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/74",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/daejeonghasucheorijang.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-73.stream/playlist.m3u8"
+  },
+  {
+    "postId": 75,
+    "name": "제주도 신도 포구 실시간 CCTV",
+    "slug": "sindopogu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/75",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sindopogu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-71.stream/playlist.m3u8"
+  },
+  {
+    "postId": 76,
+    "name": "제주도 하모 해수욕장 실시간 CCTV",
+    "slug": "hamohaesuyokjang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/76",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hamohaesuyokjang.php",
+    "m3u8": "http://211.34.191.215:1935/live/11-24.stream/playlist.m3u8"
+  },
+  {
+    "postId": 77,
+    "name": "제주도 모슬포항 실시간 CCTV",
+    "slug": "moseulpohang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/77",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/moseulpohang.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-155.stream/playlist.m3u8"
+  },
+  {
+    "postId": 78,
+    "name": "제주도 화순 금모래 해변 실시간 CCTV",
+    "slug": "hwasunhaebyeon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/78",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/hwasunhaebyeon.php",
+    "m3u8": "http://211.34.191.215:1935/live/11-25.stream/playlist.m3u8"
+  },
+  {
+    "postId": 79,
+    "name": "제주도 평화로 실시간 CCTV",
+    "slug": "pyeonghwaro",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/79",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/pyeonghwaro.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-161.stream/playlist.m3u8"
+  },
+  {
+    "postId": 82,
+    "name": "제주도 비자림 실시간 CCTV",
+    "slug": "bijarim",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/82",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/bijarim.php",
+    "m3u8": "http://59.8.86.15:1935/live/36.stream/playlist.m3u8"
+  },
+  {
+    "postId": 83,
+    "name": "제주도 평화로입구 실시간 CCTV",
+    "slug": "pyeonghwaroipgu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/83",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/pyeonghwaroipgu.php",
+    "m3u8": "http://59.8.86.15:1935/live/28.stream/playlist.m3u8"
+  },
+  {
+    "postId": 84,
+    "name": "제주도 해병9여단 실시간 CCTV",
+    "slug": "haebyeong9yeodan",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/84",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/haebyeong9yeodan.php",
+    "m3u8": "http://59.8.86.15:1935/live/30.stream/playlist.m3u8"
+  },
+  {
+    "postId": 85,
+    "name": "제주도 산천단입구 실시간 CCTV",
+    "slug": "sancheondanipgu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/85",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sancheondanipgu.php",
+    "m3u8": "http://59.8.86.15:1935/live/32.stream/playlist.m3u8"
+  },
+  {
+    "postId": 86,
+    "name": "제주도 대천동사거리 실시간 CCTV",
+    "slug": "daecheondongsageori",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/86",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/daecheondongsageori.php",
+    "m3u8": "http://59.8.86.15:1935/live/34.stream/playlist.m3u8"
+  },
+  {
+    "postId": 87,
+    "name": "제주도 삼다수공장 실시간 CCTV",
+    "slug": "samdasugongjang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/87",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/samdasugongjang.php",
+    "m3u8": "http://59.8.86.15:1935/live/38.stream/playlist.m3u8"
+  },
+  {
+    "postId": 88,
+    "name": "제주도 금악 이시돌 목장 실시간 CCTV",
+    "slug": "geumagisidolmokjang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/88",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/geumagisidolmokjang.php",
+    "m3u8": "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100218/0/1/1.m3u8"
+  },
+  {
+    "postId": 89,
+    "name": "제주도 모슬포 예비군훈련장 입구 실시간 CCTV",
+    "slug": "moseulpoyebigunhullyeonjangipgu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/89",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/moseulpoyebigunhullyeonjangipgu.php",
+    "m3u8": "http://59.8.86.15:1935/live/42.stream/playlist.m3u8"
+  },
+  {
+    "postId": 90,
+    "name": "제주도 토평감귤유통센터앞 실시간 CCTV",
+    "slug": "topyeonggamgyuryutongsenteoap",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/90",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/topyeonggamgyuryutongsenteoap.php",
+    "m3u8": "http://59.8.86.15:1935/live/46.stream/playlist.m3u8"
+  },
+  {
+    "postId": 91,
+    "name": "제주도 새연교 실시간 CCTV",
+    "slug": "saeyeongyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/91",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/saeyeongyo.php",
+    "m3u8": "http://123.140.197.51/stream/35/play.m3u8"
+  },
+  {
+    "postId": 92,
+    "name": "제주도 신례천 실시간 CCTV",
+    "slug": "sillyecheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/92",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sillyecheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-42.stream/playlist.m3u8"
+  },
+  {
+    "postId": 93,
+    "name": "제주도 의귀천 실시간 CCTV",
+    "slug": "uigwicheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/93",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/uigwicheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-44.stream/playlist.m3u8"
+  },
+  {
+    "postId": 94,
+    "name": "제주도 서중천 실시간 CCTV",
+    "slug": "seojungcheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/94",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seojungcheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-45.stream/playlist.m3u8"
+  },
+  {
+    "postId": 95,
+    "name": "제주도 신흥천 실시간 CCTV",
+    "slug": "sinheungcheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/95",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/sinheungcheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-60.stream/playlist.m3u8"
+  },
+  {
+    "postId": 96,
+    "name": "제주도 전포천 실시간 CCTV",
+    "slug": "jeonpocheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/96",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jeonpocheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/61.stream/playlist.m3u8"
+  },
+  {
+    "postId": 97,
+    "name": "제주도 고수천 실시간 CCTV",
+    "slug": "gosucheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/97",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gosucheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-54.stream/playlist.m3u8"
+  },
+  {
+    "postId": 98,
+    "name": "제주도 천미천 실시간 CCTV",
+    "slug": "cheonmicheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/98",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/cheonmicheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-43.stream/playlist.m3u8"
+  },
+  {
+    "postId": 99,
+    "name": "제주도 창천교 실시간 CCTV",
+    "slug": "changcheongyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/99",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/changcheongyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-46.stream/playlist.m3u8"
+  },
+  {
+    "postId": 100,
+    "name": "제주도 창고천 실시간 CCTV",
+    "slug": "changgocheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/100",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/changgocheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-64.stream/playlist.m3u8"
+  },
+  {
+    "postId": 101,
+    "name": "제주도 남산교 실시간 CCTV",
+    "slug": "namsangyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/101",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/namsangyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-58.stream/playlist.m3u8"
+  },
+  {
+    "postId": 102,
+    "name": "제주도 가시천 실시간 CCTV",
+    "slug": "gasicheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/102",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gasicheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-59.stream/playlist.m3u8"
+  },
+  {
+    "postId": 103,
+    "name": "제주도 서귀항 실시간 CCTV",
+    "slug": "seogwihang",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/103",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seogwihang.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8"
+  },
+  {
+    "postId": 104,
+    "name": "제주도 효돈천 실시간 CCTV",
+    "slug": "je2hyoryegyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/104",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/je2hyoryegyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-53.stream/playlist.m3u8"
+  },
+  {
+    "postId": 105,
+    "name": "제주도 충혼묘지입구 실시간 CCTV",
+    "slug": "chunghonmyojiipgu",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/105",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/chunghonmyojiipgu.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-165.stream/playlist.m3u8"
+  },
+  {
+    "postId": 106,
+    "name": "제주도 동홍천 실시간 CCTV",
+    "slug": "donghongcheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/106",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/donghongcheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-35.stream/playlist.m3u8"
+  },
+  {
+    "postId": 107,
+    "name": "제주도 악근천 실시간 CCTV",
+    "slug": "akgeuncheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/107",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/akgeuncheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-194.stream/playlist.m3u8"
+  },
+  {
+    "postId": 108,
+    "name": "제주도 중문천 실시간 CCTV",
+    "slug": "jungmuncheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/108",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/jungmuncheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-40.stream/playlist.m3u8"
+  },
+  {
+    "postId": 109,
+    "name": "제주도 (구)탐라대사거리 실시간 CCTV",
+    "slug": "gutamnadaesageori",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/109",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gutamnadaesageori.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-123.stream/playlist.m3u8"
+  },
+  {
+    "postId": 110,
+    "name": "제주도 예래천 실시간 CCTV",
+    "slug": "yeraecheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/110",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/yeraecheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-63.stream/playlist.m3u8"
+  },
+  {
+    "postId": 111,
+    "name": "제주도 논짓물 실시간 CCTV",
+    "slug": "nonjinmul",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/111",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/nonjinmul.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-193.stream/playlist.m3u8"
+  },
+  {
+    "postId": 112,
+    "name": "제주도 서홍천 실시간 CCTV",
+    "slug": "seohongcheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/112",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/seohongcheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-39.stream/playlist.m3u8"
+  },
+  {
+    "postId": 113,
+    "name": "제주도 고냉이소 실시간 CCTV",
+    "slug": "gonaengiso",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/113",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gonaengiso.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-49.stream/playlist.m3u8"
+  },
+  {
+    "postId": 114,
+    "name": "제주도 도순천 실시간 CCTV",
+    "slug": "dosuncheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/114",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/dosuncheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-37.stream/playlist.m3u8"
+  },
+  {
+    "postId": 115,
+    "name": "제주도 용흥교 실시간 CCTV",
+    "slug": "yongheunggyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/115",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/yongheunggyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-38.stream/playlist.m3u8"
+  },
+  {
+    "postId": 116,
+    "name": "제주도 월산3교 실시간 CCTV",
+    "slug": "wolsan3gyo",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/116",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/wolsan3gyo.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-62.stream/playlist.m3u8"
+  },
+  {
+    "postId": 117,
+    "name": "제주도 궁상천 실시간 CCTV",
+    "slug": "gungsangchgon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/117",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/gungsangchgon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-75.stream/playlist.m3u8"
+  },
+  {
+    "postId": 118,
+    "name": "제주도 남서교(효돈천) 실시간 CCTV",
+    "slug": "namseogyohyodoncheon",
+    "postUrl": "http://cctv.trendworld.kr/jeju_cctv/118",
+    "playerUrl": "http://cctv.trendworld.kr/cctv/namseogyohyodoncheon.php",
+    "m3u8": "http://211.34.191.215:1935/live/1-83.stream/playlist.m3u8"
+  }
+]

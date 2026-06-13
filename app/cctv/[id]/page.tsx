@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
   const cleanName = cctv.name.replace(/\s+/g, "");
   const title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
-  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 혼잡도를 라이브로 확인하세요.`;
+  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 물때를 라이브로 확인하세요.`;
   const url = `${SITE_URL}/cctv/${id}`;
 
   return {
@@ -230,11 +230,11 @@ export default async function CctvDetailPage({ params }: Props) {
                     <p className="text-[9px] text-text-secondary">{weather.temperature}°C</p>
                   </div>
                   <div className="rounded-xl bg-white px-2 py-2 shadow-card">
-                    <p className="text-[9px] text-text-secondary">혼잡도</p>
+                    <p className="text-[9px] text-text-secondary">물때</p>
                     <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
-                      {weather.congestionEmoji} {weather.congestion}
+                      {weather.tideEmoji} {weather.tide}
                     </p>
-                    <p className="text-[9px] text-text-secondary">시간·날씨</p>
+                    <p className="text-[9px] text-text-secondary">{weather.tideDetail}</p>
                   </div>
                   <div className="rounded-xl bg-white px-2 py-2 shadow-card">
                     <p className="text-[9px] text-text-secondary">바람</p>
@@ -296,7 +296,7 @@ export default async function CctvDetailPage({ params }: Props) {
             <div className="border-t border-border-soft pt-3">
               <p className="text-[10px] text-text-secondary leading-5">
                 <strong>이 페이지에서 확인 가능한 정보:</strong>{" "}
-                {cctv.name} 실시간 영상, {cctv.region} 날씨, {cctv.category} 혼잡도,
+                {cctv.name} 실시간 영상, {cctv.region} 날씨, {cctv.category} 물때,
                 파도·바람 상태, 일출·일몰 시간대 풍경.{" "}
                 <Link href={`/cctv/region/${encodeURIComponent(cctv.region)}`} className="text-brand-orange hover:underline">
                   {cctv.region} 다른 CCTV 보기 →

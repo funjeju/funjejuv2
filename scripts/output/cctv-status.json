@@ -1,0 +1,814 @@
+[
+  {
+    "name": "제주 공항 실시간 CCTV",
+    "slug": "jejugonghang",
+    "host": "123.140.197.51",
+    "m3u8": "http://123.140.197.51/stream/33/play.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주 성산일출봉 실시간 CCTV",
+    "slug": "seongsanilchulbong",
+    "host": "123.140.197.51",
+    "m3u8": "http://123.140.197.51/stream/34/play.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 어승생 실시간 CCTV",
+    "slug": "eoseungsaeng",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-45.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 절물 실시간 CCTV",
+    "slug": "jeolmul",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-41.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라생태숲 실시간 CCTV",
+    "slug": "saengtaesup",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-42.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 성판악 실시간 CCTV",
+    "slug": "seongpanak",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-48.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라산 백록담 실시간 CCTV",
+    "slug": "baengnokdam",
+    "host": "119.65.216.155:1935",
+    "m3u8": "http://119.65.216.155:1935/live/cctv01.stream_360p/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라산 영실 실시간 CCTV",
+    "slug": "yeongsil",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/44.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주 한라산 왕관릉 실시간 CCTV",
+    "slug": "wanggwalleung",
+    "host": "119.65.216.155:1935",
+    "m3u8": "http://119.65.216.155:1935/live/cctv02.stream_360p/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라산 윗세오름 실시간 CCTV",
+    "slug": "witseoreum",
+    "host": "119.65.216.155:1935",
+    "m3u8": "http://119.65.216.155:1935/live/cctv03.stream_360p/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라산 어승생악 실시간 CCTV",
+    "slug": "eoseungsaengak",
+    "host": "119.65.216.155:1935",
+    "m3u8": "http://119.65.216.155:1935/live/cctv04.stream_360p/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 한라산 1100도로(1100고지) 실시간 CCTV",
+    "slug": "1100doro",
+    "host": "119.65.216.155:1935",
+    "m3u8": "http://119.65.216.155:1935/live/cctv05.stream_360p/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주 관음사 실시간 CCTV",
+    "slug": "gwaneumsa",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-44.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 추자 대서리 실시간 CCTV",
+    "slug": "chujadaeseo",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-26.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 추자 묵리항 실시간 CCTV",
+    "slug": "chujamukri",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-27.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 추자 신양항 실시간 CCTV",
+    "slug": "chujasinyang",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-28.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 추자 예초항 실시간 CCTV",
+    "slug": "chujayecho",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-29.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 삼양 해수욕장 실시간 CCTV",
+    "slug": "samyangbeach",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-14.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 탑동 서부두 실시간 CCTV",
+    "slug": "tapdongseobudu",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-11.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 동한두기 실시간 CCTV",
+    "slug": "donghandugi",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-12.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 도두항 실시간 CCTV",
+    "slug": "doduhang",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-13.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 이호 해수욕장 실시간 CCTV",
+    "slug": "iho",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-30T.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 애월 하귀 가문동포구 실시간 CCTV",
+    "slug": "hagwi",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-15.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 용두암 해안 실시간 CCTV",
+    "slug": "yongduam",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/51.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 탑동 해안 실시간 CCTV",
+    "slug": "tapdong",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/52.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 제주 공항 실시간 CCTV",
+    "slug": "jejugonghang",
+    "host": "123.140.197.51",
+    "m3u8": "http://123.140.197.51/stream/33/play.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 첨단로 실시간 CCTV",
+    "slug": "cheomdanro",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-43.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 대흘 실시간 CCTV",
+    "slug": "daeheul",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-47.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 버으내 교차로 실시간 CCTV",
+    "slug": "beoeunae",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-50.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 덕흥사 실시간 CCTV",
+    "slug": "deokeungsa",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-49.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 서귀포항 실시간 CCTV",
+    "slug": "seogwipohang",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/53.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 법환 포구 실시간 CCTV",
+    "slug": "beopwanpogu",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/54.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 법환 해안 실시간 CCTV",
+    "slug": "beopwanhaean",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/55.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 중문 해수욕장 실시간 CCTV",
+    "slug": "jungmunhaesuyokjang",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/59.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 남원 해안 실시간 CCTV",
+    "slug": "namwonhaean",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/62.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 태흥 포구 실시간 CCTV",
+    "slug": "taeheungpogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-146.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 세천 포구 실시간 CCTV",
+    "slug": "secheonpogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 남조로 실시간 CCTV",
+    "slug": "namjoro",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-163.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 보목 포구 실시간 CCTV",
+    "slug": "bomokpogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-152.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 쇠소깍 다리 실시간 CCTV",
+    "slug": "hyodoncheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-41.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 원앙 폭포 실시간 CCTV",
+    "slug": "wonangpokpo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-31.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 남서교 실시간 CCTV",
+    "slug": "namseogyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-121.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 솔오름 전망대 실시간 CCTV",
+    "slug": "sororeum",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/11-26.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 천지연 폭포 실시간 CCTV",
+    "slug": "cheonjiyeonpokpo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-72.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 솜반천 실시간 CCTV",
+    "slug": "sombancheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-50.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 강정천 실시간 CCTV",
+    "slug": "gangjeongcheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-70.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 대포 포구 실시간 CCTV",
+    "slug": "daepopogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-115.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 중문 포구 실시간 CCTV",
+    "slug": "jungmunpogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/22.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 우도 비양도 실시간 CCTV",
+    "slug": "udohaean",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-25.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 우도 천진항 실시간 CCTV",
+    "slug": "udocheonjinhang",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-24.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 우도 하우목동항 실시간 CCTV",
+    "slug": "udohaumokdonghang",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-23.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 함덕 해수욕장 실시간 CCTV",
+    "slug": "hamdeok",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-19.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 김녕리 포구 실시간 CCTV",
+    "slug": "gimnyeongpogu",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-20.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 월정리 해수욕장 실시간 CCTV",
+    "slug": "woljeongri",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-21.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 평대리 해안 실시간 CCTV",
+    "slug": "pyeongdaehaean",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi7/11-22.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 온평 해안 실시간 CCTV",
+    "slug": "onpyeonghaean",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/56.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 성산 일출봉 실시간 CCTV",
+    "slug": "seongsanilchulbong",
+    "host": "123.140.197.51",
+    "m3u8": "http://123.140.197.51/stream/34/play.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 표선 평화교 실시간 CCTV",
+    "slug": "pyeonghwpgyo",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/61.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 구좌읍 사무소 실시간 CCTV",
+    "slug": "gujwaeupsamuso",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/57.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 성산항 실시간 CCTV",
+    "slug": "seongsanhang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-140.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 수마 포구 실시간 CCTV",
+    "slug": "sumapogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-76.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 섭지코지 실시간 CCTV",
+    "slug": "seopjikoji",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-116.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 신산 포구 실시간 CCTV",
+    "slug": "sinsanpogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-143.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 번영로 실시간 CCTV",
+    "slug": "beonyeongro",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-65.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 큰물교 실시간 CCTV",
+    "slug": "keunmulgyo",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi8/11-46.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 표선항 실시간 CCTV",
+    "slug": "pyoseonhang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-77.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 곽지 해수욕장 실시간 CCTV",
+    "slug": "gwakji",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-16.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 협재 해수욕장 실시간 CCTV",
+    "slug": "hyeopjae",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-17.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 판포리 포구 실시간 CCTV",
+    "slug": "panpo",
+    "host": "211.114.96.121:1935",
+    "m3u8": "http://211.114.96.121:1935/jejusi6/11-18.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 신창 해안 실시간 CCTV",
+    "slug": "sinchanghaean",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/63.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 화순 해안 실시간 CCTV",
+    "slug": "hwasunhaean",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/60.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 옹포항 실시간 CCTV",
+    "slug": "ongpohang",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/58.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 마라도 실시간 CCTV",
+    "slug": "marado",
+    "host": "cctvsec.ktict.co.kr:8082",
+    "m3u8": "https://cctvsec.ktict.co.kr:8082/livekbs/9982/chunks.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 대정 해안 실시간 CCTV",
+    "slug": "daejeonghasucheorijang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-73.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 신도 포구 실시간 CCTV",
+    "slug": "sindopogu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-71.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 하모 해수욕장 실시간 CCTV",
+    "slug": "hamohaesuyokjang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/11-24.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 모슬포항 실시간 CCTV",
+    "slug": "moseulpohang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-155.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 화순 금모래 해변 실시간 CCTV",
+    "slug": "hwasunhaebyeon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/11-25.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 평화로 실시간 CCTV",
+    "slug": "pyeonghwaro",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-161.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 비자림 실시간 CCTV",
+    "slug": "bijarim",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/36.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 평화로입구 실시간 CCTV",
+    "slug": "pyeonghwaroipgu",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/28.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 해병9여단 실시간 CCTV",
+    "slug": "haebyeong9yeodan",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/30.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 산천단입구 실시간 CCTV",
+    "slug": "sancheondanipgu",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/32.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 대천동사거리 실시간 CCTV",
+    "slug": "daecheondongsageori",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/34.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 삼다수공장 실시간 CCTV",
+    "slug": "samdasugongjang",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/38.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 금악 이시돌 목장 실시간 CCTV",
+    "slug": "geumagisidolmokjang",
+    "host": "59.8.86.94:8080",
+    "m3u8": "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100218/0/1/1.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 모슬포 예비군훈련장 입구 실시간 CCTV",
+    "slug": "moseulpoyebigunhullyeonjangipgu",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/42.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 토평감귤유통센터앞 실시간 CCTV",
+    "slug": "topyeonggamgyuryutongsenteoap",
+    "host": "59.8.86.15:1935",
+    "m3u8": "http://59.8.86.15:1935/live/46.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 새연교 실시간 CCTV",
+    "slug": "saeyeongyo",
+    "host": "123.140.197.51",
+    "m3u8": "http://123.140.197.51/stream/35/play.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 신례천 실시간 CCTV",
+    "slug": "sillyecheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-42.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 의귀천 실시간 CCTV",
+    "slug": "uigwicheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-44.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 서중천 실시간 CCTV",
+    "slug": "seojungcheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-45.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 신흥천 실시간 CCTV",
+    "slug": "sinheungcheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-60.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 전포천 실시간 CCTV",
+    "slug": "jeonpocheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/61.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 고수천 실시간 CCTV",
+    "slug": "gosucheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-54.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 천미천 실시간 CCTV",
+    "slug": "cheonmicheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-43.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 창천교 실시간 CCTV",
+    "slug": "changcheongyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-46.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 창고천 실시간 CCTV",
+    "slug": "changgocheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-64.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 남산교 실시간 CCTV",
+    "slug": "namsangyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-58.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 가시천 실시간 CCTV",
+    "slug": "gasicheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-59.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 서귀항 실시간 CCTV",
+    "slug": "seogwihang",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 효돈천 실시간 CCTV",
+    "slug": "je2hyoryegyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-53.stream/playlist.m3u8",
+    "status": "down"
+  },
+  {
+    "name": "제주도 충혼묘지입구 실시간 CCTV",
+    "slug": "chunghonmyojiipgu",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-165.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 동홍천 실시간 CCTV",
+    "slug": "donghongcheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-35.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 악근천 실시간 CCTV",
+    "slug": "akgeuncheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-194.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 중문천 실시간 CCTV",
+    "slug": "jungmuncheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-40.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 (구)탐라대사거리 실시간 CCTV",
+    "slug": "gutamnadaesageori",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-123.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 예래천 실시간 CCTV",
+    "slug": "yeraecheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-63.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 논짓물 실시간 CCTV",
+    "slug": "nonjinmul",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-193.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 서홍천 실시간 CCTV",
+    "slug": "seohongcheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-39.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 고냉이소 실시간 CCTV",
+    "slug": "gonaengiso",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-49.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 도순천 실시간 CCTV",
+    "slug": "dosuncheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-37.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 용흥교 실시간 CCTV",
+    "slug": "yongheunggyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-38.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 월산3교 실시간 CCTV",
+    "slug": "wolsan3gyo",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-62.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 궁상천 실시간 CCTV",
+    "slug": "gungsangchgon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-75.stream/playlist.m3u8",
+    "status": "stable"
+  },
+  {
+    "name": "제주도 남서교(효돈천) 실시간 CCTV",
+    "slug": "namseogyohyodoncheon",
+    "host": "211.34.191.215:1935",
+    "m3u8": "http://211.34.191.215:1935/live/1-83.stream/playlist.m3u8",
+    "status": "stable"
+  }
+]

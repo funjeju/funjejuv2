@@ -118,7 +118,7 @@ export default async function RegionPage({ params }: Props) {
         <p className="mt-2 text-xs leading-6 text-text-primary">
           {region}의 {cctvs.length}개 실시간 CCTV를 통해 지금 이 순간의 {region} 모습을 확인하세요.
           {" "}{categories.join(", ")} 등 다양한 카테고리의 라이브 영상을 제공합니다.
-          여행 전 날씨와 혼잡도를 미리 체크할 수 있어 효율적인 일정 계획이 가능합니다.
+          여행 전 날씨와 물때를 미리 체크할 수 있어 효율적인 일정 계획이 가능합니다.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {categories.map((cat) => (

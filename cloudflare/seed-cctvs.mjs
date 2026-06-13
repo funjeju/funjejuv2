@@ -42,7 +42,12 @@ const CCTVS = [
   { id: "jeju_airport",name: "제주공항",     region: "제주시 용담동", category: "공항", originUrl: "http://123.140.197.51/stream/33/play.m3u8" },
 
   // ── 제주시 탑동 ────────────────────────────────────────────
-  { id: "tapdong",     name: "탑동광장",     region: "제주시 탑동",   category: "관광지", originUrl: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100001/0/1/1.m3u8" },
+  { id: "tapdong",     name: "탑동서부두",   region: "제주시 탑동",   category: "관광지", originUrl: "http://211.114.96.121:1935/jejusi6/11-11.stream/playlist.m3u8" },
+  { id: "donghandugi", name: "동한두기",     region: "제주시 용담동", category: "포구",   originUrl: "http://211.114.96.121:1935/jejusi6/11-12.stream/playlist.m3u8" },
+  { id: "iho",         name: "이호해변",     region: "제주시 이호동", category: "해변",   originUrl: "http://211.114.96.121:1935/jejusi7/11-30T.stream/playlist.m3u8" },
+  { id: "sechon",      name: "세천포구",     region: "제주시 이호동", category: "포구",   originUrl: "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8" },
+  { id: "pyoseon",     name: "표선항",       region: "서귀포시 표선면", category: "항구", originUrl: "http://211.34.191.215:1935/live/1-77.stream/playlist.m3u8" },
+  { id: "daepo",       name: "대포포구",     region: "서귀포시 중문동", category: "포구", originUrl: "http://211.34.191.215:1935/live/1-115.stream/playlist.m3u8" },
 
   // ── 제주시 도두동 ──────────────────────────────────────────
   { id: "dodu",        name: "도두항",       region: "제주시 도두동", category: "항구", originUrl: "http://211.114.96.121:1935/jejusi6/11-13.stream/playlist.m3u8" },
