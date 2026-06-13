@@ -15,6 +15,7 @@ import {
   type ThemeId,
   type MenuItem,
   type GenerationSource,
+  type CtaButton,
 } from "./types";
 import { loadAllRestaurants, formatHours } from "@/lib/restaurants";
 
@@ -33,8 +34,35 @@ interface AIGenerationInput {
   ownerId: string;
   coordinates?: { lat: number; lng: number };
   placeUrl?: string;
+  /** 사용자가 지정한 CTA 버튼 (최대 3개) */
+  ctaButtons?: CtaButton[];
   /** 도민맛집(domin_food.json) ID — 주어지면 자동 prefill */
   restaurantId?: string;
+}
+
+/** 입력 정보로 기본 CTA 버튼을 구성한다 (최대 3개: 전화·네이버·길찾기). */
+function buildDefaultCtaButtons(input: AIGenerationInput): CtaButton[] {
+  const btns: CtaButton[] = [];
+  if (input.phone) btns.push({ type: "call", label: "전화 예약", value: input.phone });
+
+  const naverQ = encodeURIComponent(`${input.businessName} ${input.address ?? ""}`.trim());
+  btns.push({ type: "naver", label: "네이버플레이스", value: `https://map.naver.com/p/search/${naverQ}` });
+
+  if (input.coordinates) {
+    const { lat, lng } = input.coordinates;
+    btns.push({
+      type: "directions",
+      label: "길찾기",
+      value: `https://map.kakao.com/link/to/${encodeURIComponent(input.businessName)},${lat},${lng}`,
+    });
+  } else if (input.address) {
+    btns.push({
+      type: "directions",
+      label: "길찾기",
+      value: `https://map.kakao.com/link/search/${encodeURIComponent(input.address)}`,
+    });
+  }
+  return btns.slice(0, 3);
 }
 
 interface AIGenerationResult {
@@ -176,6 +204,8 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
     }
   );
 
+  const ctaButtons = (input.ctaButtons?.length ? input.ctaButtons : buildDefaultCtaButtons(input)).slice(0, 3);
+
   const now = new Date().toISOString();
   const site: SiteSchema = {
     siteId,
@@ -184,7 +214,7 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
     ownerId: input.ownerId,
     role: "owner",
     siteType: ai.siteType ?? "general",
-    published: false,
+    published: true,
     slug: siteId,
     generationMode: {
       type: "low-input",
@@ -200,7 +230,8 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
       ...(coordinates ? { coordinates } : {}),
       ...(input.restaurantId ? { restaurantId: input.restaurantId } : {}),
     },
-    externalLinks: input.placeUrl ? { naverPlace: input.placeUrl } : {},
+    externalLinks: input.placeUrl ? { kakaoPlace: input.placeUrl } : {},
+    ctaButtons,
     designTokens: {
       themeId: ai.themeId ?? "warm-ocean",
       primaryColor: "",

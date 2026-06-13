@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { generateSiteFromInput } from "@/lib/biz/pipeline";
 import { saveSite, listSitesByOwner } from "@/lib/biz/store";
+import type { CtaButton } from "@/lib/biz/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -57,6 +58,17 @@ export async function POST(req: NextRequest) {
       phone: typeof body.phone === "string" ? body.phone : undefined,
       businessHours: typeof body.businessHours === "string" ? body.businessHours : undefined,
       restaurantId: typeof body.restaurantId === "string" ? body.restaurantId : undefined,
+      placeUrl: typeof body.placeUrl === "string" ? body.placeUrl : undefined,
+      coordinates:
+        body.coordinates &&
+        typeof body.coordinates === "object" &&
+        typeof (body.coordinates as { lat?: unknown }).lat === "number" &&
+        typeof (body.coordinates as { lng?: unknown }).lng === "number"
+          ? (body.coordinates as { lat: number; lng: number })
+          : undefined,
+      ctaButtons: Array.isArray(body.ctaButtons)
+        ? (body.ctaButtons as CtaButton[]).filter((b) => b && b.type && b.value).slice(0, 3)
+        : undefined,
       vibes: Array.isArray(body.vibes) ? (body.vibes as string[]) : undefined,
       reviews: Array.isArray(body.reviews) ? (body.reviews as string[]) : undefined,
       menuItems: typeof body.menuItems === "string" ? body.menuItems : undefined,

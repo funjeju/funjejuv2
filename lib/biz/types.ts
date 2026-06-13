@@ -38,6 +38,18 @@ export interface ExternalLinks {
   instagram?: string;
   kakaoTalk?: string;
   booking?: string;
+  /** 카카오맵 장소 상세 URL (카카오 매칭 시) */
+  kakaoPlace?: string;
+}
+
+/** 하단 고정 CTA 버튼 (최대 3개) */
+export type CtaButtonType = "call" | "naver" | "directions" | "kakao" | "link";
+
+export interface CtaButton {
+  type: CtaButtonType;
+  label: string;
+  /** 전화번호 / URL */
+  value: string;
 }
 
 export type ThemeId =
@@ -128,6 +140,8 @@ export interface SiteSchema {
 
   merchantInfo: MerchantInfo;
   externalLinks: ExternalLinks;
+  /** 하단 고정 CTA 버튼 (최대 3개) */
+  ctaButtons?: CtaButton[];
   designTokens: DesignTokens;
   contentAssets: ContentAssets;
   menuData: MenuData;

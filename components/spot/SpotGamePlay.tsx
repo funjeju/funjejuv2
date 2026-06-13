@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { SpotGame, SpotScore } from "@/types/spot";
 
 const RING_R = 5.5;      // 발견 표시 원 반지름 (%)
-const HIT_RADIUS = 9.5;  // 클릭 허용 반경 (%) — 손가락/마우스 모두 타이트하지 않게
+const HIT_RADIUS = 6.0;  // 클릭 허용 반경 (%) — 정답 범위 타이트하게
 
 export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [found, setFound] = useState<boolean[]>(() => game.markers.map(() => false));
@@ -84,22 +84,39 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       <span className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[12px] font-bold text-white">{label}</span>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
-          {/* 분필 손그림 느낌 — turbulence + displacement로 선을 거칠게 흔듬 */}
-          <filter id="chalk" x="-10%" y="-10%" width="120%" height="120%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" />
-            <feDisplacementMap in="SourceGraphic" scale="1.4" />
-          </filter>
+          <style>{`
+            @keyframes draw-circle {
+              from { stroke-dashoffset: 40; }
+              to   { stroke-dashoffset: 0; }
+            }
+            .marker-ring {
+              stroke-dasharray: 40;
+              stroke-dashoffset: 0;
+              animation: draw-circle 0.35s ease-out forwards;
+            }
+          `}</style>
         </defs>
         {game.markers.map((m, i) => found[i] && (
-          <g key={i} filter="url(#chalk)" opacity={0.92}>
-            {/* 두 겹으로 그어 분필이 두 번 휘갈긴 듯한 손맛 */}
-            <circle cx={m.x} cy={m.y} r={RING_R} fill="none" stroke="#ff4d4d" strokeWidth={1.6} strokeLinecap="round" strokeDasharray="3 1.2" />
-            <circle cx={m.x} cy={m.y} r={RING_R - 0.4} fill="none" stroke="#ff6b6b" strokeWidth={0.9} strokeLinecap="round" strokeDasharray="2 2" opacity={0.7} />
-            <text x={m.x} y={m.y + 0.8} textAnchor="middle" dominantBaseline="middle" fontSize={4.5} fontWeight="bold" fill="#ff4d4d" stroke="#ff4d4d" strokeWidth={0.15}>{i + 1}</text>
+          <g key={i}>
+            {/* 손으로 그린 듯한 타원 — rx/ry 살짝 다르게, 약간 기울여서 마커 느낌 */}
+            <ellipse
+              className="marker-ring"
+              cx={m.x} cy={m.y}
+              rx={RING_R + 0.6} ry={RING_R - 0.3}
+              transform={`rotate(-8, ${m.x}, ${m.y})`}
+              fill="none"
+              stroke="#e8191a"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </g>
         ))}
         {misses.filter((mm) => mm.side === side).map((mm) => (
-          <circle key={mm.key} cx={mm.x} cy={mm.y} r={3.5} fill="rgba(150,150,150,0.2)" stroke="#999" strokeWidth={1.5} opacity={0.55} filter="url(#chalk)" />
+          <g key={mm.key}>
+            <line x1={mm.x - 2} y1={mm.y - 2} x2={mm.x + 2} y2={mm.y + 2} stroke="#aaa" strokeWidth={1.2} strokeLinecap="round" opacity={0.6} />
+            <line x1={mm.x + 2} y1={mm.y - 2} x2={mm.x - 2} y2={mm.y + 2} stroke="#aaa" strokeWidth={1.2} strokeLinecap="round" opacity={0.6} />
+          </g>
         ))}
       </svg>
     </div>
