@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import type { CtaButton, CtaButtonType } from "@/lib/biz/types";
@@ -30,7 +29,6 @@ const CTA_PRESETS: { type: CtaButtonType; label: string }[] = [
 
 export default function BizCreatePage() {
   const { user, signInWithGoogle } = useAuth();
-  const router = useRouter();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     businessName: "",
@@ -142,7 +140,9 @@ export default function BizCreatePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "생성 실패");
-      router.push(`/biz/${data.site.slug ?? data.site.siteId}`);
+      // 소프트 네비게이션(router.push)은 브라우저/RSC 캐시에 박힌 옛 404를 만날 수 있어,
+      // 전체 새로고침으로 항상 신선한 서버 렌더(200)를 받게 한다.
+      window.location.href = `/biz/${data.site.slug ?? data.site.siteId}`;
     } catch (e) {
       setError(e instanceof Error ? e.message : "홈페이지 생성에 실패했어요.");
       setLoading(false);
