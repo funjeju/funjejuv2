@@ -80,7 +80,7 @@ export default function FeedPage() {
               type="button"
               onClick={() => setActiveCategory(cat)}
               className={[
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
+                "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors",
                 activeCategory === cat
                   ? "bg-text-primary text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
@@ -113,7 +113,7 @@ export default function FeedPage() {
               type="button"
               onClick={() => setActiveRegion(c)}
               className={[
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
+                "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors",
                 activeRegion === c
                   ? "bg-brand-navy text-white"
                   : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",

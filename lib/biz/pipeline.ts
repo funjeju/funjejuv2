@@ -81,14 +81,15 @@ interface AIGenerationResult {
 
 /** 상호명 → URL-safe slug. 한글은 유지하되 공백/특수문자 정리 + 짧은 해시 suffix */
 export function generateSiteId(businessName: string): string {
+  // URL/문서ID는 영문·숫자만 — 한글 슬러그의 NFC/NFD 정규화 404 문제를 원천 차단.
   const base = businessName
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9가-힣]+/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 30);
+    .slice(0, 24);
   const suffix = Math.random().toString(36).slice(2, 8);
-  return base ? `${base}-${suffix}` : suffix;
+  return base ? `${base}-${suffix}` : `biz-${suffix}`;
 }
 
 /**

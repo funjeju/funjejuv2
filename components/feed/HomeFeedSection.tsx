@@ -49,7 +49,7 @@ export function HomeFeedSection() {
             type="button"
             onClick={() => setActiveCategory(tab)}
             className={[
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+              "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors",
               activeCategory === tab
                 ? "bg-text-primary text-white"
                 : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",

@@ -153,7 +153,9 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
           : `${data.ExposureTime}s`;
       }
       if (data.DateTimeOriginal) {
-        parsed.date = new Date(data.DateTimeOriginal).toLocaleDateString("ko-KR");
+        // ISO로 저장해야 FeedCard parseExifDate가 촬영일을 정확히 읽는다 (로케일 문자열 X)
+        const d = new Date(data.DateTimeOriginal);
+        if (!isNaN(d.getTime())) parsed.date = d.toISOString();
       }
       setExif(parsed);
 
