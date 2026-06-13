@@ -43,6 +43,9 @@
 html {
   min-height: 100%;
   background: var(--bg-primary);
+  /* iOS Safari가 글자를 멋대로 키우는 자동확대 끔 — 작은 글씨가 안 줄어들던 원인 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
