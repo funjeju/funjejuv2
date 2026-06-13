@@ -372,6 +372,7 @@ export default function MultiviewPage() {
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
   const gridRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pseudoFs, setPseudoFs] = useState(false); // iOS 등 네이티브 전체화면 미지원 시 CSS 꽉채움 폴백
   const [tabHidden, setTabHidden] = useState(false); // 탭 숨김 동안 시청예산 차감 중지
 
   useEffect(() => {
@@ -387,11 +388,16 @@ export default function MultiviewPage() {
   }, []);
 
   function toggleFullscreen() {
-    if (!gridRef.current) return;
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch(() => {});
+    const el = gridRef.current;
+    if (!el) return;
+    // iOS Safari는 div.requestFullscreen 미지원 → CSS 유사 전체화면으로 폴백
+    const canNative = typeof el.requestFullscreen === "function" && document.fullscreenEnabled;
+    if (pseudoFs) { setPseudoFs(false); return; }
+    if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+    if (canNative) {
+      el.requestFullscreen().catch(() => setPseudoFs(true));
     } else {
-      gridRef.current.requestFullscreen().catch(() => {});
+      setPseudoFs(true);
     }
   }
 
@@ -610,8 +616,8 @@ export default function MultiviewPage() {
             className="rounded-full bg-brand-navy px-0.5 py-1 text-[10px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
             title="전체화면"
           >
-            <span className="md:hidden">{isFullscreen ? "종료" : "전체"}</span>
-            <span className="hidden md:inline">{isFullscreen ? "⛶ 종료" : "⛶ 전체화면"}</span>
+            <span className="md:hidden">{(isFullscreen || pseudoFs) ? "종료" : "전체"}</span>
+            <span className="hidden md:inline">{(isFullscreen || pseudoFs) ? "⛶ 종료" : "⛶ 전체화면"}</span>
           </button>
         </div>
       </div>
@@ -673,8 +679,18 @@ export default function MultiviewPage() {
             "grid gap-0.5 md:gap-2",
             gridClass,
             isFullscreen ? "h-screen w-screen bg-black p-1" : "",
+            pseudoFs ? "fixed inset-0 z-[100] h-[100dvh] w-screen content-center overflow-auto bg-black p-1" : "",
           ].join(" ")}
         >
+          {pseudoFs && (
+            <button
+              type="button"
+              onClick={() => setPseudoFs(false)}
+              className="fixed right-3 top-3 z-[110] rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white backdrop-blur"
+            >
+              ⛶ 종료
+            </button>
+          )}
           {Array.from({ length: slotCount }).map((_, idx) => {
             const cctvId = slots[idx];
             const cctv = cctvId ? allCctvs.find((c) => c.id === cctvId) ?? null : null;
