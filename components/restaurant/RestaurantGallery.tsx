@@ -6,6 +6,9 @@ import Image from "next/image";
 import type { RestaurantSummary } from "@/types/restaurant";
 import { FoodMap } from "@/components/restaurant/FoodMap";
 import { useMySpot } from "@/hooks/useMySpot";
+import { ShareButton } from "@/components/common/ShareButton";
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjejuv2.vercel.app";
 
 type Props = {
   restaurants: RestaurantSummary[];
@@ -256,6 +259,15 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
                     {r.menu}
                   </span>
                   <span className="text-[8px] text-text-secondary">📍 {r.region}</span>
+                  <div className="ml-auto" onClick={(e) => e.preventDefault()}>
+                    <ShareButton
+                      title={`${r.title} — 제주 도민맛집 | FunJeju`}
+                      url={`${BASE_URL}/food/${r.id}`}
+                      description={r.shortDescription}
+                      imageUrl={r.thumbnail ?? undefined}
+                      compact
+                    />
+                  </div>
                 </div>
                 <p className="mt-0.5 line-clamp-1 text-xs font-bold text-text-primary group-hover:text-brand-orange transition-colors">
                   {r.title}

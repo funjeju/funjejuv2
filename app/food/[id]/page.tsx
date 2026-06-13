@@ -12,6 +12,7 @@ import {
 } from "@/lib/restaurants";
 import { getFoodSeo } from "@/lib/food-seo-store";
 import { findWebzinesByRestaurant } from "@/lib/contents";
+import { ShareButton } from "@/components/common/ShareButton";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -162,9 +163,16 @@ export default async function FoodDetailPage({ params }: Props) {
             📍 {r.region}
           </span>
         </div>
-        <h1 className="mt-2 text-2xl font-black text-text-primary md:text-3xl">
-          {r.title}
-        </h1>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-black text-text-primary md:text-3xl">
+            {r.title}
+          </h1>
+          <ShareButton
+            title={`${r.title} — 제주 도민맛집 | FunJeju`}
+            description={`제주 ${r.region} ${r.menu} 맛집 ${r.title}`}
+            imageUrl={r.images?.[0] ?? undefined}
+          />
+        </div>
         {hours && (
           <p className="mt-2 text-sm text-text-secondary">⏰ {hours}</p>
         )}

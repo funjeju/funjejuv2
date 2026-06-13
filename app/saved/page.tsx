@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { useAuth } from "@/hooks/useAuth";
 import { listMySpots, deleteMySpot } from "@/lib/my-spots";
 import { CATEGORY_EMOJI, MY_SPOT_CATEGORIES, type MySpot, type MySpotCategory } from "@/types/my-spot";
+import { ShareButton } from "@/components/common/ShareButton";
 
 const SOURCE_LABEL: Record<MySpot["source"], string> = {
   search: "검색",
@@ -146,7 +147,7 @@ export default function SavedPage() {
                       {spot.direction}쪽
                     </span>
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-2 flex items-center gap-2">
                     <a
                       href={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
                       target="_blank"
@@ -155,6 +156,12 @@ export default function SavedPage() {
                     >
                       지도 보기
                     </a>
+                    <ShareButton
+                      title={`${spot.name} — 제주 스팟 | FunJeju`}
+                      url={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
+                      description={spot.address}
+                      compact
+                    />
                   </div>
                 </div>
               </div>

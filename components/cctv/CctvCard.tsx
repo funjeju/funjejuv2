@@ -3,8 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { CctvFavoriteButton } from "@/components/common/CctvFavoriteButton";
+import { ShareButton } from "@/components/common/ShareButton";
 import { DIRECTION_META } from "@/constants/cctv-directions";
 import type { CctvEntry } from "@/types/cctv";
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjejuv2.vercel.app";
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
@@ -70,7 +73,15 @@ export function CctvCard({ cctv }: { cctv: CctvEntry }) {
         <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
           {cctv.category}
         </span>
-        <CctvFavoriteButton id={cctv.id} className="ml-auto" />
+        <div className="ml-auto flex items-center gap-1">
+          <ShareButton
+            title={`${cctv.name} — 제주 실시간 CCTV | FunJeju`}
+            url={`${BASE_URL}/cctv/${cctv.id}`}
+            description={cctv.description}
+            compact
+          />
+          <CctvFavoriteButton id={cctv.id} label={false} />
+        </div>
       </div>
 
       {cctv.description && (

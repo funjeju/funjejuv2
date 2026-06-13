@@ -9,6 +9,7 @@ import { LiveChat } from "@/components/cctv/LiveChat";
 import { getCctvSeo } from "@/constants/cctv-seo";
 import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
+import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -179,10 +180,11 @@ export default async function CctvDetailPage({ params }: Props) {
                 <h1 className="mt-0.5 text-xl font-black text-text-primary">{cctv.name}</h1>
                 <p className="mt-1 text-sm leading-6 text-text-secondary">{cctv.description}</p>
               </div>
-              <div className="flex shrink-0 flex-col items-center gap-1 rounded-2xl border border-border-soft bg-bg-card px-4 py-3 shadow-card">
-                <span className="text-xl">⭐</span>
-                <span className="text-[10px] font-semibold text-text-secondary">저장</span>
-              </div>
+              <CctvDetailActions
+                cctvId={cctv.id}
+                cctvName={cctv.name}
+                description={cctv.description}
+              />
             </div>
 
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">

@@ -39,7 +39,32 @@ function stripTags(s: string): string {
     .trim();
 }
 
-/** 네이버 검색 API 호출 — "제주" 키워드, 최신순 */
+type NaverSearchItem = { title: string; description: string; link: string; originallink: string; pubDate: string };
+
+async function searchKeyword(id: string, secret: string, query: string, display = 10): Promise<NaverNewsItem[]> {
+  const url = `${NAVER_SEARCH}?query=${encodeURIComponent(query)}&display=${display}&sort=date`;
+  try {
+    const res = await fetch(url, {
+      headers: { "X-Naver-Client-Id": id, "X-Naver-Client-Secret": secret },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { items?: NaverSearchItem[] };
+    return (data.items ?? []).map((it) => ({
+      title: stripTags(it.title),
+      description: stripTags(it.description),
+      link: it.link,
+      pubDate: new Date(it.pubDate).toISOString(),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 모닝브리핑용 다목적 뉴스 수집.
+ * 날씨 1건 + 여행·맛집·행사·연예인 위주 키워드별로 수집해 합산.
+ */
 export async function searchJejuNews(display = 20): Promise<NaverNewsItem[]> {
   const id = process.env.NAVER_CLIENT_ID;
   const secret = process.env.NAVER_CLIENT_SECRET;
@@ -47,24 +72,28 @@ export async function searchJejuNews(display = 20): Promise<NaverNewsItem[]> {
     throw new Error("NAVER_CLIENT_ID/SECRET 환경변수가 설정되어 있지 않습니다.");
   }
 
-  const url = `${NAVER_SEARCH}?query=${encodeURIComponent("제주")}&display=${display}&sort=date`;
-  const res = await fetch(url, {
-    headers: {
-      "X-Naver-Client-Id": id,
-      "X-Naver-Client-Secret": secret,
-    },
-    signal: AbortSignal.timeout(10000),
-  });
-  if (!res.ok) {
-    throw new Error(`네이버 검색 API 실패: ${res.status}`);
+  // 키워드별 병렬 검색
+  const [weather, travel, event, food, celebrity, local] = await Promise.all([
+    searchKeyword(id, secret, "제주 날씨", 3),           // 날씨는 3건만 (1건으로 추림)
+    searchKeyword(id, secret, "제주 여행 추천", 8),
+    searchKeyword(id, secret, "제주 축제 행사", 8),
+    searchKeyword(id, secret, "제주 맛집", 8),
+    searchKeyword(id, secret, "제주 연예인 촬영", 6),
+    searchKeyword(id, secret, "제주 관광", 8),
+  ]);
+
+  // 날씨 1건만 (가장 최신), 나머지 키워드 합산 후 중복 제거
+  const weatherOne = weather.slice(0, 1);
+  const rest = [...travel, ...event, ...food, ...celebrity, ...local];
+
+  const seen = new Set<string>(weatherOne.map((n) => n.title.replace(/\s/g, "")));
+  const deduped: NaverNewsItem[] = [...weatherOne];
+  for (const it of rest) {
+    const key = it.title.replace(/\s/g, "");
+    if (!seen.has(key)) { seen.add(key); deduped.push(it); }
   }
-  const data = (await res.json()) as { items?: Array<{ title: string; description: string; link: string; originallink: string; pubDate: string }> };
-  return (data.items ?? []).map((it) => ({
-    title: stripTags(it.title),
-    description: stripTags(it.description),
-    link: it.link, // 검색 API가 n.news.naver.com 우선 link 반환
-    pubDate: new Date(it.pubDate).toISOString(),
-  }));
+
+  return deduped.slice(0, display);
 }
 
 /** n.news.naver.com 본문 크롤 + 매체명 추출 */
