@@ -1,15 +1,15 @@
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import type { Metadata } from "next";
-import { getSite as getSiteRaw, listPublishedSites } from "@/lib/biz/store";
+import { getSite as getSiteRaw } from "@/lib/biz/store";
 import { PublicSite } from "@/components/biz/PublicSite";
 import { buildLocalBusinessJsonLd } from "@/lib/biz/jsonld";
 import type { SiteSchema } from "@/lib/biz/types";
 
 const SITE_URL = "https://funjeju.com";
 export const runtime = "nodejs";
-export const revalidate = 60; // ISR — 생성 직후 stale 404가 빨리 풀리도록 짧게
-export const dynamicParams = true;
+// 매 요청 신선하게 읽는다. ISR이 "생성 직후 빈 결과 404"를 캐시해버리는 문제를 원천 차단.
+export const dynamic = "force-dynamic";
 
 function toPlain<T>(data: unknown): T {
   return JSON.parse(JSON.stringify(data)) as T;
@@ -25,15 +25,6 @@ const getSite = cache(async (slug: string): Promise<SiteSchema | null> => {
     return null;
   }
 });
-
-export async function generateStaticParams() {
-  try {
-    const sites = await listPublishedSites();
-    return sites.map((s) => ({ slug: s.slug }));
-  } catch {
-    return [];
-  }
-}
 
 export async function generateMetadata({
   params,
