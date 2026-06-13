@@ -8,7 +8,7 @@ import { AccommodationPicker } from "@/components/trip/AccommodationPicker";
 import { MySpotsSelector } from "@/components/trip/MySpotsSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { usageHeaders } from "@/lib/client-usage";
-import { useSaved } from "@/hooks/useSaved";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { saveTripPlan, listTripPlans, getTripPlan, deleteTripPlan } from "@/lib/trip-plans";
 import { listMySpots } from "@/lib/my-spots";
 import { mockCctvs } from "@/constants/mock-cctvs";
@@ -197,7 +197,7 @@ function DynamicList({ label, items, onChange, onAdd, onRemove, placeholder }: {
 // ── 메인 ────────────────────────────────────────────────────
 export default function TripAiPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
-  const { savedIds } = useSaved();
+  const { favoriteIds: savedIds } = useCctvFavorite();
   const [mode, setMode] = useState<"rough" | "detailed" | null>(null);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [currentStep, setCurrentStep] = useState(0);

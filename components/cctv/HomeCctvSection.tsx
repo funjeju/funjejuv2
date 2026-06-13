@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSaved } from "@/hooks/useSaved";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 
 export function HomeCctvSection() {
-  const { savedIds } = useSaved();
+  const { favoriteIds } = useCctvFavorite();
 
   // 즐겨찾기한 CCTV가 있으면 우선 표시, 없으면 기본 첫 2개
-  const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
+  const savedCctvs = mockCctvs.filter((c) => favoriteIds.has(c.id));
   const displayCctvs = savedCctvs.length > 0 ? savedCctvs.slice(0, 4) : mockCctvs.slice(0, 2);
   const isPersonalized = savedCctvs.length > 0;
 

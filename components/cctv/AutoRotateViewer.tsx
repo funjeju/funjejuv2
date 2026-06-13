@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSaved } from "@/hooks/useSaved";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { useCctvSession } from "@/hooks/useCctvSession";
@@ -245,7 +245,7 @@ function PlaceholderPlayer({
 }
 
 export function AutoRotateViewer() {
-  const { savedIds } = useSaved();
+  const { favoriteIds: savedIds } = useCctvFavorite();
   const [index,     setIndex]     = useState(0);
   const [paused,    setPaused]    = useState(false);
   const [progress,  setProgress]  = useState(0);

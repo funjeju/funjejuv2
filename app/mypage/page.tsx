@@ -5,7 +5,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
-import { useSaved } from "@/hooks/useSaved";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
+import { useMySpot } from "@/hooks/useMySpot";
 import { getAuthor } from "@/lib/feed";
 import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { getEntitlements } from "@/lib/entitlements";
@@ -28,7 +29,8 @@ const menuItems = [
 
 export default function MyPage() {
   const { user, loading, signInWithGoogle, logout } = useAuth();
-  const { savedIds } = useSaved();
+  const { favoriteIds } = useCctvFavorite();
+  const { spotIds: mySpotIds } = useMySpot();
   const [author, setAuthor] = useState<FeedAuthor | null>(null);
   const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
   const [tripPlans, setTripPlans] = useState<SavedTripPlan[]>([]);
@@ -50,7 +52,7 @@ export default function MyPage() {
   };
 
   const stats = [
-    { label: "저장한 스팟", value: String(savedIds.size), emoji: "⭐" },
+    { label: "마이스팟", value: String(mySpotIds.size), emoji: "📍" },
     { label: "작성한 피드", value: "—",  emoji: "📸" },
     { label: "완성한 일정", value: String(tripPlans.length), emoji: "🗓️" },
   ];
@@ -211,7 +213,7 @@ export default function MyPage() {
             <span className="text-3xl">🗿</span>
             <div>
               <p className="text-sm font-bold text-text-primary">돌맹이가 일정을 추천해드릴게요!</p>
-              <p className="text-[11px] text-text-secondary">저장한 스팟 {savedIds.size}개로 최적 동선 만들기</p>
+              <p className="text-[11px] text-text-secondary">마이스팟 {mySpotIds.size}개로 최적 동선 만들기</p>
             </div>
             <Link
               href="/trip-ai"
@@ -273,7 +275,7 @@ export default function MyPage() {
 
           {/* 즐겨찾기 CCTV */}
           {(() => {
-            const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
+            const savedCctvs = mockCctvs.filter((c) => favoriteIds.has(c.id));
             if (savedCctvs.length === 0) return null;
             return (
               <section className="mx-4 mb-5 md:mx-0">
@@ -347,6 +349,14 @@ export default function MyPage() {
 
           {/* 비즈니스 메뉴 */}
           <div className="mx-4 mt-2 overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card md:mx-0">
+            <Link href="/biz/create" className="flex items-center gap-3 border-b border-border-soft px-4 py-4 hover:bg-bg-secondary transition-colors">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-orange/10 text-xl">🏠</span>
+              <div className="flex-1">
+                <span className="block text-sm font-semibold text-text-primary">홈페이지 만들기</span>
+                <span className="text-[10px] text-text-secondary">AI로 비즈니스 홈페이지 자동 생성</span>
+              </div>
+              <span className="text-text-secondary">›</span>
+            </Link>
             <Link href="/feed" className="flex items-center gap-3 border-b border-border-soft px-4 py-4 hover:bg-bg-secondary transition-colors">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-secondary text-xl">📸</span>
               <span className="flex-1 text-sm font-semibold text-text-primary">내 피드 관리</span>

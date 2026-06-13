@@ -48,10 +48,22 @@ function shortenUserId(id: string): string {
   return id;
 }
 
+type ChatLog = {
+  id: string;
+  cctvId: string;
+  cctvName: string;
+  periodKey: string;
+  messageCount: number;
+  text: string;
+  archivedAt: string;
+};
+
 export default function AdminLogsPage() {
-  const [tab, setTab] = useState<"views" | "pages">("views");
+  const [tab, setTab] = useState<"views" | "pages" | "chat">("views");
   const [viewLogs, setViewLogs] = useState<ViewLog[]>([]);
   const [pageLogs, setPageLogs] = useState<PageViewLog[]>([]);
+  const [chatLogs, setChatLogs] = useState<ChatLog[]>([]);
+  const [expandedChat, setExpandedChat] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState("");
 
@@ -63,11 +75,18 @@ export default function AdminLogsPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`/api/admin/logs?type=${tab}&limit=300`, { cache: "no-store" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "조회 실패");
-      if (tab === "views") setViewLogs(data.logs);
-      else setPageLogs(data.logs);
+      if (tab === "chat") {
+        const res = await fetch("/api/admin/chat-logs?limit=100", { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "조회 실패");
+        setChatLogs(data.logs ?? []);
+      } else {
+        const res = await fetch(`/api/admin/logs?type=${tab}&limit=300`, { cache: "no-store" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "조회 실패");
+        if (tab === "views") setViewLogs(data.logs);
+        else setPageLogs(data.logs);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "오류");
     } finally {
@@ -107,12 +126,17 @@ export default function AdminLogsPage() {
         <button type="button" onClick={() => setTab("views")}
           className={["flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors",
             tab === "views" ? "bg-brand-orange text-white shadow-soft" : "text-text-secondary"].join(" ")}>
-          📺 영상 시청 로그 ({viewLogs.length})
+          📺 시청 로그 ({viewLogs.length})
         </button>
         <button type="button" onClick={() => setTab("pages")}
           className={["flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors",
             tab === "pages" ? "bg-brand-navy text-white shadow-soft" : "text-text-secondary"].join(" ")}>
-          🌐 페이지 방문 로그 ({pageLogs.length})
+          🌐 방문 로그 ({pageLogs.length})
+        </button>
+        <button type="button" onClick={() => setTab("chat")}
+          className={["flex-1 rounded-xl py-2.5 text-sm font-bold transition-colors",
+            tab === "chat" ? "bg-jeju-green text-white shadow-soft" : "text-text-secondary"].join(" ")}>
+          💬 채팅 로그 ({chatLogs.length})
         </button>
       </div>
 
@@ -185,7 +209,7 @@ export default function AdminLogsPage() {
               })}
             </div>
           )
-        ) : (
+        ) : tab === "pages" ? (
           filteredPages.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-3xl">🌐</p>
@@ -222,6 +246,42 @@ export default function AdminLogsPage() {
                   </div>
                 );
               })}
+            </div>
+          )
+        ) : (
+          // 채팅 로그 탭
+          chatLogs.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-3xl">💬</p>
+              <p className="mt-2 text-sm font-bold text-text-primary">채팅 로그가 없어요</p>
+              <p className="text-xs text-text-secondary">3시간 이상 지난 채팅이 자동으로 저장됩니다</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border-soft">
+              {chatLogs.map((c) => (
+                <div key={c.id} className="px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedChat(expandedChat === c.id ? null : c.id)}
+                    className="flex w-full items-center gap-2 text-left"
+                  >
+                    <span className="text-lg">💬</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-text-primary">{c.cctvName || c.cctvId}</p>
+                      <p className="text-[11px] text-text-secondary">
+                        {c.periodKey} · {c.messageCount}개 메시지
+                        {c.archivedAt && ` · ${formatTime(c.archivedAt)}`}
+                      </p>
+                    </div>
+                    <span className="text-text-secondary">{expandedChat === c.id ? "▲" : "▼"}</span>
+                  </button>
+                  {expandedChat === c.id && (
+                    <pre className="mt-2 max-h-60 overflow-y-auto rounded-xl bg-bg-secondary p-3 text-[10px] leading-5 text-text-primary whitespace-pre-wrap break-words font-mono">
+                      {c.text}
+                    </pre>
+                  )}
+                </div>
+              ))}
             </div>
           )
         )}

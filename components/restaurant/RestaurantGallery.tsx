@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import type { RestaurantSummary } from "@/types/restaurant";
 import { FoodMap } from "@/components/restaurant/FoodMap";
+import { useMySpot } from "@/hooks/useMySpot";
 
 type Props = {
   restaurants: RestaurantSummary[];
@@ -14,15 +15,60 @@ type Props = {
 
 const PAGE_SIZE = 24;
 
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Fisher-Yates shuffle (stable reference)
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function RestaurantGallery({ restaurants, regions, menus }: Props) {
   const [activeRegion, setActiveRegion] = useState<string>("전체");
   const [activeMenu, setActiveMenu] = useState<string>("전체");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const { isSpot, toggle: toggleSpot } = useMySpot();
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoStatus, setGeoStatus] = useState<"pending" | "ok" | "denied">("pending");
+  // 랜덤 순서는 마운트 시 한 번만 결정
+  const randomOrder = useRef<RestaurantSummary[]>(shuffled(restaurants));
+
+  useEffect(() => {
+    if (!navigator.geolocation) { setGeoStatus("denied"); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGeoStatus("ok"); },
+      () => setGeoStatus("denied"),
+      { timeout: 5000 }
+    );
+  }, []);
+
+  // 기본 순서: 위치 OK → 거리순, 아니면 랜덤
+  const baseOrder = useMemo(() => {
+    if (geoStatus === "ok" && userPos) {
+      return [...restaurants].sort((a, b) => {
+        const da = a.lat && a.lng ? distanceKm(userPos.lat, userPos.lng, a.lat, a.lng) : 9999;
+        const db2 = b.lat && b.lng ? distanceKm(userPos.lat, userPos.lng, b.lat, b.lng) : 9999;
+        return da - db2;
+      });
+    }
+    if (geoStatus === "denied") return randomOrder.current;
+    return restaurants; // pending: 원래 순서
+  }, [geoStatus, userPos, restaurants]);
 
   const filtered = useMemo(() => {
-    return restaurants.filter((r) => {
+    return baseOrder.filter((r) => {
       if (activeRegion !== "전체" && r.region !== activeRegion) return false;
       if (activeMenu !== "전체" && r.menu !== activeMenu) return false;
       if (search.trim()) {
@@ -36,7 +82,7 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
       }
       return true;
     });
-  }, [restaurants, activeRegion, activeMenu, search]);
+  }, [baseOrder, activeRegion, activeMenu, search]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -122,10 +168,12 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
           </div>
         </div>
 
-        {/* 결과 카운트 */}
+        {/* 결과 카운트 + 위치 상태 */}
         <div className="flex items-center justify-between rounded-xl bg-jeju-green/10 border border-jeju-green/20 px-4 py-2">
           <p className="text-xs font-medium text-text-primary">
             <span className="font-bold text-jeju-green">{filtered.length}개</span>의 도민맛집
+            {geoStatus === "ok" && <span className="ml-1.5 text-[10px] text-jeju-green">📍 거리순</span>}
+            {geoStatus === "denied" && <span className="ml-1.5 text-[10px] text-text-secondary">🔀 랜덤순</span>}
           </p>
           {(activeRegion !== "전체" || activeMenu !== "전체" || search) && (
             <button
@@ -180,18 +228,39 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
                     ✓ 펀제주 인증
                   </span>
                 )}
+                {/* 마이스팟 저장 버튼 */}
+                {r.lat && r.lng && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      toggleSpot(`food_${r.id}`, {
+                        name: r.title,
+                        category: "맛집",
+                        lat: r.lat!,
+                        lng: r.lng!,
+                        address: r.region,
+                        source: "food",
+                      });
+                    }}
+                    className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-base shadow transition-transform active:scale-90"
+                    title={isSpot(`food_${r.id}`) ? "마이스팟에서 제거" : "마이스팟에 저장"}
+                  >
+                    {isSpot(`food_${r.id}`) ? "⭐" : "☆"}
+                  </button>
+                )}
               </div>
-              <div className="p-2.5">
+              <div className="p-2">
                 <div className="flex items-center gap-1">
-                  <span className="rounded-full bg-brand-orange/10 px-2 py-0.5 text-[9px] font-bold text-brand-orange">
+                  <span className="rounded-full bg-brand-orange/10 px-1.5 py-0 text-[7px] font-bold text-brand-orange">
                     {r.menu}
                   </span>
-                  <span className="text-[10px] text-text-secondary">📍 {r.region}</span>
+                  <span className="text-[8px] text-text-secondary">📍 {r.region}</span>
                 </div>
-                <p className="mt-1 line-clamp-1 text-sm font-bold text-text-primary group-hover:text-brand-orange transition-colors">
+                <p className="mt-0.5 line-clamp-1 text-xs font-bold text-text-primary group-hover:text-brand-orange transition-colors">
                   {r.title}
                 </p>
-                <p className="mt-0.5 line-clamp-2 text-[10px] leading-4 text-text-secondary">
+                <p className="mt-0.5 line-clamp-2 text-[9px] leading-3.5 text-text-secondary">
                   {r.shortDescription}
                 </p>
               </div>

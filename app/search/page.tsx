@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { mockCctvs } from "@/constants/mock-cctvs";
-import { SaveButton } from "@/components/common/SaveButton";
+import { CctvFavoriteButton } from "@/components/common/CctvFavoriteButton";
 
 const RECENT = ["협재 해변", "흑돼지 맛집", "성산 일출봉", "애월 카페"];
 const POPULAR = ["한라산 트래킹", "오설록", "카멜리아힐", "함덕 해수욕장", "중문 해변", "서귀포 야시장"];
@@ -63,7 +63,7 @@ export default function SearchPage() {
                     <Link href={`/cctv/${c.id}`} className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-bold text-white hover:bg-brand-navy/90 transition-colors">
                       보기
                     </Link>
-                    <SaveButton id={c.id} label={false} />
+                    <CctvFavoriteButton id={c.id} label={false} />
                   </div>
                 </div>
               ))}

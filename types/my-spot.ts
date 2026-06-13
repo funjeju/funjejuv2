@@ -11,7 +11,7 @@ export type MySpot = {
   address?: string;
   lat: number;
   lng: number;
-  source: "search" | "jejutube"; // 카카오 검색 / 제주tube 찜
+  source: "search" | "jejutube" | "feed" | "food"; // 카카오 검색 / 제주tube / 피드 / 도민맛집
   createdAt: number;             // epoch ms
 };
 

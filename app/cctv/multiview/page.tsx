@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, type DragEvent } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
-import { useSaved } from "@/hooks/useSaved";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
@@ -360,7 +360,7 @@ function EmptySlot({
 }
 
 export default function MultiviewPage() {
-  const { savedIds } = useSaved();
+  const { favoriteIds: savedIds } = useCctvFavorite();
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
   const allCctvs = useMemo(() => cctvs.map(toView), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);

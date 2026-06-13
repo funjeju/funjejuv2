@@ -1,22 +1,17 @@
 "use client";
 
-import { useMySpot, type SpotInfo } from "@/hooks/useMySpot";
+import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 
-type Props = {
-  id: string;
-  info: SpotInfo;
-  label?: boolean;
-  className?: string;
-};
+type Props = { id: string; label?: boolean; className?: string };
 
-export function SaveButton({ id, info, label = true, className = "" }: Props) {
-  const { isSpot, toggle } = useMySpot();
-  const saved = isSpot(id);
+export function CctvFavoriteButton({ id, label = true, className = "" }: Props) {
+  const { isFavorite, toggle } = useCctvFavorite();
+  const saved = isFavorite(id);
 
   return (
     <button
       type="button"
-      onClick={(e) => { e.preventDefault(); toggle(id, info); }}
+      onClick={(e) => { e.preventDefault(); toggle(id); }}
       className={[
         "flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-all active:scale-95",
         saved

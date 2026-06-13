@@ -19,7 +19,7 @@ function spotsCol(uid: string) {
   return collection(getFirebaseDb(), "users", uid, "mySpots");
 }
 
-/** 마이스팟 추가 → 문서 ID 반환 */
+/** 마이스팟 추가 → 문서 ID 반환 (spotId 지정 시 해당 id로 upsert) */
 export async function addMySpot(
   uid: string,
   spot: {
@@ -28,10 +28,13 @@ export async function addMySpot(
     lat: number;
     lng: number;
     address?: string;
-    source?: "search" | "jejutube";
+    source?: MySpot["source"];
+    spotId?: string; // 피드/맛집 등 외부 id 기반 저장 시 지정
   }
 ): Promise<string> {
-  const ref = doc(spotsCol(uid));
+  const ref = spot.spotId
+    ? doc(spotsCol(uid), spot.spotId)
+    : doc(spotsCol(uid));
   await setDoc(ref, {
     name: spot.name,
     category: spot.category,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useEffect, useState, useRef, useCallback, type FormEvent } from "react";
 import {
   collection,
   addDoc,
@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
+
+const CHAT_EXPIRE_MS = 3 * 60 * 60 * 1000; // 3시간
 
 type ChatMessage = {
   id: string;
@@ -45,24 +47,62 @@ export function LiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // 3시간 단위 채팅 로그를 어드민에 저장
+  const archiveExpiredMessages = useCallback(async (msgs: ChatMessage[]) => {
+    const db = getFirebaseDb();
+    const now = Date.now();
+    const expired = msgs.filter((m) => {
+      const t = m.createdAt?.toDate?.()?.getTime() ?? 0;
+      return t > 0 && now - t >= CHAT_EXPIRE_MS;
+    });
+    if (expired.length === 0) return;
+
+    // 3시간 단위 그룹키 (e.g. "2026-06-13T09")
+    const groups: Record<string, ChatMessage[]> = {};
+    for (const m of expired) {
+      const d = m.createdAt!.toDate();
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}T${String(Math.floor(d.getHours()/3)*3).padStart(2,"0")}`;
+      (groups[key] ??= []).push(m);
+    }
+    for (const [key, group] of Object.entries(groups)) {
+      const text = group.map((m) => `[${m.createdAt?.toDate?.().toISOString() ?? ""}] ${m.displayName}: ${m.text}`).join("\n");
+      await addDoc(collection(db, "admin_chat_logs"), {
+        cctvId,
+        cctvName,
+        periodKey: key,
+        messageCount: group.length,
+        text,
+        archivedAt: serverTimestamp(),
+      }).catch(() => {});
+    }
+  }, [cctvId, cctvName]);
+
   useEffect(() => {
     const db = getFirebaseDb();
     const q = query(
       collection(db, "cctv_chats", cctvId, "messages"),
       orderBy("createdAt", "desc"),
-      limit(50)
+      limit(100)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const msgs = snap.docs.map((d) => ({
+    const unsub = onSnapshot(q, async (snap) => {
+      const all = snap.docs.map((d) => ({
         id: d.id,
         ...(d.data() as Omit<ChatMessage, "id">),
       }));
-      setMessages(msgs.reverse());
+      const now = Date.now();
+      // 3시간 이내 메시지만 표시
+      const visible = all.filter((m) => {
+        const t = m.createdAt?.toDate?.()?.getTime() ?? now;
+        return now - t < CHAT_EXPIRE_MS;
+      });
+      setMessages(visible.reverse());
+      // 만료된 메시지 아카이브 (비동기, 실패해도 무방)
+      await archiveExpiredMessages(all);
     });
 
     return unsub;
-  }, [cctvId]);
+  }, [cctvId, archiveExpiredMessages]);
 
   // 새 메시지 시 스크롤 맨 아래
   useEffect(() => {
