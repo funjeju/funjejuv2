@@ -221,7 +221,9 @@ async function cachedFetch(opts: {
   const cached = await cache.match(cacheReq);
   if (cached) {
     logEvent(opts.request, opts.cctvId, opts.type, "hit");
-    return withCors(cached, opts.cors);
+    const hitRes = withCors(cached, opts.cors);
+    hitRes.headers.set("X-Cache", "HIT");
+    return hitRes;
   }
 
   // 2) Origin fetch
@@ -267,6 +269,7 @@ async function cachedFetch(opts: {
     ...opts.cors,
     "Content-Type": opts.contentType,
     "Cache-Control": `public, max-age=${opts.ttlSec}`,
+    "X-Cache": "MISS",
   };
 
   const response = new Response(body, {
