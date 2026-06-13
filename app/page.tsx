@@ -1,21 +1,25 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { AutoRotateViewer } from "@/components/cctv/AutoRotateViewer";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { CctvIcon } from "@/components/common/CctvIcon";
+import { CameraIcon } from "@/components/common/CameraIcon";
+import { TubeIcon } from "@/components/common/TubeIcon";
 import { listPublished } from "@/lib/contents";
 import { listGames } from "@/lib/spot";
 
-export const revalidate = 600;
+export const revalidate = 60;
 
-const quickLinks = [
-  { href: "/cctv",      label: "실시간 CCTV",  emoji: "📷", bg: "bg-blue-50",    color: "text-blue-600"   },
-  { href: "/feed",      label: "라이브 피드",   emoji: "🖼️", bg: "bg-yellow-50",  color: "text-yellow-600" },
+const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNode; bg: string; color: string }[] = [
+  { href: "/cctv",      label: "실시간 CCTV",  icon: <CctvIcon size={26} />,   bg: "bg-blue-50",    color: "text-blue-600"   },
+  { href: "/feed",      label: "라이브 피드",   icon: <CameraIcon size={26} />, bg: "bg-yellow-50",  color: "text-yellow-600" },
   { href: "/chat",      label: "도슨트 챗봇",   emoji: "🤖", bg: "bg-purple-50",  color: "text-purple-600" },
   { href: "/trip-ai",   label: "AI 여행 일정", emoji: "🗓️", bg: "bg-green-50",   color: "text-green-600"  },
   { href: "/food",      label: "도민맛집",      emoji: "🍽️", bg: "bg-orange-50",  color: "text-orange-500" },
   { href: "/webzine",   label: "여행 웹진",     emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
   { href: "/game/spot", label: "틀린그림찾기",  emoji: "🔍", bg: "bg-teal-50",    color: "text-teal-600"   },
-  { href: "/youtube",   label: "제주tube",      emoji: "▶️", bg: "bg-red-50",     color: "text-red-600"    },
+  { href: "/youtube",   label: "제주tube",      icon: <TubeIcon size={26} />,   bg: "bg-red-50",     color: "text-red-600"    },
 ];
 
 export default async function HomePage() {
@@ -55,8 +59,8 @@ export default async function HomePage() {
             <div className="grid grid-cols-4 gap-2 md:grid-cols-8 md:gap-3">
               {quickLinks.map((link) => (
                 <Link key={link.href} href={link.href} className="flex flex-col items-center gap-1.5">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${link.bg} md:h-14 md:w-14`}>
-                    {link.emoji}
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-2xl ${link.bg} ${link.color} md:h-14 md:w-14`}>
+                    {link.icon ?? link.emoji}
                   </div>
                   <span className={`text-center text-[10px] font-medium leading-tight ${link.color} md:text-xs`}>
                     {link.label}
