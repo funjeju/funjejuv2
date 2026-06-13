@@ -8,6 +8,9 @@ import { ShareButton } from "@/components/common/ShareButton";
 
 const SITE_URL = "https://funjeju.com";
 export const revalidate = 60;
+
+/** 절대 URL(피드 Storage)이면 그대로, 상대경로면 SITE_URL 접두 */
+const absUrl = (src: string) => (/^https?:\/\//.test(src) ? src : `${SITE_URL}${src}`);
 export const dynamicParams = true; // 새 발행분도 온디맨드 ISR
 
 export async function generateStaticParams() {
@@ -35,7 +38,7 @@ export async function generateMetadata({
       description: desc,
       url,
       type: "article",
-      ...(c.coverImage ? { images: [{ url: `${SITE_URL}${c.coverImage}` }] } : {}),
+      ...(c.coverImage ? { images: [{ url: absUrl(c.coverImage) }] } : {}),
     },
   };
 }
@@ -57,7 +60,7 @@ export default async function WebzineDetailPage({
     description: c.intro || c.subtitle,
     keywords: c.keywords.join(", "),
     datePublished: c.publishedAt ?? c.createdAt,
-    ...(c.coverImage ? { image: `${SITE_URL}${c.coverImage}` } : {}),
+    ...(c.coverImage ? { image: absUrl(c.coverImage) } : {}),
     author: { "@type": "Organization", name: "펀제주" },
     publisher: { "@type": "Organization", name: "펀제주" },
     mainEntityOfPage: `${SITE_URL}/webzine/${c.slug}`,

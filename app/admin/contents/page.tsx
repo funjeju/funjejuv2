@@ -29,7 +29,7 @@ export default function AdminContentsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function generate(type: ContentType) {
+  async function generate(type: ContentType | "webzine-feed") {
     setBusy(`gen-${type}`); setMsg("");
     try {
       const qs = type !== "webzine" ? `?type=${type}` : "";
@@ -75,7 +75,11 @@ export default function AdminContentsPage() {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => generate("webzine")} disabled={busy === "gen-webzine"}
             className="rounded-full bg-brand-orange px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
-            {busy === "gen-webzine" ? "생성 중…" : "📰 웹진 초안"}
+            {busy === "gen-webzine" ? "생성 중…" : "📰 웹진(맛집)"}
+          </button>
+          <button type="button" onClick={() => generate("webzine-feed")} disabled={busy === "gen-webzine-feed"}
+            className="rounded-full bg-pink-500 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
+            {busy === "gen-webzine-feed" ? "생성 중…" : "🖼️ 웹진(피드)"}
           </button>
           <button type="button" onClick={() => generate("briefing")} disabled={busy === "gen-briefing"}
             className="rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">

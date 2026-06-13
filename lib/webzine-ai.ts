@@ -1,6 +1,7 @@
 import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { loadAllRestaurants, stripHtml } from "@/lib/restaurants";
+import { listRecentFeedsRich, type FeedRich } from "@/lib/feed-server";
 import type { Restaurant } from "@/types/restaurant";
 import type { Content, ContentSection } from "@/types/content";
 
@@ -133,6 +134,106 @@ ${list}
     region: topic.region,
     menu: topic.menu,
     sourceIds: topic.picks.map((r) => r.id),
+    createdAt: now,
+  };
+}
+
+/* ──────────────────────────────────────────────
+ * 피드 기반 웹진 — 여행자들이 올린 실시간 사진(EXIF·장소)으로 SEO 블로그 글
+ * ────────────────────────────────────────────── */
+
+const FEED_SYS = `너는 제주 여행 매거진 에디터다. 여행자들이 직접 올린 실시간 제주 사진들(장소·지역·카테고리·EXIF 촬영정보)을 바탕으로,
+검색에 잘 걸리는 블로그형 여행 글을 쓴다.
+
+규칙:
+- 사진에 딸린 장소명/지역/카테고리는 사실이다. 없는 정보(가격·영업시간·평점)는 날조하지 마라.
+- 글은 "실시간 제주 스냅"·"지금 제주" 컨셉. 사진 한 장 한 장을 자연스럽게 소개하며 이어간다.
+- 제목: 검색 의도 키워드를 앞에. 예) "제주 [지역] 지금 이 모습 | 여행자들이 담은 실시간 스냅 N선", "요즘 제주 [지역/계절] 여행 사진 모음, 가볼 만한 곳 총정리".
+- intro 4~5문장: 계절·날씨·요즘 제주 분위기, 이 사진들이 담긴 지역 흐름, 여행 동선 힌트. 제주/지역 키워드 자연스럽게.
+- 각 사진 섹션 3~5문장: 그 장소(또는 지역)의 분위기, 사진에서 느껴지는 순간, 가볼 때 팁(시간대·동선 등). EXIF(카메라/촬영일)가 있으면 "직접 담은 생생한 컷"이라는 신뢰 요소로 가볍게 활용.
+- 전체 본문(intro + 섹션 합산) 1,500자 이상.
+- keywords: 제주+지역+계절+여행 롱테일 10~15개.
+- sections 수는 입력 사진 수와 같게. 각 섹션은 입력의 imageIndex를 그대로 반환.
+- 반드시 유효한 JSON만 반환.`;
+
+type FeedWebzineAI = {
+  title: string;
+  subtitle: string;
+  intro: string;
+  sections: { imageIndex: number; heading: string; body: string }[];
+  keywords: string[];
+  region?: string;
+};
+
+/** 최근 피드가 3개 이상이면 그 사진들로 웹진 초안 생성. 부족하면 null. */
+export async function generateFeedWebzineDraft(): Promise<Content | null> {
+  const feeds: FeedRich[] = await listRecentFeedsRich(8);
+  if (feeds.length < 3) return null; // 3개 미만이면 생성 안 함
+
+  const list = feeds
+    .map((f, i) => {
+      const parts = [
+        `[${i}]`,
+        f.placeName ? `장소:${f.placeName}` : "",
+        f.regionName ? `지역:${f.regionName}${f.regionCity ? `(${f.regionCity})` : ""}` : "",
+        f.category ? `분류:${f.category}` : "",
+        f.aiCopy ? `한줄:${f.aiCopy}` : "",
+        f.exif?.camera ? `카메라:${f.exif.camera}` : "",
+        f.exif?.date ? `촬영일:${f.exif.date}` : "",
+      ].filter(Boolean);
+      return parts.join(" / ");
+    })
+    .join("\n");
+
+  const prompt = `다음은 여행자들이 올린 제주 실시간 사진 ${feeds.length}장의 정보다. 이걸로 SEO 블로그형 웹진 글을 JSON으로 써라.
+전체 본문(intro + 각 섹션 body 합산)은 반드시 1,500자 이상.
+
+사진 목록:
+${list}
+
+반환 형식 (JSON):
+{
+  "title": "검색 키워드 앞에 오는 제목",
+  "subtitle": "한 줄 부제",
+  "intro": "4~5문장 도입",
+  "sections": [{ "imageIndex": 0, "heading": "소제목", "body": "3~5문장" }],
+  "keywords": ["제주 여행", "..."],
+  "region": "대표 지역명(가장 많이 등장한 지역, 없으면 제주)"
+}
+sections는 위 [0]..[${feeds.length - 1}] 사진 순서대로, imageIndex를 그대로 채워라.`;
+
+  const ai = await generateJSON<FeedWebzineAI>(FEED_SYS, prompt);
+
+  const sections: ContentSection[] = (ai.sections ?? [])
+    .filter((s) => typeof s.imageIndex === "number" && feeds[s.imageIndex])
+    .map((s) => ({
+      heading: s.heading || "제주의 한 순간",
+      body: s.body || "",
+      image: feeds[s.imageIndex].imageUrl, // 피드 사진 (Storage 절대 URL)
+    }));
+
+  // AI가 섹션을 빠뜨렸으면 남은 사진으로 폴백
+  const usedIdx = new Set((ai.sections ?? []).map((s) => s.imageIndex));
+  feeds.forEach((f, i) => {
+    if (!usedIdx.has(i)) sections.push({ heading: f.placeName || f.regionName || "제주", body: f.aiCopy || "", image: f.imageUrl });
+  });
+
+  const region = ai.region || feeds.find((f) => f.regionName)?.regionName || "제주";
+  const now = new Date().toISOString();
+
+  return {
+    id: crypto.randomUUID(),
+    type: "webzine",
+    status: "draft",
+    slug: `wz-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+    title: ai.title || `요즘 제주 ${region} 실시간 여행 스냅`,
+    subtitle: ai.subtitle || "여행자들이 지금 담은 제주",
+    intro: ai.intro || "",
+    sections,
+    keywords: [...(ai.keywords ?? []), "제주 여행", "제주 여행 사진", `제주 ${region}`, "요즘 제주", "제주 스냅", "제주 가볼만한곳"],
+    coverImage: feeds[0].imageUrl,
+    region,
+    sourceIds: [],
     createdAt: now,
   };
 }

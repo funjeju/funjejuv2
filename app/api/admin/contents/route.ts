@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { listContents, publishContent, deleteContent, createContent, getContentById } from "@/lib/contents";
-import { pickWebzineTopic, generateWebzineDraft } from "@/lib/webzine-ai";
+import { pickWebzineTopic, generateWebzineDraft, generateFeedWebzineDraft } from "@/lib/webzine-ai";
 import { generateBriefingDraft } from "@/lib/briefing-ai";
 import type { ContentStatus } from "@/types/content";
 
@@ -63,6 +63,14 @@ export async function POST(req: NextRequest) {
 
   if (type === "briefing") {
     const draft = await generateBriefingDraft();
+    await createContent(draft);
+    return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, title: draft.title });
+  }
+
+  // 피드 사진 기반 웹진 (피드 3개 이상일 때)
+  if (type === "webzine-feed") {
+    const draft = await generateFeedWebzineDraft();
+    if (!draft) return NextResponse.json({ error: "라이브피드가 3개 미만이라 생성할 수 없어요." }, { status: 200 });
     await createContent(draft);
     return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, title: draft.title });
   }

@@ -59,3 +59,41 @@ export async function listFeedPhotos(max = 12): Promise<FeedPhoto[]> {
     return [];
   }
 }
+
+export type FeedRich = {
+  imageUrl: string;
+  placeName?: string;
+  regionName?: string;
+  regionCity?: string;
+  category?: string;
+  aiCopy?: string;
+  exif?: { camera?: string; lens?: string; focalLength?: string; fStop?: string; iso?: number; date?: string };
+  gps?: { lat: number; lng: number };
+};
+
+/** 웹진(피드 기반)용 — 최신 피드의 사진+EXIF+장소 상세를 읽는다. */
+export async function listRecentFeedsRich(max = 8): Promise<FeedRich[]> {
+  try {
+    const snap = await getAdminDb().collection("feeds").orderBy("createdAt", "desc").limit(40).get();
+    const rows: FeedRich[] = [];
+    for (const d of snap.docs) {
+      const v = d.data() as Record<string, unknown>;
+      const imageUrl = (v.images as string[] | undefined)?.[0] ?? (v.imageUrl as string | undefined);
+      if (!imageUrl) continue;
+      rows.push({
+        imageUrl,
+        placeName: v.placeName as string | undefined,
+        regionName: v.regionName as string | undefined,
+        regionCity: v.regionCity as string | undefined,
+        category: v.category as string | undefined,
+        aiCopy: v.aiCopy as string | undefined,
+        exif: v.exif as FeedRich["exif"],
+        gps: v.gps as FeedRich["gps"],
+      });
+    }
+    return rows.slice(0, max);
+  } catch (err) {
+    console.error("[feed-server] listRecentFeedsRich failed:", err);
+    return [];
+  }
+}
