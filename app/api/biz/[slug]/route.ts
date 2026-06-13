@@ -7,7 +7,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { getSite, deleteSite, setPublished } from "@/lib/biz/store";
+import { getSite, deleteSite, setPublished, updateSite } from "@/lib/biz/store";
+import type { SiteSchema } from "@/lib/biz/types";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
     coordinates: m.coordinates,
     placeUrl: a.site.externalLinks?.kakaoPlace,
     ctaButtons: a.site.ctaButtons ?? [],
+    // 편집 에디터용 전체 사이트
+    site: a.site,
   });
 }
 
@@ -55,11 +58,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
   const { slug } = await params;
   const a = await authorize(req, slug);
   if ("error" in a) return NextResponse.json({ error: a.error }, { status: a.status });
-  const { published } = (await req.json().catch(() => ({}))) as { published?: boolean };
-  if (typeof published !== "boolean") {
-    return NextResponse.json({ error: "published(boolean) 필요" }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as {
+    published?: boolean;
+    patch?: Partial<SiteSchema>;
+  };
+
+  // 발행 토글
+  if (typeof body.published === "boolean") {
+    await setPublished(a.site.slug, body.published);
+    revalidatePath(`/biz/${a.site.slug}`);
+    return NextResponse.json({ ok: true, published: body.published });
   }
-  await setPublished(a.site.slug, published);
-  revalidatePath(`/biz/${a.site.slug}`);
-  return NextResponse.json({ ok: true, published });
+
+  // 편집 저장 — 허용 필드만 병합
+  if (body.patch && typeof body.patch === "object") {
+    const allowed: Partial<SiteSchema> = {};
+    if (body.patch.designTokens) allowed.designTokens = body.patch.designTokens;
+    if (body.patch.contentAssets) allowed.contentAssets = body.patch.contentAssets;
+    if (body.patch.layout) allowed.layout = body.patch.layout;
+    if (body.patch.merchantInfo) allowed.merchantInfo = body.patch.merchantInfo;
+    if (body.patch.menuData) allowed.menuData = body.patch.menuData;
+    await updateSite(a.site.slug, allowed);
+    revalidatePath(`/biz/${a.site.slug}`);
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: "published 또는 patch 필요" }, { status: 400 });
 }

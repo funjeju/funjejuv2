@@ -95,10 +95,10 @@ export function MyBizSites() {
             {/* 관리 버튼 */}
             <div className="mt-2 flex items-center gap-1.5 border-t border-border-soft pt-2">
               <Link
-                href={`/biz/create?edit=${encodeURIComponent(s.slug)}`}
+                href={`/biz/${encodeURIComponent(s.slug)}/edit`}
                 className="rounded-full border border-border-soft bg-white px-2.5 py-1 text-[10px] font-bold text-text-secondary hover:bg-bg-secondary"
               >
-                ✏️ 수정
+                ✏️ 편집
               </Link>
               <button
                 type="button"
