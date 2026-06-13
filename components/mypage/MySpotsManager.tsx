@@ -115,13 +115,15 @@ export function MySpotsManager() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearch(); } }}
             placeholder="이름·주소 검색 (카카오맵)"
-            className="min-w-0 flex-1 rounded-xl border border-border-soft bg-bg-secondary px-2.5 py-2 text-[11px] outline-none focus:border-brand-orange"
+            style={{ fontSize: "10px" }}
+            className="min-w-0 flex-1 rounded-xl border border-border-soft bg-bg-secondary px-2.5 py-2 outline-none focus:border-brand-orange"
           />
           <button
             type="button"
             onClick={handleSearch}
             disabled={!query.trim() || searching}
-            className="shrink-0 rounded-xl bg-brand-navy px-2.5 py-2 text-[11px] font-bold text-white hover:bg-brand-navy/90 disabled:opacity-40 transition-colors"
+            style={{ fontSize: "10px" }}
+            className="shrink-0 rounded-xl bg-brand-navy px-2.5 py-2 font-bold text-white hover:bg-brand-navy/90 disabled:opacity-40 transition-colors"
           >
             {searching ? "검색…" : "🔍 검색"}
           </button>
@@ -194,7 +196,7 @@ export function MySpotsManager() {
                   key={c}
                   type="button"
                   onClick={() => setFilter(c)}
-                  style={{ fontSize: "11px" }}
+                  style={{ fontSize: "12px" }}
                   className={[
                     "rounded-full px-2 py-0.5 font-bold transition-colors",
                     filter === c ? "bg-brand-navy text-white" : "bg-bg-secondary text-text-secondary hover:text-text-primary",
