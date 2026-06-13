@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
-import { uploadFeedImage, createFeed } from "@/lib/feed";
+import { uploadFeedImage, createFeed, resizeImageForUpload } from "@/lib/feed";
 import type { ExifData, FeedFilter } from "@/types/feed";
 import { findNearestRegion, type JejuRegion } from "@/constants/jeju-regions";
 
@@ -20,6 +20,11 @@ type Props = { open: boolean; onClose: () => void; onPosted?: () => void };
 export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const { user, signInWithGoogle } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const extraInputRef = useRef<HTMLInputElement>(null);
+
+  // 추가 사진(대표 1장 외, 최대 4장 더 = 총 5장). 각 장도 EXIF 검증.
+  const [extras, setExtras] = useState<{ file: File; url: string }[]>([]);
+  const [extraErr, setExtraErr] = useState("");
 
   const [file,        setFile]        = useState<File | null>(null);
   const [previewUrl,  setPreviewUrl]  = useState<string | null>(null);
@@ -53,9 +58,31 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
       setHomepageSlug("");
+      setExtras([]); setExtraErr("");
       setStatus("idle"); setError("");
     }
   }, [open]);
+
+  // 추가 사진 선택 — 각 장 EXIF(GPS·카메라) 검증 후 추가 (총 5장 제한)
+  async function handleExtraSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (picked.length === 0) return;
+    setExtraErr("");
+    const exifr = (await import("exifr")).default;
+    const room = 4 - extras.length; // 대표 1 + 추가 최대 4
+    const added: { file: File; url: string }[] = [];
+    for (const f of picked.slice(0, Math.max(0, room))) {
+      const data = await exifr.parse(f, { pick: ["Make", "Model", "FNumber", "ISO", "latitude", "longitude", "GPSLatitude", "GPSLongitude"] }).catch(() => null);
+      const hasGps = typeof (data?.latitude ?? data?.GPSLatitude) === "number";
+      const hasCam = !!(data?.Make || data?.Model || data?.FNumber || data?.ISO);
+      if (hasGps && hasCam) added.push({ file: f, url: URL.createObjectURL(f) });
+    }
+    if (added.length < picked.length) {
+      setExtraErr("EXIF(GPS·카메라) 없는 사진은 제외했어요");
+    }
+    setExtras((prev) => [...prev, ...added].slice(0, 4));
+  }
 
   // 등록된 비즈 홈페이지 목록 (있으면 피드에 연결 선택지 노출)
   useEffect(() => {
@@ -199,12 +226,20 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setStatus("uploading");
     setError("");
     try {
-      const imageUrl = await uploadFeedImage(user.uid, file);
+      // 대표 + 추가 사진 모두 리사이즈(≤1MB) 후 업로드
+      const primaryUrl = await uploadFeedImage(user.uid, await resizeImageForUpload(file));
+      const extraUrls: string[] = [];
+      for (const ex of extras) {
+        extraUrls.push(await uploadFeedImage(user.uid, await resizeImageForUpload(ex.file)));
+      }
+      const images = [primaryUrl, ...extraUrls];
       await createFeed({
         authorId: user.uid,
         authorName: user.displayName ?? user.email?.split("@")[0] ?? "여행자",
         authorPhoto: user.photoURL ?? null,
-        imageUrl, exif, aiCopy: finalCopy, filter, category,
+        imageUrl: primaryUrl,
+        ...(images.length > 1 ? { images } : {}),
+        exif, aiCopy: finalCopy, filter, category,
         ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
         ...(gps && { gps }),
         ...(placeName.trim() && { placeName: placeName.trim() }),
@@ -553,6 +588,46 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
                 </div>
               </div>
 
+              {/* ── 사진 더 추가 (최대 5장) ── */}
+              <div>
+                <p className="mb-2 text-xs font-bold text-text-secondary">
+                  🖼️ 사진 추가 <span className="font-normal">({1 + extras.length}/5)</span>
+                  <span className="ml-1 font-normal text-text-secondary">· EXIF 있는 원본만</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {/* 대표 사진 썸네일 */}
+                  {previewUrl && (
+                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-brand-orange">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={previewUrl} alt="대표" className="h-full w-full object-cover" />
+                      <span className="absolute bottom-0 inset-x-0 bg-brand-orange/90 text-center text-[8px] font-bold text-white">대표</span>
+                    </div>
+                  )}
+                  {extras.map((ex, i) => (
+                    <div key={ex.url} className="relative h-16 w-16 overflow-hidden rounded-lg border border-border-soft">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ex.url} alt={`사진${i + 2}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setExtras((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[9px] text-white"
+                      >✕</button>
+                    </div>
+                  ))}
+                  {extras.length < 4 && (
+                    <button
+                      type="button"
+                      onClick={() => extraInputRef.current?.click()}
+                      className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border-soft text-text-secondary hover:border-brand-orange"
+                    >
+                      <span className="text-lg leading-none">＋</span>
+                      <span className="text-[9px]">추가</span>
+                    </button>
+                  )}
+                </div>
+                {extraErr && <p className="mt-1 text-[10px] text-live-red">{extraErr}</p>}
+              </div>
+
               {/* ── 연결할 홈페이지 (등록된 비즈 홈페이지가 있을 때만) ── */}
               {bizSites.length > 0 && (
                 <div>
@@ -604,6 +679,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         )}
 
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+        <input ref={extraInputRef} type="file" accept="image/*" multiple onChange={handleExtraSelect} className="hidden" />
       </div>
     </div>
   );

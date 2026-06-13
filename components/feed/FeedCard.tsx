@@ -90,6 +90,8 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
     }
   }
 
+  const images = feed.images?.length ? feed.images : [feed.imageUrl];
+
   const uploadDate = feed.createdAt?.toDate?.() ?? new Date();
   // 촬영일 우선, 없으면 업로드 날짜
   const shootDate = feed.exif.date ? (parseExifDate(feed.exif.date) ?? uploadDate) : uploadDate;
@@ -102,20 +104,41 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
 
   return (
     <article className="overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
-      {/* 이미지 + 오버레이 — 탭하면 전체화면 */}
-      <div
-        className="relative aspect-[4/5] cursor-zoom-in bg-gray-900 overflow-hidden"
-        onClick={() => setZoomed(true)}
-      >
-        <Image
-          src={feed.imageUrl}
-          alt={feed.aiCopy}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover"
-          style={{ filter: filterStyle }}
-          unoptimized
-        />
+      {/* 이미지 + 오버레이 — 탭하면 전체화면. 여러 장이면 가로 스와이프 */}
+      <div className="relative aspect-[4/5] bg-gray-900 overflow-hidden">
+        {images.length > 1 ? (
+          <div className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto">
+            {images.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={src}
+                alt={`${feed.aiCopy} ${i + 1}`}
+                onClick={() => setZoomed(true)}
+                className="h-full w-full shrink-0 cursor-zoom-in snap-center object-cover"
+                style={{ filter: filterStyle }}
+                loading="lazy"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="h-full w-full cursor-zoom-in" onClick={() => setZoomed(true)}>
+            <Image
+              src={feed.imageUrl}
+              alt={feed.aiCopy}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover"
+              style={{ filter: filterStyle }}
+              unoptimized
+            />
+          </div>
+        )}
+        {images.length > 1 && (
+          <span className="pointer-events-none absolute left-1/2 top-1.5 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur md:top-3">
+            📷 1+{images.length - 1}
+          </span>
+        )}
 
         {/* 상단 그라데이션 (가독성) */}
         <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
@@ -269,14 +292,23 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
           >
             ✕
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={feed.imageUrl}
-            alt={feed.aiCopy}
-            className="max-h-full max-w-full object-contain"
-            style={{ filter: filterStyle }}
-            onClick={(e) => e.stopPropagation()}
-          />
+          {images.length > 1 ? (
+            <div className="no-scrollbar flex h-full w-full snap-x snap-mandatory items-center overflow-x-auto" onClick={(e) => e.stopPropagation()}>
+              {images.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={src} alt={`${feed.aiCopy} ${i + 1}`} className="h-full w-full shrink-0 snap-center object-contain" style={{ filter: filterStyle }} />
+              ))}
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={feed.imageUrl}
+              alt={feed.aiCopy}
+              className="max-h-full max-w-full object-contain"
+              style={{ filter: filterStyle }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
           {feed.aiCopy && (
             <p className="absolute inset-x-0 bottom-6 px-6 text-center text-sm font-bold text-white drop-shadow-lg">
               {feed.aiCopy}

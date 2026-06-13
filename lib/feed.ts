@@ -29,13 +29,55 @@ function getFirebaseStorage() {
   return getStorage(app);
 }
 
-/** 이미지 업로드 → Storage URL 반환 */
-export async function uploadFeedImage(uid: string, file: File): Promise<string> {
+/**
+ * 업로드용 리사이즈 — 비율 유지(왜곡 없음) + 다단계로 1MB 이하 맞춤.
+ * ① 긴 변 1920px로 비율 유지 축소 → ② 품질 0.9→0.5 단계 하향 → ③ 그래도 크면 치수 추가 축소.
+ * 이미 1MB 이하 원본은 재압축 없이 그대로 반환.
+ */
+export async function resizeImageForUpload(file: File): Promise<Blob> {
+  const TARGET = 1024 * 1024; // 1MB
+  const MAX_EDGE = 1920;
+  if (file.size <= TARGET) return file; // 작은 원본은 그대로 (화질 보존)
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new window.Image();
+    const u = URL.createObjectURL(file);
+    el.onload = () => { URL.revokeObjectURL(u); resolve(el); };
+    el.onerror = () => { URL.revokeObjectURL(u); reject(new Error("image load")); };
+    el.src = u;
+  });
+
+  let w = img.naturalWidth, h = img.naturalHeight;
+  const scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+  w = Math.round(w * scale); h = Math.round(h * scale);
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+
+  const draw = (cw: number, ch: number) => { canvas.width = cw; canvas.height = ch; ctx.drawImage(img, 0, 0, cw, ch); };
+  const toBlob = (q: number) => new Promise<Blob>((res) => canvas.toBlob((b) => res(b ?? file), "image/jpeg", q));
+
+  draw(w, h);
+  let q = 0.9;
+  let blob = await toBlob(q);
+  while (blob.size > TARGET && q > 0.5) { q -= 0.1; blob = await toBlob(q); }
+  // 그래도 크면 치수를 단계적으로 더 줄임 (비율 유지)
+  while (blob.size > TARGET && w > 800) {
+    w = Math.round(w * 0.85); h = Math.round(h * 0.85);
+    draw(w, h);
+    blob = await toBlob(0.8);
+  }
+  return blob;
+}
+
+/** 이미지 업로드 → Storage URL 반환 (Blob/File 모두 허용, 업로드 전 리사이즈됨) */
+export async function uploadFeedImage(uid: string, fileOrBlob: File | Blob): Promise<string> {
   const storage = getFirebaseStorage();
-  const ext = file.name.split(".").pop() ?? "jpg";
+  const ext = fileOrBlob instanceof File ? (fileOrBlob.name.split(".").pop() ?? "jpg") : "jpg";
   const path = `feeds/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
   const fileRef = ref(storage, path);
-  await uploadBytes(fileRef, file, { contentType: file.type });
+  await uploadBytes(fileRef, fileOrBlob, { contentType: fileOrBlob.type || "image/jpeg" });
   return await getDownloadURL(fileRef);
 }
 
@@ -45,6 +87,7 @@ export async function createFeed(input: {
   authorName: string;
   authorPhoto: string | null;
   imageUrl: string;
+  images?: string[];
   exif: ExifData;
   aiCopy: string;
   filter: FeedFilter;

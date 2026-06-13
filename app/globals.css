@@ -63,3 +63,12 @@ textarea,
 select {
   font: inherit;
 }
+
+/* 가로 스와이프 캐러셀 스크롤바 숨김 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

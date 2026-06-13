@@ -17,7 +17,8 @@ export type Feed = {
   authorId: string;
   authorName: string;
   authorPhoto: string | null;
-  imageUrl: string;
+  imageUrl: string;        // 대표 이미지 (= images[0], 하위호환)
+  images?: string[];       // 여러 장 (최대 5). 단일 피드는 [imageUrl] 또는 미설정
   exif: ExifData;
   aiCopy: string;             // 10~20자
   filter: FeedFilter;
