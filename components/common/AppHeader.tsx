@@ -24,12 +24,6 @@ export function AppHeader() {
         >
           <span className="text-xl">🔍</span>
         </button>
-        <Link href="/chat" className="relative p-1 text-text-secondary hover:text-text-primary">
-          <span className="text-xl">🔔</span>
-          <span className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-live-red text-[9px] font-bold text-white">
-            3
-          </span>
-        </Link>
         <AuthButton />
       </div>
     </header>
