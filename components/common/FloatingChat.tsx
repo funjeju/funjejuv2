@@ -21,12 +21,9 @@ export function FloatingChat() {
     <Link
       href="/chat"
       aria-label="도슨트 챗봇 열기"
-      className="fixed bottom-20 right-4 z-40 flex items-center gap-1.5 rounded-full bg-brand-orange py-2 pl-2 pr-3 text-white shadow-lg ring-2 ring-white/60 active:scale-95 transition-transform md:hidden"
+      className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange shadow-lg ring-2 ring-white/70 active:scale-95 transition-transform md:hidden"
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-        <DolmangyiIcon size={24} />
-      </span>
-      <span className="text-xs font-black">도슨트 챗봇</span>
+      <DolmangyiIcon size={40} />
     </Link>
   );
 }

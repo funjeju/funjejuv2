@@ -237,7 +237,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-3.5rem)] max-w-2xl flex-col md:h-[calc(100dvh-1rem)] md:py-6">
+    <div className="mx-auto flex h-[calc(100dvh-3.5rem-4rem)] max-w-2xl flex-col md:h-[calc(100dvh-1rem)] md:py-6">
 
       {/* 헤더 */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border-soft bg-bg-card px-4 py-4 md:rounded-t-2xl">
@@ -334,13 +334,13 @@ export default function ChatPage() {
 
         {/* 초기 제안 칩 */}
         {messages.length === 1 && !loading && (
-          <div className="grid grid-cols-2 gap-2 pl-10">
+          <div className="grid grid-cols-2 gap-1.5 pl-10">
             {SUGGESTIONS.map((s) => (
               <button
                 key={s.label}
                 type="button"
                 onClick={() => sendMessage(s.label)}
-                className="rounded-xl border border-border-soft bg-bg-card px-3 py-2.5 text-left text-xs font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
+                className="rounded-xl border border-border-soft bg-bg-card px-2.5 py-1.5 text-left text-[10px] font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
               >
                 <span className="mr-1">{s.emoji}</span>{s.label}
               </button>
