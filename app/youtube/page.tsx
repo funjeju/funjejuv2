@@ -178,23 +178,23 @@ export default function JejutubePage() {
               <p className="text-[10px] text-white/80">돌맹이가 영상 속 스팟을 뽑아줄게. 다른 여행자들과 함께 공유돼요.</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="유튜브 영상 주소 붙여넣기"
               disabled={analyzing}
-              className="flex-1 rounded-xl border-0 bg-white/15 px-3 py-2.5 text-xs text-white placeholder:text-white/50 outline-none focus:bg-white/25"
+              className="min-w-0 flex-1 rounded-xl border-0 bg-white/15 px-3 py-2.5 text-xs text-white placeholder:text-white/50 outline-none focus:bg-white/25"
             />
             <button
               type="button"
               onClick={handleAnalyze}
               disabled={!url.trim() || analyzing}
-              className="shrink-0 rounded-xl bg-brand-yellow px-4 py-2.5 text-xs font-black text-brand-navy hover:bg-brand-yellow/90 disabled:opacity-40 transition-colors"
+              className="shrink-0 whitespace-nowrap rounded-xl bg-brand-yellow px-3 py-2.5 text-xs font-black text-brand-navy hover:bg-brand-yellow/90 disabled:opacity-40 transition-colors"
             >
-              {analyzing ? "🗿 분석 중..." : "✨ 스팟 추출"}
+              {analyzing ? "분석중" : "추출"}
             </button>
           </div>
           {analyzing && (

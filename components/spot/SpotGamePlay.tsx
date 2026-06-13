@@ -178,9 +178,9 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           <p className="text-2xl">🎉</p>
           <p className="mt-1 text-sm font-black text-text-primary">{fmtTime(elapsed)} 만에 모두 찾았어요!</p>
           {!submitted ? (
-            <div className="mt-3 flex justify-center gap-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={12} placeholder="닉네임" className="rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-sm" />
-              <button onClick={submit} className="rounded-full bg-brand-orange px-4 py-2 text-sm font-bold text-white">랭킹 등록</button>
+            <div className="mx-auto mt-3 flex max-w-sm items-center gap-2">
+              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={12} placeholder="닉네임" className="min-w-0 flex-1 rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-sm" />
+              <button onClick={submit} className="shrink-0 whitespace-nowrap rounded-full bg-brand-orange px-4 py-2 text-sm font-bold text-white">랭킹 등록</button>
             </div>
           ) : <p className="mt-2 text-xs text-jeju-green">✅ 기록 등록 완료!</p>}
         </div>
