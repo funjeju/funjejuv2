@@ -81,7 +81,7 @@ export default function SavedPage() {
             type="button"
             onClick={() => setActiveCat(cat)}
             className={[
-              "shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
+              "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors",
               activeCat === cat
                 ? "bg-brand-orange text-white"
                 : "border border-border-soft bg-bg-card text-text-secondary hover:bg-bg-secondary",
@@ -152,7 +152,7 @@ export default function SavedPage() {
                       href={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-semibold text-white hover:bg-brand-navy/90 transition-colors"
+                      className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-semibold !text-white hover:bg-brand-navy/90 transition-colors"
                     >
                       지도 보기
                     </a>

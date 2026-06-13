@@ -7,7 +7,7 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useMySpot } from "@/hooks/useMySpot";
-import { getAuthor } from "@/lib/feed";
+import { getAuthor, countMyFeeds } from "@/lib/feed";
 import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { getEntitlements } from "@/lib/entitlements";
 import { mockCctvs } from "@/constants/mock-cctvs";
@@ -35,6 +35,7 @@ export default function MyPage() {
   const [author, setAuthor] = useState<FeedAuthor | null>(null);
   const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
   const [tripPlans, setTripPlans] = useState<SavedTripPlan[]>([]);
+  const [feedCount, setFeedCount] = useState<number | null>(null);
 
   const isAdmin = user?.email === ADMIN_EMAIL;
   // 멤버십 — 정식 모드 전이라 users.plan은 아직 미사용(베타는 로그인 여부만 봄)
@@ -44,6 +45,7 @@ export default function MyPage() {
     if (!user) return;
     getAuthor(user.uid).then(setAuthor);
     listTripPlans(user.uid).then(setTripPlans).catch(() => setTripPlans([]));
+    countMyFeeds(user.uid).then(setFeedCount).catch(() => setFeedCount(0));
   }, [user]);
 
   const handleDeleteTripPlan = async (planId: string) => {
@@ -53,9 +55,9 @@ export default function MyPage() {
   };
 
   const stats = [
-    { label: "마이스팟", value: String(mySpotIds.size), emoji: "📍" },
-    { label: "작성한 피드", value: "—",  emoji: "📸" },
-    { label: "완성한 일정", value: String(tripPlans.length), emoji: "🗓️" },
+    { label: "마이스팟", value: String(mySpotIds.size), emoji: "📍", href: "/saved" },
+    { label: "작성한 피드", value: feedCount === null ? "…" : String(feedCount), emoji: "📸", href: "/feed" },
+    { label: "완성한 일정", value: String(tripPlans.length), emoji: "🗓️", href: "/trip-ai" },
   ];
 
   if (!loading && !user) {
@@ -126,11 +128,11 @@ export default function MyPage() {
         {/* Stats */}
         <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 rounded-xl bg-white/10">
           {stats.map((s) => (
-            <div key={s.label} className="flex flex-col items-center py-3">
+            <Link key={s.label} href={s.href} className="flex flex-col items-center py-3 transition-colors hover:bg-white/10 active:bg-white/15">
               <span className="text-xl">{s.emoji}</span>
               <span className="text-lg font-black">{s.value}</span>
-              <span className="text-[10px] text-white/70">{s.label}</span>
-            </div>
+              <span className="text-[10px] text-white/70">{s.label} ›</span>
+            </Link>
           ))}
         </div>
       </div>

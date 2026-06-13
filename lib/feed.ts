@@ -95,6 +95,14 @@ export function subscribeFeeds(
   );
 }
 
+/** 내가 작성한 피드 개수 (마이페이지 통계용) */
+export async function countMyFeeds(uid: string): Promise<number> {
+  const db = getFirebaseDb();
+  const q = query(collection(db, "feeds"), orderBy("createdAt", "desc"), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.filter((d) => (d.data() as { authorId?: string }).authorId === uid).length;
+}
+
 /** 일회성 조회 (홈 페이지용) */
 export async function fetchFeeds(max = 12): Promise<Feed[]> {
   const db = getFirebaseDb();

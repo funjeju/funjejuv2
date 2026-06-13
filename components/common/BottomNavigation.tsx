@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const items = [
   { href: "/", label: "홈", emoji: "🏠" },
   { href: "/cctv", label: "CCTV", emoji: "📷" },
-  null, // center + button placeholder
-  { href: "/saved", label: "저장", emoji: "⭐" },
+  null, // center 피드 버튼
+  { href: "/youtube", label: "제주tube", emoji: "▶️" },
   { href: "/mypage", label: "마이", emoji: "👤" },
 ];
 

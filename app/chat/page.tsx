@@ -243,33 +243,17 @@ export default function ChatPage() {
       <div className="flex shrink-0 items-center gap-3 border-b border-border-soft bg-bg-card px-4 py-4 md:rounded-t-2xl">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={36} /></div>
         <div className="flex-1">
-          <p className="text-sm font-bold text-text-primary">AI 도슨트 돌맹이</p>
-          <p className="flex items-center gap-1.5 text-[11px]">
+          <p className="flex items-center gap-1.5 text-sm font-bold text-text-primary">
+            AI 도슨트 돌맹이
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
-            <span className="text-jeju-green">온라인</span>
-            {/* GPS 상태 표시 */}
-            {gpsState === "ok" && gps && (
-              <span className="ml-1 rounded-full bg-jeju-green/10 px-2 py-0.5 text-[10px] font-bold text-jeju-green">
-                📍 {gps.lat.toFixed(4)}, {gps.lng.toFixed(4)}
-              </span>
-            )}
-            {gpsState === "asking" && (
-              <span className="ml-1 text-[10px] text-text-secondary">위치 확인 중...</span>
-            )}
-            {gpsState === "denied" && (
-              <span className="ml-1 rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-700">
-                위치 없음
-              </span>
-            )}
+          </p>
+          <p className="text-[11px] text-text-secondary">
+            {gpsState === "ok" && "📍 내 주변 맞춤 추천 중"}
+            {gpsState === "asking" && "위치 확인 중…"}
+            {gpsState === "denied" && "지역명을 알려주면 더 정확해요"}
+            {gpsState === "idle" && "제주 여행 도우미"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setMessages(INITIAL)}
-          className="rounded-full border border-border-soft bg-bg-secondary px-3 py-1.5 text-[11px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors"
-        >
-          새 대화
-        </button>
       </div>
 
       {/* GPS 허용 유도 배너 (denied 상태) */}
