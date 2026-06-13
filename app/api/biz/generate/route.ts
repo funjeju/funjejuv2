@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { generateSiteFromInput } from "@/lib/biz/pipeline";
 import { saveSite, listSitesByOwner } from "@/lib/biz/store";
@@ -77,6 +78,9 @@ export async function POST(req: NextRequest) {
     });
 
     await saveSite(site);
+    // 생성 직후 첫 요청이 빈 결과로 캐시되는 ISR 타이밍 404 방지
+    revalidatePath(`/biz/${site.slug}`);
+    revalidatePath("/biz/[slug]", "page");
     return NextResponse.json({ site });
   } catch (err) {
     console.error("[biz/generate] generation failed:", err);

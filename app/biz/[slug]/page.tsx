@@ -8,7 +8,7 @@ import type { SiteSchema } from "@/lib/biz/types";
 
 const SITE_URL = "https://funjeju.com";
 export const runtime = "nodejs";
-export const revalidate = 3600; // ISR
+export const revalidate = 60; // ISR — 생성 직후 stale 404가 빨리 풀리도록 짧게
 export const dynamicParams = true;
 
 function toPlain<T>(data: unknown): T {
