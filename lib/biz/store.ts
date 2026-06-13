@@ -59,3 +59,15 @@ export async function setPublished(slug: string, published: boolean): Promise<vo
     updatedAt: new Date().toISOString(),
   });
 }
+
+export async function deleteSite(slug: string): Promise<void> {
+  await getAdminDb().collection(COLLECTION).doc(slug).delete();
+}
+
+/** 부분 수정 — merchantInfo·ctaButtons 등 허용 필드만 병합 */
+export async function updateSite(slug: string, patch: Partial<SiteSchema>): Promise<void> {
+  await getAdminDb().collection(COLLECTION).doc(slug).set(
+    { ...patch, updatedAt: new Date().toISOString() },
+    { merge: true }
+  );
+}

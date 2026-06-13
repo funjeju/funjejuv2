@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import { MyBizSites } from "@/components/mypage/MyBizSites";
@@ -44,6 +44,35 @@ export default function BizCreatePage() {
   const [ctaButtons, setCtaButtons] = useState<CtaButton[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [editSlug, setEditSlug] = useState<string | null>(null);
+
+  // ?edit=slug 면 기존 홈페이지 정보를 불러와 프리필(편집 모드)
+  useEffect(() => {
+    if (!user) return;
+    const slug = new URLSearchParams(window.location.search).get("edit");
+    if (!slug) return;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/biz/${encodeURIComponent(slug)}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const d = await res.json();
+        setForm({
+          businessName: d.businessName ?? "",
+          category: d.category ?? "",
+          description: d.description ?? "",
+          address: d.address ?? "",
+          phone: d.phone ?? "",
+          vibes: [],
+          placeUrl: d.placeUrl ?? "",
+          coordinates: d.coordinates,
+        });
+        setCtaButtons(Array.isArray(d.ctaButtons) ? d.ctaButtons : []);
+        setEditSlug(slug);
+        setStep(2);
+      } catch { /* ignore */ }
+    })();
+  }, [user]);
 
   // 카카오 매장 검색
   const [searching, setSearching] = useState(false);
@@ -137,6 +166,7 @@ export default function BizCreatePage() {
           placeUrl: form.placeUrl || undefined,
           coordinates: form.coordinates,
           ctaButtons: ctaButtons.filter((b) => b.value.trim()).slice(0, 3),
+          ...(editSlug ? { editSlug } : {}),
         }),
       });
       const data = await res.json();
@@ -170,10 +200,14 @@ export default function BizCreatePage() {
 
   return (
     <div className="mx-auto max-w-screen-sm px-4 py-6">
-      <PageHeader title="홈페이지 만들기" subtitle="AI가 자동으로 비즈니스 홈페이지를 생성해드려요" emoji="🏠" />
+      <PageHeader
+        title={editSlug ? "홈페이지 수정" : "홈페이지 만들기"}
+        subtitle={editSlug ? "정보를 고치고 저장하면 기존 홈페이지가 갱신돼요" : "AI가 자동으로 비즈니스 홈페이지를 생성해드려요"}
+        emoji="🏠"
+      />
 
-      {/* 내가 만든 홈페이지 목록 (생성 화면에서 바로 확인·이동) */}
-      <MyBizSites />
+      {/* 내가 만든 홈페이지 목록 (생성 모드에서만) */}
+      {!editSlug && <MyBizSites />}
 
       {/* 진행 단계 */}
       <div className="mb-6 flex items-center gap-2 px-1">
@@ -372,9 +406,9 @@ export default function BizCreatePage() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    AI 생성 중...
+                    {editSlug ? "수정 저장 중..." : "AI 생성 중..."}
                   </span>
-                ) : "🏠 홈페이지 생성하기"}
+                ) : editSlug ? "💾 수정 내용 저장" : "🏠 홈페이지 생성하기"}
               </button>
             </div>
           </>

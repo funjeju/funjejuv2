@@ -38,6 +38,8 @@ interface AIGenerationInput {
   ctaButtons?: CtaButton[];
   /** 도민맛집(domin_food.json) ID — 주어지면 자동 prefill */
   restaurantId?: string;
+  /** 편집 모드 — 주어지면 새 ID 생성 대신 이 슬러그를 덮어쓴다 */
+  editSlug?: string;
 }
 
 /** 입력 정보로 기본 CTA 버튼을 구성한다 (최대 3개: 전화·네이버·길찾기). */
@@ -178,7 +180,7 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
 
   if (searchedReviews.length > 0) ai.reviews = searchedReviews;
 
-  const siteId = generateSiteId(input.businessName);
+  const siteId = input.editSlug || generateSiteId(input.businessName);
   const template = TEMPLATES.find((t) => t.siteType === ai.siteType) ?? TEMPLATES[0];
 
   const blocks: SiteBlock[] = (ai.layout ?? template.blocks.map((c) => ({ componentType: c }))).map(

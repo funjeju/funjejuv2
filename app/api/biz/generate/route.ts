@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { generateSiteFromInput } from "@/lib/biz/pipeline";
-import { saveSite, listSitesByOwner } from "@/lib/biz/store";
+import { saveSite, listSitesByOwner, getSite } from "@/lib/biz/store";
 import type { CtaButton } from "@/lib/biz/types";
 
 export const runtime = "nodejs";
@@ -36,9 +36,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "상호명을 입력해주세요." }, { status: 400 });
   }
 
-  // 사이트 개수 제한 (비즈 회원당 5개) — 남용 방지. 어드민은 무제한.
   const isAdmin = auth.email === "naggu1999@gmail.com";
-  if (!isAdmin) {
+
+  // 편집 모드 — 기존 슬러그 소유권 확인
+  const editSlug = typeof body.editSlug === "string" && body.editSlug ? body.editSlug : undefined;
+  if (editSlug) {
+    const existing = await getSite(editSlug);
+    if (!existing) return NextResponse.json({ error: "수정할 홈페이지를 찾을 수 없습니다." }, { status: 404 });
+    if (existing.ownerId !== auth.uid && !isAdmin) {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
+  }
+
+  // 사이트 개수 제한 (비즈 회원당 5개) — 남용 방지. 어드민·편집은 무제한.
+  if (!isAdmin && !editSlug) {
     try {
       const existing = await listSitesByOwner(auth.uid);
       if (existing.length >= 5) {
@@ -62,6 +73,7 @@ export async function POST(req: NextRequest) {
       phone: typeof body.phone === "string" ? body.phone : undefined,
       businessHours: typeof body.businessHours === "string" ? body.businessHours : undefined,
       restaurantId: typeof body.restaurantId === "string" ? body.restaurantId : undefined,
+      editSlug,
       placeUrl: typeof body.placeUrl === "string" ? body.placeUrl : undefined,
       coordinates:
         body.coordinates &&
