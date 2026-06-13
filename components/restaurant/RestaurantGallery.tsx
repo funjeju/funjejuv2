@@ -8,7 +8,7 @@ import { FoodMap } from "@/components/restaurant/FoodMap";
 import { useMySpot } from "@/hooks/useMySpot";
 import { ShareButton } from "@/components/common/ShareButton";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjejuv2.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjeju.com";
 
 type Props = {
   restaurants: RestaurantSummary[];
