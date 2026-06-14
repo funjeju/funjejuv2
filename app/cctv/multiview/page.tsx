@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo, type DragEvent } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
+import { ShareButton } from "@/components/common/ShareButton";
 import { useCctvs } from "@/hooks/useCctvs";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
@@ -551,9 +552,17 @@ export default function MultiviewPage() {
         subtitle="여러 CCTV를 동시에 시청하세요"
         emoji="📺"
         right={
-          <Link href="/cctv" className="text-xs font-medium text-brand-orange">
-            ← CCTV 목록
-          </Link>
+          <div className="flex items-center gap-2">
+            <ShareButton
+              title="제주 멀티뷰 — 실시간 CCTV 동시 시청 | 펀제주"
+              url="https://www.funjeju.com/cctv/multiview"
+              description="여러 제주 CCTV를 한 화면에서 동시에 보세요"
+              compact
+            />
+            <Link href="/cctv" className="text-xs font-medium text-brand-orange">
+              ← CCTV 목록
+            </Link>
+          </div>
         }
       />
 
