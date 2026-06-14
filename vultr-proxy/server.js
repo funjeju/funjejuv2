@@ -126,10 +126,9 @@ const circuit = {}; // cctvId -> { failures, openUntil }
 const CB_FAILURE_THRESHOLD = 5;     // 5회 연속 실패 시 차단 (vurix 간헐 실패에 덜 민감)
 const CB_OPEN_DURATION = 8000;      // 8초간 차단 (30s→8s, 빠른 자가복구)
 
-function cbAllow(cctvId) {
-  const c = circuit[cctvId];
-  if (!c) return true;
-  if (c.openUntil > Date.now()) return false;
+function cbAllow(_cctvId) {
+  // ★ circuit breaker 비활성화 — 부하 때 한 카메라의 일시 실패가 전체를 503으로 막아
+  // cascade 블랙아웃을 일으켜서 제거. 실패한 fetch는 그냥 502로 떨어지고 다음 요청은 정상 시도.
   return true;
 }
 function cbSuccess(cctvId) {
@@ -341,7 +340,8 @@ app.get("/cctv/:id", async (req, res) => {
   const origin = CCTVS[req.params.id];
   if (!origin) return res.status(404).json({ error: "not found" });
 
-  if (isVurix(req.params.id)) return serveVurixPlaylist(req.params.id, req, res); // ★ vurix 릴레이 경로
+  // vurix는 새창(/watch) 직접재생으로 전환됨 → 릴레이 백그라운드 루프 비활성화(CPU 부하 제거).
+  // (만약 체인으로 들어와도 아래 일반 프록시 경로를 그대로 탐)
 
   const cacheKey = req.params.id;
   const cached = getCache(m3u8Cache, cacheKey, m3u8TtlFor(req.params.id));
