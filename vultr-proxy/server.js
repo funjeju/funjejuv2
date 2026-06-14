@@ -235,10 +235,113 @@ function publicHost(req) {
   return `${proto}://${host}`;
 }
 
-// 메인 m3u8 — 6초 캐시 + circuit breaker + dedup
+// ════════════════════════════════════════════════════════════════
+// ★ vurix 인제스트 릴레이 — vurix(보관 ~3초)를 Vultr가 0.8초마다 미리 당겨
+// 15초 버퍼로 재포장. 클라는 우리 버퍼만 보므로 vurix 타이밍에서 분리 → 끊김 해소.
+// (rtmp 카메라는 이 경로를 절대 타지 않음 — isVurix만)
+// ════════════════════════════════════════════════════════════════
+const RELAY_WINDOW = 15;          // 클라 노출 세그먼트 수(약 15초)
+const RELAY_PULL_INTERVAL = 500;  // vurix 폴링 주기(ms) — 1초 세그먼트를 만료 전 포착
+const RELAY_IDLE_STOP = 30000;    // 시청자 없으면 30초 후 정지
+const relays = {};                // id -> { segments:[{seq,dur,data}], lastSeq, seen:Set, lastAccess }
+
+function ensureRelay(id) {
+  let rel = relays[id];
+  if (!rel) {
+    rel = relays[id] = { segments: [], lastSeq: 0, seen: new Set(), lastAccess: Date.now() };
+    relayLoop(id);
+  }
+  rel.lastAccess = Date.now();
+  return rel;
+}
+
+async function relayPullOnce(id) {
+  const origin = CCTVS[id];
+  const rel = relays[id];
+  if (!origin || !rel) return;
+  let text;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const r = await fetch(origin, { headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" }, signal: ctrl.signal });
+    if (!r.ok) { cbFail(id); return; }
+    text = await r.text();
+    cbSuccess(id);
+  } finally { clearTimeout(to); }
+
+  // 새 세그먼트 목록 추출(재생목록 순서 유지)
+  const lines = text.split("\n");
+  const fresh = [];
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (!t.startsWith("#EXTINF")) continue;
+    const dur = parseFloat(t.split(":")[1]) || 1;
+    const urlLine = (lines[i + 1] || "").trim();
+    if (!urlLine || urlLine.startsWith("#")) continue;
+    const segUrl = resolveUrl(urlLine, origin);
+    if (rel.seen.has(segUrl)) continue;
+    rel.seen.add(segUrl);
+    fresh.push({ segUrl, dur });
+  }
+  // ★ 새 조각들을 병렬로 받음(한 조각이 늦어도 루프 안 막힘) → 순서 유지하며 버퍼에 추가
+  const fetched = await Promise.all(fresh.map(async ({ segUrl, dur }) => {
+    const sc = new AbortController();
+    const sto = setTimeout(() => sc.abort(), 3000);
+    try {
+      const sr = await fetch(segUrl, { headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" }, signal: sc.signal });
+      if (!sr.ok) { rel.seen.delete(segUrl); return null; }
+      return { dur, data: Buffer.from(await sr.arrayBuffer()) };
+    } catch { rel.seen.delete(segUrl); return null; }
+    finally { clearTimeout(sto); }
+  }));
+  for (const f of fetched) {
+    if (!f) continue;
+    rel.lastSeq++;
+    rel.segments.push({ seq: rel.lastSeq, dur: f.dur, data: f.data });
+    while (rel.segments.length > RELAY_WINDOW) rel.segments.shift();
+  }
+  if (rel.seen.size > 80) rel.seen = new Set([...rel.seen].slice(-40)); // 무한증가 방지
+}
+
+function relayLoop(id) {
+  const tick = async () => {
+    const rel = relays[id];
+    if (!rel) return;
+    if (Date.now() - rel.lastAccess > RELAY_IDLE_STOP) { delete relays[id]; return; } // 시청자 없음→정지
+    try { await relayPullOnce(id); } catch { /* 다음 틱 */ }
+    if (relays[id]) setTimeout(tick, RELAY_PULL_INTERVAL);
+  };
+  tick();
+}
+
+function buildRelayPlaylist(id, host) {
+  const rel = relays[id];
+  if (!rel || rel.segments.length === 0) return null;
+  let out = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:2\n#EXT-X-MEDIA-SEQUENCE:${rel.segments[0].seq}\n`;
+  for (const s of rel.segments) out += `#EXTINF:${s.dur.toFixed(3)},\n${host}/cctv/${id}/relayseg/${s.seq}.ts\n`;
+  return out;
+}
+
+async function serveVurixPlaylist(id, req, res) {
+  ensureRelay(id);
+  const deadline = Date.now() + 7000; // 콜드스타트: 버퍼 채워질 때까지 최대 7초 대기
+  while ((relays[id]?.segments.length ?? 0) < 3 && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  const body = buildRelayPlaylist(id, publicHost(req));
+  if (!body) { logEvent(req, id, "m3u8", "relay-cold"); return res.status(503).json({ error: "relay warming up" }); }
+  logEvent(req, id, "m3u8", "relay");
+  res.set("Content-Type", "application/vnd.apple.mpegurl");
+  res.set("Cache-Control", "no-cache");
+  res.send(body);
+}
+
+// 메인 m3u8 — vurix는 릴레이, 그 외는 6초 캐시 + circuit breaker + dedup
 app.get("/cctv/:id", async (req, res) => {
   const origin = CCTVS[req.params.id];
   if (!origin) return res.status(404).json({ error: "not found" });
+
+  if (isVurix(req.params.id)) return serveVurixPlaylist(req.params.id, req, res); // ★ vurix 릴레이 경로
 
   const cacheKey = req.params.id;
   const cached = getCache(m3u8Cache, cacheKey, m3u8TtlFor(req.params.id));
@@ -407,6 +510,19 @@ app.get("/cctv/:id/seg", async (req, res) => {
 });
 
 // ★ 통계 엔드포인트 — 어드민이 fetch (절대 throw 안 함)
+// ★ vurix 릴레이 세그먼트 — 메모리 버퍼에서 서빙
+app.get("/cctv/:id/relayseg/:file", (req, res) => {
+  const rel = relays[req.params.id];
+  if (rel) rel.lastAccess = Date.now();
+  const seq = parseInt(String(req.params.file).replace(".ts", ""), 10);
+  const seg = rel && rel.segments.find((s) => s.seq === seq);
+  if (!seg) { logEvent(req, req.params.id, "ts", "relay-miss"); return res.status(404).json({ error: "segment gone" }); }
+  logEvent(req, req.params.id, "ts", "relay");
+  res.set("Content-Type", "video/MP2T");
+  res.set("Cache-Control", "public, max-age=30");
+  res.send(seg.data);
+});
+
 app.get("/stats", (req, res) => {
   try {
     const now = Date.now();
