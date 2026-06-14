@@ -168,6 +168,10 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       const Hls = (await import("hls.js")).default;
       if (cancelled) return;
 
+      // ★ 이전 hls 인스턴스 강제 정리 — recovery/재시도에서 destroy 없이 new Hls()하면
+      // 죽은 디코더·버퍼가 계속 쌓여(누수) 14시간쯤 뒤 처음 켠 스트림부터 죽음.
+      if (hls) { try { hls.destroy(); } catch { /* */ } hls = null; }
+
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = cctv!.streamProxyUrl!;
