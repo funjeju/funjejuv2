@@ -119,6 +119,7 @@ export default function ChatPage() {
   const [loading,  setLoading]  = useState(false);
   const [gps,      setGps]      = useState<GPS>(null);
   const [gpsState, setGpsState] = useState<"idle" | "asking" | "ok" | "outside" | "denied">("idle");
+  const [jejuMode, setJejuMode] = useState(false); // 돌AI 제주어 모드
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -169,6 +170,7 @@ export default function ChatPage() {
           messages: history.map((m) => ({ role: m.role, text: m.text })),
           lat: gps?.lat,
           lng: gps?.lng,
+          jejuMode,
         }),
       });
 
@@ -336,6 +338,20 @@ export default function ChatPage() {
 
       {/* 입력창 */}
       <div className="shrink-0 border-t border-border-soft bg-bg-card px-4 py-3 md:rounded-b-2xl">
+        {/* 돌AI 제주어 모드 토글 */}
+        <div className="mb-2 flex items-center justify-end gap-2">
+          <span className="text-[11px] font-bold text-text-secondary">🗿 돌AI 제주어 모드</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={jejuMode}
+            onClick={() => setJejuMode((v) => !v)}
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${jejuMode ? "bg-brand-orange" : "bg-border-soft"}`}
+            title="켜면 제주어 말투로 답해요"
+          >
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${jejuMode ? "left-[18px]" : "left-0.5"}`} />
+          </button>
+        </div>
         <div className="flex items-center gap-2 rounded-full border border-border-soft bg-bg-primary px-4 py-2">
           <input
             ref={inputRef}
@@ -344,7 +360,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             disabled={loading}
-            placeholder={loading ? "돌맹이가 생각 중..." : "지금 어디야? 뭐가 궁금해?"}
+            placeholder={loading ? (jejuMode ? "돌AI가 생각 중..." : "돌맹이가 생각 중...") : (jejuMode ? "제주어로 답해줄게, 뭐가 궁금허우꽈?" : "지금 어디야? 뭐가 궁금해?")}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary outline-none disabled:opacity-50"
           />
           <button

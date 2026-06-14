@@ -4,6 +4,7 @@ import { matchLocation, JEJU_LOCATIONS } from "@/constants/jeju-locations";
 import { findRelevantRestaurants, type ChatRestaurant } from "@/lib/restaurants-for-chat";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { consumeUsage, resolveUser } from "@/lib/usage";
+import { buildDialectGrounding } from "@/lib/jeju-dialect";
 import type { DominCard, AiSpotCard } from "@/types/chat";
 
 /** 횟수 한도 초과 응답 */
@@ -426,10 +427,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, lat, lng } = (await req.json()) as {
+  const { messages, lat, lng, jejuMode } = (await req.json()) as {
     messages: Message[];
     lat?: number;
     lng?: number;
+    jejuMode?: boolean;
   };
 
   const hasGps = typeof lat === "number" && typeof lng === "number";
@@ -511,7 +513,17 @@ export async function POST(req: NextRequest) {
   // (지역엔 없어 전 제주로 확장한 경우에도 카드가 뜨므로, AI가 "없다"고 모순되게 답하지 않도록)
   const ctxRestaurants = intent.wantsFood && cardRestaurants.length > 0 ? cardRestaurants : restaurants;
   const restaurantCtx = buildRestaurantContext(ctxRestaurants);
-  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju, hasDominCards: dominCards.length > 0 });
+  let systemPrompt    = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju, hasDominCards: dominCards.length > 0 });
+
+  // 돌AI 제주어 모드 — 검증된 제주어 사전·예문을 프롬프트에 주입 (가짜 제주어 방지)
+  if (jejuMode) {
+    try {
+      const grounding = await buildDialectGrounding(lastUserText, restaurantCtx);
+      systemPrompt = `${grounding}\n\n${systemPrompt}`;
+    } catch (e) {
+      console.error("[chat] dialect grounding failed:", e);
+    }
+  }
 
   console.log("[chat]",
     `gps=${hasGps ? `${lat?.toFixed(4)},${lng?.toFixed(4)}` : "none"}`,
