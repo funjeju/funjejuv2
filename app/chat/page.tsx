@@ -239,7 +239,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-3.5rem-4rem)] max-w-2xl flex-col md:h-[calc(100dvh-1rem)] md:py-6">
+    <div className="fixed inset-x-0 top-14 bottom-16 z-30 flex flex-col bg-bg-primary md:static md:mx-auto md:h-[calc(100dvh-1rem)] md:max-w-2xl md:py-6">
 
       {/* 헤더 */}
       <div className="flex shrink-0 items-center gap-3 border-b border-border-soft bg-bg-card px-4 py-4 md:rounded-t-2xl">
@@ -289,7 +289,7 @@ export default function ChatPage() {
       )}
 
       {/* 메시지 목록 */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto bg-bg-primary px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain bg-bg-primary px-4 py-4 space-y-4">
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
             {msg.role === "model" && (
