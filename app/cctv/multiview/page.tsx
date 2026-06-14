@@ -17,6 +17,27 @@ const ADMIN_EMAIL = "naggu1999@gmail.com";
 // 6·9분할은 관리자만 노출 (일반 사용자는 1·2·4분할까지)
 const PUBLIC_MAX_SPLIT = 4;
 
+// 분할 수에 맞는 격자 미리보기 아이콘 (1·2·4·6·9분할 레이아웃 그대로 표현)
+function SplitIcon({ n, active }: { n: number; active: boolean }) {
+  const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
+  const rows = Math.ceil(n / cols);
+  return (
+    <span
+      className="grid gap-[1.5px]"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`,
+        width: 15,
+        height: 15,
+      }}
+    >
+      {Array.from({ length: n }).map((_, i) => (
+        <span key={i} className={`rounded-[1.5px] ${active ? "bg-white" : "bg-current opacity-70"}`} />
+      ))}
+    </span>
+  );
+}
+
 type SlotCount = 1 | 2 | 4 | 6 | 9;
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
@@ -608,26 +629,32 @@ export default function MultiviewPage() {
       {/* 컨트롤 바 */}
       <div className="mx-4 mb-3 space-y-1.5 rounded-2xl border border-border-soft bg-bg-card p-1.5 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
         {/* 분할 선택 — 플랜 한도 초과는 잠금 */}
-        <div className="flex gap-0.5 rounded-full bg-bg-secondary p-0.5 md:items-center md:gap-1 md:p-1">
+        <div className="flex gap-1 rounded-2xl bg-bg-secondary p-1 md:items-center md:gap-1.5">
           {((isAdmin ? [1, 2, 4, 6, 9] : [1, 2, 4]) as SlotCount[]).map((n) => {
             const locked = n > effectiveMaxSplit;
+            const selected = slotCount === n;
             return (
               <button
                 key={n}
                 type="button"
                 disabled={locked}
                 onClick={() => setSlotCount(n)}
-                title={locked ? `${budget.maxSplit}분할까지 가능해요 (요금제 업그레이드 시 확장)` : undefined}
+                title={locked ? `${budget.maxSplit}분할까지 가능해요 (요금제 업그레이드 시 확장)` : `${n}분할`}
                 className={[
-                  "rounded-full px-1 py-0.5 text-[10px] font-bold transition-colors md:px-3 md:py-1 md:text-xs",
-                  slotCount === n
+                  "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 font-bold transition-colors md:flex-none md:px-3.5 md:py-2",
+                  selected
                     ? "bg-brand-navy text-white shadow"
                     : locked
                       ? "text-text-secondary/30 cursor-not-allowed"
-                      : "text-text-secondary hover:text-text-primary",
+                      : "text-text-secondary hover:bg-bg-card hover:text-text-primary",
                 ].join(" ")}
               >
-                {locked ? "🔒" : n}<span className="hidden md:inline">{locked ? "" : "분할"}</span>
+                {locked ? (
+                  <span className="flex h-[15px] w-[15px] items-center justify-center text-[13px] leading-none">🔒</span>
+                ) : (
+                  <SplitIcon n={n} active={selected} />
+                )}
+                <span className="text-[10px] leading-none md:text-[11px]">{n}분할</span>
               </button>
             );
           })}
