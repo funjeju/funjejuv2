@@ -8,9 +8,10 @@ export function MenuGridV2({ block, site }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "메뉴";
 
-  if (site.menuData.items.length === 0) return null;
+  const items = site.menuData.items.filter((it) => it.name?.trim()).slice(0, 5); // 빈 항목 제거 + 최대 5개
+  if (items.length === 0) return null;
 
-  const grouped = site.menuData.items.reduce<Record<string, typeof site.menuData.items>>((acc, item) => {
+  const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
     const cat = item.category || "메뉴";
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(item);

@@ -12,7 +12,10 @@ interface FeaturedItem { title: string; description: string; imageUrl?: string; 
 export function FeaturedCardV2({ block, site, isEditing, onEdit }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "시그니처";
-  const items = (block.data.items as FeaturedItem[]) || [];
+  // 빈 항목(이름 없는 번호만) 제거 + 최대 5개만 노출
+  const items = ((block.data.items as FeaturedItem[]) || [])
+    .filter((it) => it.title?.trim())
+    .slice(0, 5);
 
   const updateItem = (idx: number, patch: Partial<FeaturedItem>) => {
     const next = items.map((it, i) => i === idx ? { ...it, ...patch } : it);

@@ -8,7 +8,8 @@ export function PriceListV1({ block, site }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "가격표";
 
-  if (site.menuData.items.length === 0) return null;
+  const items = site.menuData.items.filter((it) => it.name?.trim()).slice(0, 5); // 빈 항목 제거 + 최대 5개
+  if (items.length === 0) return null;
 
   return (
     <section className="py-16 px-6" style={{ backgroundColor: theme.surface }}>
@@ -20,13 +21,13 @@ export function PriceListV1({ block, site }: BlockProps) {
           className="rounded-3xl overflow-hidden border"
           style={{ borderColor: theme.border }}
         >
-          {site.menuData.items.map((item, idx) => (
+          {items.map((item, idx) => (
             <div
               key={item.id}
               className="flex justify-between items-center px-6 py-4"
               style={{
                 backgroundColor: idx % 2 === 0 ? theme.surface : theme.surfaceAlt,
-                borderBottom: idx < site.menuData.items.length - 1 ? `1px solid ${theme.border}` : undefined,
+                borderBottom: idx < items.length - 1 ? `1px solid ${theme.border}` : undefined,
               }}
             >
               <div>

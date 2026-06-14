@@ -10,7 +10,7 @@ import { formatPrice } from "@/lib/biz/utils";
 export function MenuGridV1({ block, site, isEditing, onEdit }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "메뉴";
-  const items = site.menuData.items;
+  const items = site.menuData.items.filter((it) => it.name?.trim()).slice(0, 5);
 
   if (items.length === 0) {
     if (!isEditing) return null;
