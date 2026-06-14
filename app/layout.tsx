@@ -6,7 +6,7 @@ import { AppShell } from "@/components/common/AppShell";
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://funjeju.com"),
+  metadataBase: new URL("https://www.funjeju.com"), // bare funjeju.com은 미작동 → www로 통일
   title: {
     default: "FunJeju — 제주가 더 FUN해지는 여행",
     template: "%s | FunJeju",
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://funjeju.com",
+    url: "https://www.funjeju.com",
     siteName: "FunJeju",
     title: "FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지 — 제주 여행 필수 플랫폼",
