@@ -13,6 +13,7 @@ const SOURCE_LABEL: Record<MySpot["source"], string> = {
   jejutube: "▶ 제주tube",
   feed: "📸 피드",
   food: "🍴 맛집",
+  game: "🔍 틀린그림",
 };
 
 const categories = ["전체", ...MY_SPOT_CATEGORIES] as const;

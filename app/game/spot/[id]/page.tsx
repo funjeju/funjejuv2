@@ -2,8 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getGame } from "@/lib/spot";
+import { getSite } from "@/lib/biz/store";
 import { SpotGamePlay } from "@/components/spot/SpotGamePlay";
+import { GameHomepageCta } from "@/components/spot/GameHomepageCta";
 import { ShareButton } from "@/components/common/ShareButton";
+import type { MySpotCategory } from "@/types/my-spot";
+
+function toMySpotCategory(cat?: string): MySpotCategory {
+  const c = cat ?? "";
+  if (/카페|커피|디저트|베이커리|브런치/.test(c)) return "카페";
+  if (/숙소|호텔|펜션|게스트|민박|리조트/.test(c)) return "숙소";
+  if (/관광|명소|여행|체험|해변|오름/.test(c)) return "여행지";
+  return "맛집";
+}
 
 export const revalidate = 60;
 export const dynamicParams = true;
@@ -36,6 +47,28 @@ export default async function SpotPlayPage({
   // Firestore Timestamp 등 직렬화
   const game = JSON.parse(JSON.stringify(g));
 
+  // 연결 홈피가 내부 /biz/슬러그면 좌표·업체명을 가져와 마이스팟 찜 가능하게
+  let spot: { id: string; name: string; category: MySpotCategory; lat: number; lng: number; address?: string } | null = null;
+  if (g.homepageUrl?.startsWith("/biz/")) {
+    const slug = g.homepageUrl.split("/biz/")[1]?.split(/[/?#]/)[0];
+    if (slug) {
+      try {
+        const site = await getSite(slug);
+        const co = site?.merchantInfo?.coordinates;
+        if (site && co?.lat && co?.lng) {
+          spot = {
+            id: `game_${g.id}`,
+            name: site.merchantInfo.name || g.homepageName || g.title,
+            category: toMySpotCategory(site.merchantInfo.category),
+            lat: co.lat,
+            lng: co.lng,
+            address: site.merchantInfo.address,
+          };
+        }
+      } catch { /* 좌표 못 가져오면 찜 버튼 없이 CTA만 */ }
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-3 flex items-center justify-between">
@@ -44,15 +77,9 @@ export default async function SpotPlayPage({
       </div>
       <SpotGamePlay game={game} />
 
-      {/* 연결 업체 홈페이지 CTA — 게임 바로 아래 (틀린그림찾기 → 홈페이지 유입) */}
+      {/* 연결 업체 홈페이지 CTA + 마이스팟 찜 — 게임 바로 아래 (게임 → 홈피 유입·재방문 고리) */}
       {g.homepageUrl && (
-        <a
-          href={g.homepageUrl}
-          {...(g.homepageUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
-          className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-brand-navy py-3.5 text-sm font-bold !text-white shadow-soft transition-colors hover:bg-brand-navy/90"
-        >
-          🏠 {g.homepageName || "이 가게"} 홈페이지 보러가기 →
-        </a>
+        <GameHomepageCta homepageUrl={g.homepageUrl} homepageName={g.homepageName} spot={spot} />
       )}
     </div>
   );
