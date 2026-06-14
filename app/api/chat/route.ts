@@ -547,7 +547,7 @@ export async function POST(req: NextRequest) {
         config: {
           systemInstruction: systemPrompt,
           temperature: jejuMode ? 0.85 : 0.7, // 제주어 모드는 살짝 더 풍부하게
-          maxOutputTokens: jejuMode ? 1600 : 1024, // 제주어 모드는 분량 더 길게
+          maxOutputTokens: jejuMode ? 3000 : 1024, // 제주어 모드는 분량 더 길게(중간 잘림 방지 여유)
           thinkingConfig: { thinkingBudget: 0 },
         },
       });
