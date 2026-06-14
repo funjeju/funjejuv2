@@ -546,8 +546,8 @@ export async function POST(req: NextRequest) {
         })),
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.7,
-          maxOutputTokens: 1024,
+          temperature: jejuMode ? 0.85 : 0.7, // 제주어 모드는 살짝 더 풍부하게
+          maxOutputTokens: jejuMode ? 1600 : 1024, // 제주어 모드는 분량 더 길게
           thinkingConfig: { thinkingBudget: 0 },
         },
       });

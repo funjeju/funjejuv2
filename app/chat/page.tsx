@@ -296,9 +296,12 @@ export default function ChatPage() {
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={28} /></div>
             )}
             <div className={`flex max-w-[85%] flex-col ${msg.role === "user" ? "items-end" : "items-stretch"}`}>
+              {/* 도민맛집 카드를 텍스트 위로 — 맛집 질문이면 맛집부터 보이게 */}
+              {msg.domin && msg.domin.length > 0 && <DominCards cards={msg.domin} />}
               <div
                 className={[
                   "rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
+                  msg.domin && msg.domin.length > 0 ? "mt-1.5" : "",
                   msg.role === "model"
                     ? "rounded-tl-none bg-bg-card border border-border-soft text-text-primary shadow-card"
                     : "rounded-tr-none bg-brand-navy text-white self-end",
@@ -309,7 +312,6 @@ export default function ChatPage() {
                   <span className="inline-block w-1.5 h-4 bg-text-primary/40 animate-pulse rounded-sm ml-0.5 align-middle" />
                 )}
               </div>
-              {msg.domin && msg.domin.length > 0 && <DominCards cards={msg.domin} />}
               {msg.aiSpots && msg.aiSpots.length > 0 && <AiSpotCards cards={msg.aiSpots} />}
               {msg.role === "model" && msg.domin && loading && i === messages.length - 1 && !msg.aiSpots && (
                 <p className="mt-1.5 text-[10px] text-text-secondary">🔍 AI가 검색 추천도 찾는 중...</p>

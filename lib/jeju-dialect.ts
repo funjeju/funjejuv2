@@ -68,22 +68,24 @@ export async function getLifeSamples(n = 2): Promise<string[]> {
  * 검증된 어미 + 맥락 단어 + 예문만 제공하고, "이 안에서만 쓰라"고 못박는다.
  */
 export async function buildDialectGrounding(userText: string, draftHint?: string): Promise<string> {
-  const ctxWords = await findDialectFor(`${userText} ${draftHint ?? ""}`);
-  const samples = await getLifeSamples(2);
+  const ctxWords = await findDialectFor(`${userText} ${draftHint ?? ""}`, 30);
+  const samples = await getLifeSamples(3);
   const wordLines = ctxWords.map((w) => `- ${w.jeju} = ${w.standard}`).join("\n");
 
   return [
     "[제주어 모드 — 너는 '돌AI', 제주 토박이 삼춘 같은 도슨트다]",
     "아래는 제주도청 공식 방언 데이터로 검증된 표현이다. 제주어는 반드시 이 목록 안에서만 써라. 모르는 제주어를 지어내지 마라.",
     "",
-    "[자주 쓰는 제주어 어미·인사 — 이대로만]",
+    "[자주 쓰는 제주어 어미·인사 — 적극적으로 많이 써라]",
     CORE_ENDINGS.map((e) => `- ${e}`).join("\n"),
-    ctxWords.length ? `\n[이번 답변에 쓸 수 있는 검증 단어]\n${wordLines}` : "",
-    samples.length ? `\n[실제 제주어 말투 예시 (느낌만 참고)]\n${samples.map((s) => `· ${s}`).join("\n")}` : "",
+    ctxWords.length ? `\n[이번 답변에 쓸 수 있는 검증 단어 — 가능한 한 많이 활용]\n${wordLines}` : "",
+    samples.length ? `\n[실제 제주어 말투 예시 (이 톤·밀도로]\n${samples.map((s) => `· ${s}`).join("\n")}` : "",
     "",
-    "[작성 규칙]",
-    "- 표준어 문장에 제주어 어미·단어를 자연스럽게 섞는다(양념 수준). 관광객이 못 알아들을 정도의 전면 제주어는 금지.",
-    "- 처음 보는 제주어 단어를 쓰면 바로 옆 괄호에 표준어 뜻을 적어준다. 예: \"폭삭 속았수다(정말 수고하셨어요)\".",
-    "- 정보(맛집·장소 등) 내용 자체는 정확해야 하고, 말투만 제주어로 입힌다.",
+    "[작성 규칙 — 제주어 모드 전용, 아래 일반 규칙의 '8줄 이내'는 무시]",
+    "- 제주어를 진하게! 거의 모든 문장 끝을 제주어 어미(~수다/~우다/~마씀/~우꽈/~십서/양)로 맺어라. 표준어로만 끝나는 문장이 거의 없게.",
+    "- 분량을 넉넉하게 — 12~16줄 정도로 푸짐하게 써라. 인사(혼저옵서예/메!) → 맛집 코멘트 → 가볼 곳 → 제주 정서 한마디 → 따뜻한 마무리(폭삭 속았수다 등)까지 알차게.",
+    "- 위 검증 단어를 답변에 2~4개 이상 자연스럽게 녹여라.",
+    "- 처음 보는 제주어 단어엔 바로 옆 괄호에 표준어 뜻. 예: \"고치(같이) 갑서양\".",
+    "- 정보(맛집·장소 등) 내용 자체는 정확해야 하고, 말투·분량만 제주어로 푸짐하게 입힌다. 관광객도 큰 흐름은 알아듣게.",
   ].filter(Boolean).join("\n");
 }
