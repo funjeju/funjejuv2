@@ -47,6 +47,7 @@ const nextConfig: NextConfig = {
     // Firestore 신규 맛집 썸네일 (Firebase Storage)
     remotePatterns: [
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
+      { protocol: "https", hostname: "storage.googleapis.com" }, // 비즈 사진 재호스팅(네이버 이미지검색)
     ],
   },
 };

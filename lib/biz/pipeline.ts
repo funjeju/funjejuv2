@@ -18,6 +18,7 @@ import {
   type CtaButton,
 } from "./types";
 import { loadAllRestaurants, formatHours } from "@/lib/restaurants";
+import { fetchBizPhotos } from "./biz-photos";
 
 interface AIGenerationInput {
   businessName: string;
@@ -209,6 +210,20 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
 
   const ctaButtons = (input.ctaButtons?.length ? input.ctaButtons : buildDefaultCtaButtons(input)).slice(0, 3);
 
+  // ── 사진 베스트에포트(네이버 이미지검색 → 우리 스토리지 재호스팅) ──
+  // 사용자가 직접 올린 이미지가 없을 때만. 실패해도 생성 계속.
+  let bizPhotos: string[] = [];
+  if (!input.heroImage && !(input.galleryImages?.length)) {
+    try {
+      const region = input.address?.split(/\s+/)[1] || "제주";
+      bizPhotos = await fetchBizPhotos(input.businessName, region, siteId, 6);
+    } catch (err) {
+      console.error("[biz] 사진 수집 실패:", err);
+    }
+  }
+  const heroImage = input.heroImage || bizPhotos[0] || "";
+  const galleryImages = input.galleryImages?.length ? input.galleryImages : bizPhotos.slice(1);
+
   const now = new Date().toISOString();
   const site: SiteSchema = {
     siteId,
@@ -242,9 +257,9 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
       radius: "lg",
     },
     contentAssets: {
-      heroImage: input.heroImage || "",
+      heroImage,
       logoImage: "",
-      galleryImages: input.galleryImages || [],
+      galleryImages,
       menuImages: [],
       reviewImages: [],
     },
