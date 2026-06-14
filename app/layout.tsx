@@ -21,11 +21,20 @@ export const metadata: Metadata = {
     siteName: "FunJeju",
     title: "FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지 — 제주 여행 필수 플랫폼",
+    images: [
+      {
+        url: "https://www.funjeju.com/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "FunJeju — 제주가 더 FUN해지는 여행",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지",
+    images: ["https://www.funjeju.com/og-image.png"],
   },
   robots: {
     index: true,
