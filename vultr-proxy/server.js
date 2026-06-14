@@ -3,7 +3,7 @@
 const express = require("express");
 const { Readable } = require("stream");
 const app = express();
-const PORT = 80;
+const PORT = Number(process.env.PORT) || 8080; // Caddy(443/80) → 8080 리버스프록시
 
 const NEXT_APP_URL = process.env.NEXT_APP_URL || "https://funjeju.com";
 const PROXY_CONFIG_SECRET = process.env.ADMIN_SECRET || "";
