@@ -78,6 +78,7 @@ interface AIGenerationResult {
   featuredItems?: Array<{ title: string; description: string; badge?: string }>;
   reviewTitle?: string;
   reviews?: Array<{ author: string; rating: number; text: string }>;
+  reviewSummary?: string;
   attractionInfo?: Array<{ label: string; value: string }>;
   layout?: Array<{ componentType: BlockComponentType }>;
 }
@@ -188,6 +189,7 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
     (b, i) => {
       const blockId = `block-${i}-${b.componentType.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
       const data: Record<string, unknown> = {};
+      let componentType: BlockComponentType = b.componentType;
 
       if (b.componentType.startsWith("Hero")) {
         data.title = ai.heroTitle || input.businessName;
@@ -197,14 +199,20 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
         data.title = ai.featuredTitle || "추천";
         data.items = ai.featuredItems || [];
       } else if (b.componentType.startsWith("Review")) {
-        data.title = ai.reviewTitle || "리뷰";
-        data.reviews = ai.reviews || [];
+        // 카드 나열 대신 AI 종합 후기(큰따옴표 한 단락)로 통일
+        componentType = "ReviewSummary-v1";
+        const reviews = ai.reviews || [];
+        const avg = reviews.length ? Math.round((reviews.reduce((s, r) => s + (r.rating || 5), 0) / reviews.length) * 10) / 10 : 5;
+        data.title = ai.reviewTitle || "고객 후기";
+        data.summary = (ai.reviewSummary || "").trim();
+        data.count = reviews.length;
+        data.rating = avg;
       } else if (b.componentType.startsWith("AttractionInfo")) {
         data.title = "탐방 정보";
         data.items = (ai.attractionInfo || []).filter((it) => it.label && it.value);
       }
 
-      return { blockId, componentType: b.componentType, data, visible: true };
+      return { blockId, componentType, data, visible: true };
     }
   );
 
@@ -216,13 +224,24 @@ export async function generateSiteFromInput(input: AIGenerationInput): Promise<S
   if (!input.heroImage && !(input.galleryImages?.length)) {
     try {
       const region = input.address?.split(/\s+/)[1] || "제주";
-      bizPhotos = await fetchBizPhotos(input.businessName, region, siteId, 6);
+      bizPhotos = await fetchBizPhotos(input.businessName, region, siteId, 10);
     } catch (err) {
       console.error("[biz] 사진 수집 실패:", err);
     }
   }
   const heroImage = input.heroImage || bizPhotos[0] || "";
   const galleryImages = input.galleryImages?.length ? input.galleryImages : bizPhotos.slice(1);
+
+  // 갤러리 이미지가 있는데 레이아웃에 갤러리 블록이 없으면 Hero 다음에 주입(이미지 5~10장 노출)
+  if (galleryImages.length >= 2 && !blocks.some((b) => b.componentType.startsWith("Gallery"))) {
+    const heroIdx = blocks.findIndex((b) => b.componentType.startsWith("Hero"));
+    blocks.splice(heroIdx >= 0 ? heroIdx + 1 : 0, 0, {
+      blockId: "block-gallery-auto",
+      componentType: "GalleryGrid-v1",
+      data: { title: "갤러리" },
+      visible: true,
+    });
+  }
 
   const now = new Date().toISOString();
   const site: SiteSchema = {

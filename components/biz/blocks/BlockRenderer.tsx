@@ -13,6 +13,7 @@ import { GalleryGridV1 } from "./gallery/GalleryGridV1";
 import { GalleryMasonryV2 } from "./gallery/GalleryMasonryV2";
 import { ReviewCarouselV1 } from "./review/ReviewCarouselV1";
 import { ReviewCardV2 } from "./review/ReviewCardV2";
+import { ReviewSummaryV1 } from "./review/ReviewSummaryV1";
 import { MapBlockV1 } from "./map/MapBlockV1";
 import { CTABannerV1 } from "./cta/CTABannerV1";
 import { CTABannerV2 } from "./cta/CTABannerV2";
@@ -48,6 +49,7 @@ export function BlockRenderer({ block, site, isEditing, onEdit }: BlockRendererP
     case "GalleryMasonry-v2": return <GalleryMasonryV2 {...props} />;
     case "ReviewCarousel-v1": return <ReviewCarouselV1 {...props} />;
     case "ReviewCard-v2": return <ReviewCardV2 {...props} />;
+    case "ReviewSummary-v1": return <ReviewSummaryV1 {...props} />;
     case "MapBlock-v1": return <MapBlockV1 {...props} />;
     case "CTABanner-v1": return <CTABannerV1 {...props} />;
     case "CTABanner-v2": return <CTABannerV2 {...props} />;

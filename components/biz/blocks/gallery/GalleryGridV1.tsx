@@ -8,7 +8,7 @@ import { EmptyBlockHint } from "../EmptyBlockHint";
 export function GalleryGridV1({ block, site, isEditing }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "갤러리";
-  const images = site.contentAssets.galleryImages.slice(0, 6);
+  const images = site.contentAssets.galleryImages.slice(0, 10);
 
   if (images.length === 0) {
     if (!isEditing) return null;

@@ -88,6 +88,7 @@ export function buildGenerationPrompt(input: {
   "featuredItems": [],
   "reviewTitle": "고객 후기",
   "reviews": [],
+  "reviewSummary": "입력된 리뷰들을 종합해 2~3문장으로 자연스럽게 요약한 한 단락 (방문객들이 어떤 점을 좋아하는지). 리뷰가 없으면 빈 문자열. 큰따옴표·이모지 없이 본문만.",
   "attractionInfo": [
     { "label": "난이도", "value": "" },
     { "label": "소요시간", "value": "" }

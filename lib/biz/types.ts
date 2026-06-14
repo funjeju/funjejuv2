@@ -105,6 +105,7 @@ export type BlockComponentType =
   | "GalleryMasonry-v2"
   | "ReviewCarousel-v1"
   | "ReviewCard-v2"
+  | "ReviewSummary-v1"
   | "MapBlock-v1"
   | "CTABanner-v1"
   | "CTABanner-v2"

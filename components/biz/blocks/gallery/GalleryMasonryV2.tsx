@@ -10,7 +10,7 @@ const ASPECT_CLASSES = ["aspect-square", "aspect-[3/4]", "aspect-[4/3]", "aspect
 export function GalleryMasonryV2({ block, site }: BlockProps) {
   const theme = getThemeTokens(site.designTokens.themeId);
   const title = (block.data.title as string) || "스타일";
-  const images = site.contentAssets.galleryImages.slice(0, 6);
+  const images = site.contentAssets.galleryImages.slice(0, 10);
 
   if (images.length === 0) return null;
 
