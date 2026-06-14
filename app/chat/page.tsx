@@ -108,7 +108,7 @@ function AiSpotCards({ cards }: { cards: AiSpotCard[] }) {
 const INITIAL: Message[] = [
   {
     role: "model",
-    text: "안녕! 제주 여행 도슨트 돌맹이야.\n\n🍽️ 도민맛집 + 🏞️ 가볼만한 곳을 함께 추천해줄게.\n지역명이나 메뉴를 알려주면 더 정확해!",
+    text: "안녕! 제주 여행 도슨트 돌AI야.\n\n🍽️ 도민맛집 + 🏞️ 가볼만한 곳을 함께 추천해줄게.\n지역명이나 메뉴를 알려주면 더 정확해!",
   },
 ];
 
@@ -246,7 +246,7 @@ export default function ChatPage() {
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-yellow/20"><DolmangyiIcon size={36} /></div>
         <div className="flex-1">
           <p className="flex items-center gap-1.5 text-sm font-bold text-text-primary">
-            AI 도슨트 돌맹이
+            AI 도슨트 돌AI
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
           </p>
           <p className="text-[11px] text-text-secondary">
@@ -362,7 +362,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             disabled={loading}
-            placeholder={loading ? (jejuMode ? "돌AI가 생각 중..." : "돌맹이가 생각 중...") : (jejuMode ? "제주어로 답해줄게, 뭐가 궁금허우꽈?" : "지금 어디야? 뭐가 궁금해?")}
+            placeholder={loading ? (jejuMode ? "돌AI가 생각 중..." : "돌AI가 생각 중...") : (jejuMode ? "제주어로 답해줄게, 뭐가 궁금허우꽈?" : "지금 어디야? 뭐가 궁금해?")}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary outline-none disabled:opacity-50"
           />
           <button

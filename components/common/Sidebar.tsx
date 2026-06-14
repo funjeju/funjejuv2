@@ -110,7 +110,7 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* 돌맹이 마스코트 */}
+        {/* 돌AI 마스코트 */}
         <div className="px-4 py-5 text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center">
             <DolmangyiIcon size={56} />

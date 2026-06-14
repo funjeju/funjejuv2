@@ -175,7 +175,7 @@ export default function JejutubePage() {
             <DolmangyiIcon size={32} className="shrink-0" />
             <div>
               <p className="text-sm font-black">봤던 제주 유튜브, 여기에 넣어봐!</p>
-              <p className="text-[10px] text-white/80">돌맹이가 영상 속 스팟을 뽑아줄게. 다른 여행자들과 함께 공유돼요.</p>
+              <p className="text-[10px] text-white/80">돌AI가 영상 속 스팟을 뽑아줄게. 다른 여행자들과 함께 공유돼요.</p>
             </div>
           </div>
           <div className="flex gap-1.5">

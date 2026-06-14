@@ -349,7 +349,7 @@ export function TripResultView({ plan, transportation, savedToMyPage, onReset, o
       <div className="no-print rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-5 text-white">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] text-white/70">🗿 돌맹이가 짜준 일정</p>
+            <p className="text-[10px] text-white/70">🗿 돌AI가 짜준 일정</p>
             <h2 className="mt-1 text-lg font-black">{plan.title}</h2>
             <p className="mt-2 text-xs leading-5 text-white/90">{plan.overview}</p>
             {savedToMyPage && (
@@ -373,7 +373,7 @@ export function TripResultView({ plan, transportation, savedToMyPage, onReset, o
         {/* 인쇄 전용 문서 헤더 */}
         <div className="print-only hidden flex-col gap-2 border-b-2 border-black pb-3">
           <div className="flex items-center gap-2">
-            <Image src="/dolmangyi.png" alt="돌맹이" width={36} height={36} className="h-9 w-9 object-contain" />
+            <Image src="/dolmangyi.png" alt="돌AI" width={36} height={36} className="h-9 w-9 object-contain" />
             <span className="text-xl font-black tracking-tight">Funjeju.com</span>
             <span className="ml-auto text-[10px]">AI 여행 일정 · {new Date().toLocaleDateString("ko-KR")}</span>
           </div>
@@ -579,7 +579,7 @@ export function TripResultView({ plan, transportation, savedToMyPage, onReset, o
         {/* 팁 */}
         {plan.tips.length > 0 && (
           <div className="trip-tips rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-5">
-            <p className="mb-2 text-sm font-bold text-brand-navy">💡 돌맹이 꿀팁</p>
+            <p className="mb-2 text-sm font-bold text-brand-navy">💡 돌AI 꿀팁</p>
             <ul className="space-y-1.5">
               {plan.tips.map((tip, i) => (
                 <li key={i} className="text-xs leading-5 text-text-primary">• {tip}</li>

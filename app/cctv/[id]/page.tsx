@@ -345,7 +345,7 @@ export default async function CctvDetailPage({ params }: Props) {
           ))}
 
           <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
-            <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> 돌맹이에게 물어보기</p>
+            <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> 돌AI에게 물어보기</p>
             <p className="mt-1 text-[11px] text-white/80">이 장소 주변 맛집·카페·코스를 AI가 추천해드려요</p>
             <Link href="/chat" className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors">
               채팅 시작하기 →

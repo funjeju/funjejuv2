@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const maxDuration = 120;
 
 // ── 1차: 구글 검색 그라운딩으로 일정 초안 생성 ──────────────
-const DRAFT_SYSTEM = `너는 제주 여행 전문 플래너 '돌맹이'야. 사용자 프로필에 맞춰 최적 동선의 제주 여행 일정 초안을 짜줘.
+const DRAFT_SYSTEM = `너는 제주 여행 전문 플래너 '돌AI'야. 사용자 프로필에 맞춰 최적 동선의 제주 여행 일정 초안을 짜줘.
 
 [절대 규칙]
 1. 점심·저녁 식사 자리는 반드시 아래 제공되는 [도민맛집 리스트]에서만 골라. 선택한 맛집은 반드시 "이름 [ID:식별자]" 형식으로 표기해. (예: 명진전복 [ID:r123])
@@ -59,7 +59,7 @@ const RESPONSE_SCHEMA = {
                 name: { type: Type.STRING, description: "장소 이름 ([ID:..] 제거)" },
                 type: { type: Type.STRING, description: "맛집/카페/관광지/자연/액티비티/쇼핑/문화/숙소" },
                 emoji: { type: Type.STRING },
-                comment: { type: Type.STRING, description: "돌맹이의 친근한 한 줄 멘트" },
+                comment: { type: Type.STRING, description: "돌AI의 친근한 한 줄 멘트" },
                 duration: { type: Type.STRING, description: "체류 시간 예: 1시간" },
                 searchKeyword: { type: Type.STRING, description: "카카오맵 검색용 키워드" },
                 restaurantId: { type: Type.STRING, description: "[ID:xxx]의 xxx, 없으면 빈 문자열" },
@@ -74,7 +74,7 @@ const RESPONSE_SCHEMA = {
       },
     },
     tips: { type: Type.ARRAY, items: { type: Type.STRING }, description: "여행 팁 2-3개" },
-    closing: { type: Type.STRING, description: "돌맹이의 마무리 한마디" },
+    closing: { type: Type.STRING, description: "돌AI의 마무리 한마디" },
   },
   required: ["title", "overview", "days", "tips", "closing"],
 };

@@ -5,7 +5,7 @@ export type TripItem = {
   name: string;
   type: string;            // 맛집/카페/관광지/자연/액티비티/쇼핑/문화/숙소
   emoji: string;
-  comment: string;         // 돌맹이 한 줄 멘트
+  comment: string;         // 돌AI 한 줄 멘트
   duration: string;        // 체류 시간 예: "1시간"
   searchKeyword: string;   // 카카오맵 검색용 키워드
   isDominFood: boolean;    // 도민맛집 여부

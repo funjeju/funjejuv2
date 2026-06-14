@@ -527,7 +527,7 @@ export default function TripAiPage() {
           </h3>
           <div className="flex flex-col gap-2">
             <BigChoice active={form.remainingNightsPlan === "stay_at_first"} onClick={() => update("remainingNightsPlan", "stay_at_first")}>입력한 숙소에서 모두 숙박할게요</BigChoice>
-            <BigChoice active={form.remainingNightsPlan === "recommend_rest"} onClick={() => update("remainingNightsPlan", "recommend_rest")}>남은 숙소는 돌맹이에게 추천받을게요</BigChoice>
+            <BigChoice active={form.remainingNightsPlan === "recommend_rest"} onClick={() => update("remainingNightsPlan", "recommend_rest")}>남은 숙소는 돌AI에게 추천받을게요</BigChoice>
           </div>
         </div>
       );
@@ -666,7 +666,7 @@ export default function TripAiPage() {
           <p className="mt-1 text-[11px] leading-5 text-text-secondary">
             {form.nights === 0 ? "당일치기" : `${form.nights}박 ${form.days}일`} · {form.transportation}
             {form.companions.length > 0 && ` · ${form.companions.join(", ")}`}
-            <br />아래 버튼을 누르면 돌맹이가 도민맛집과 함께 일정을 짜드려요.
+            <br />아래 버튼을 누르면 돌AI가 도민맛집과 함께 일정을 짜드려요.
           </p>
         </div>
       );
@@ -684,7 +684,7 @@ export default function TripAiPage() {
           <DolmangyiIcon size={64} />
           <h2 className="mt-4 text-lg font-black text-text-primary">로그인이 필요해요</h2>
           <p className="mt-1 text-sm leading-6 text-text-secondary">
-            돌맹이가 짜준 일정은 마이페이지에 차곡차곡 저장돼요.<br />
+            돌AI가 짜준 일정은 마이페이지에 차곡차곡 저장돼요.<br />
             로그인하고 나만의 제주 일정을 만들어보세요!
           </p>
           <button

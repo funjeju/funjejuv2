@@ -5,12 +5,12 @@ type Props = {
   className?: string;
 };
 
-/** 돌맹이 AI 로봇 아이콘. /public/dolmangyi.png 파일 필요 */
+/** 돌AI AI 로봇 아이콘. /public/dolmangyi.png 파일 필요 */
 export function DolmangyiIcon({ size = 40, className = "" }: Props) {
   return (
     <Image
       src="/dolmangyi.png"
-      alt="돌맹이"
+      alt="돌AI"
       width={size}
       height={size}
       className={`object-contain drop-shadow-sm ${className}`}
