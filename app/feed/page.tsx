@@ -70,6 +70,21 @@ export default function FeedPage() {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 pt-3 md:px-4 md:py-6">
+      {/* 상단 헤더 + 피드 올리기 (데스크톱엔 하단 카메라바가 없어 여기서 진입) */}
+      <div className="mb-2 flex items-center justify-between px-4 md:px-0">
+        <h1 className="text-base font-black text-text-primary md:text-lg">📸 라이브 피드</h1>
+        <button
+          type="button"
+          onClick={() => {
+            if (!user) return signInWithGoogle();
+            setShowWriter(true);
+          }}
+          className="flex shrink-0 items-center gap-1 rounded-full bg-brand-orange px-3.5 py-1.5 text-xs font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors md:text-sm"
+        >
+          + 피드 올리기
+        </button>
+      </div>
+
       {/* 콘텐츠 카테고리 */}
       <div className="px-4 md:px-0">
         <p className="mb-1 text-[9px] font-bold text-text-secondary">🏷️ 카테고리</p>
