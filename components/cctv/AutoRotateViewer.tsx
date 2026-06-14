@@ -84,12 +84,14 @@ function CrossfadePlayer({
 
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        maxBufferLength: 10,
+        lowLatencyMode: false,
+        liveSyncDurationCount: 2,
+        maxBufferLength: 20,
         backBufferLength: 0,
-        manifestLoadingMaxRetry: 2,
-        levelLoadingMaxRetry: 2,
-        fragLoadingMaxRetry: 2,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
       });
       nextHlsRef.current = hls;
       hls.loadSource(proxyUrl!);

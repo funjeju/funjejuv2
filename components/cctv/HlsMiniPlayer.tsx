@@ -65,13 +65,15 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        maxBufferLength: 10,
-        maxMaxBufferLength: 20,
+        lowLatencyMode: false,
+        liveSyncDurationCount: 2,
+        maxBufferLength: 20,
+        maxMaxBufferLength: 30,
         backBufferLength: 0,
-        manifestLoadingMaxRetry: 2,
-        levelLoadingMaxRetry: 2,
-        fragLoadingMaxRetry: 2,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
       });
 
       hls.loadSource(proxyUrl!);

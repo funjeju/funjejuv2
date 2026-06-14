@@ -92,10 +92,15 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
 
       hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true,
-        manifestLoadingMaxRetry: 3,
-        levelLoadingMaxRetry: 3,
-        fragLoadingMaxRetry: 3,
+        // ★ 라이브 끝단 추격(lowLatency) 끔 — 끝단에 붙으면 1초 세그먼트(vurix)에서 지터에 바로 끊김.
+        // 2세그먼트 뒤를 재생해 쿠션 확보 + 세그먼트 재시도 늘려 일시 502/404 흡수.
+        lowLatencyMode: false,
+        liveSyncDurationCount: 2,
+        maxBufferLength: 30,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
       });
 
       hls.loadSource(proxyUrl!);

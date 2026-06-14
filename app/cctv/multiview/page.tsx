@@ -176,11 +176,14 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
 
       hls = new Hls({
         enableWorker: true,
-        maxBufferLength: 10,
+        lowLatencyMode: false,
+        liveSyncDurationCount: 2,
+        maxBufferLength: 20,
         backBufferLength: 0,
         manifestLoadingMaxRetry: 6,
         levelLoadingMaxRetry: 6,
         fragLoadingMaxRetry: 6,
+        fragLoadingRetryDelay: 500,
       });
       hls.loadSource(cctv!.streamProxyUrl!);
       hls.attachMedia(video);
