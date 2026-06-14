@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function TypingPlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const p = await getPassage(id);
-  if (!p || p.status !== "published") notFound();
+  if (!p) notFound(); // draft도 직접 URL로는 검수 가능(갤러리엔 발행분만 노출)
 
   const passage = JSON.parse(JSON.stringify(p));
   const spot = await resolveGameSpot({

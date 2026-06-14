@@ -88,7 +88,7 @@ export default function AdminTypingPage() {
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-brand-navy px-2 py-0.5 text-[10px] font-bold text-white">{p.kind === "long" ? "장문" : "단문"}</span>
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-primary">{p.businessName || "제주 매장"}</span>
-              <Link href={`/game/typing/${p.id}`} className="shrink-0 text-[11px] font-semibold text-brand-orange">보기</Link>
+              <Link href={`/game/typing/${p.id}`} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[11px] font-semibold text-brand-orange">보기 ↗</Link>
               <button onClick={() => publish(p.id, p.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{p.status === "published" ? "비공개" : "발행"}</button>
               <button onClick={() => remove(p.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
             </div>

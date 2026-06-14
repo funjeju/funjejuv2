@@ -106,7 +106,7 @@ export default function AdminAcrosticPage() {
               <p className="truncate text-sm font-bold text-text-primary">{t.businessName || t.word} · {t.word}</p>
               <p className="text-[11px] text-text-secondary">{t.status === "published" ? "🟢 발행" : "⚪ 대기"} · 1인 {t.maxEntriesPerUser}개 · 참여 {t.entryCount ?? 0}</p>
             </div>
-            <Link href={`/game/acrostic/${t.id}`} className="shrink-0 text-[11px] font-semibold text-brand-orange">보기</Link>
+            <Link href={`/game/acrostic/${t.id}`} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[11px] font-semibold text-brand-orange">보기 ↗</Link>
             <button onClick={() => publish(t.id, t.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{t.status === "published" ? "비공개" : "발행"}</button>
             <button onClick={() => remove(t.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
           </div>

@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function AcrosticPlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const t = await getTopic(id);
-  if (!t || t.status !== "published") notFound();
+  if (!t) notFound(); // draft도 직접 URL로는 검수 가능(갤러리엔 발행분만 노출)
 
   const topic = JSON.parse(JSON.stringify(t));
   const spot = await resolveGameSpot({
