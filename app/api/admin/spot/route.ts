@@ -54,14 +54,17 @@ export async function PATCH(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, title, markers, layout } = (await req.json().catch(() => ({}))) as {
+  const { id, title, markers, layout, homepageUrl, homepageName } = (await req.json().catch(() => ({}))) as {
     id?: string; title?: string; markers?: { x: number; y: number }[]; layout?: string;
+    homepageUrl?: string; homepageName?: string;
   };
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   await updateGame(id, {
     ...(title !== undefined && { title }),
     ...(markers !== undefined && { markers, diffCount: markers.length }),
     ...(layout === "stack" || layout === "side" ? { layout } : {}),
+    ...(homepageUrl !== undefined && { homepageUrl: homepageUrl.trim() }),
+    ...(homepageName !== undefined && { homepageName: homepageName.trim() }),
   });
   revalidatePath("/game/spot");
   revalidatePath(`/game/spot/${id}`);

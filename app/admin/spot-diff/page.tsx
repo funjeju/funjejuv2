@@ -146,6 +146,16 @@ export default function AdminSpotDiffPage() {
     await fetch("/api/admin/spot", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, published: on }) });
     await loadGames();
   }
+  // 연결 업체 홈페이지 CTA 저장 (게임 아래 노출)
+  const [hpDraft, setHpDraft] = useState<Record<string, { url: string; name: string }>>({});
+  async function saveHomepage(id: string) {
+    const d = hpDraft[id];
+    if (!d) return;
+    setBusy("hp-" + id);
+    await fetch("/api/admin/spot", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, homepageUrl: d.url, homepageName: d.name }) });
+    setBusy(null);
+    await loadGames();
+  }
   async function remove(id: string) {
     if (!confirm("삭제할까요?")) return;
     await fetch(`/api/admin/spot?id=${id}`, { method: "DELETE" });
@@ -262,15 +272,36 @@ export default function AdminSpotDiffPage() {
       <h2 className="mb-2 mt-8 text-sm font-black text-text-primary">출제된 문제 ({games.length})</h2>
       <div className="space-y-2">
         {games.map((g) => (
-          <div key={g.id} className="flex items-center gap-3 rounded-2xl border border-border-soft bg-bg-card p-3">
-            <img src={g.variantImage} alt={g.title} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-text-primary">{g.title}</p>
-              <p className="text-[11px] text-text-secondary">틀린곳 {g.diffCount} · {g.status === "published" ? "🟢 발행" : "⚪ 검수대기"} · 플레이 {g.playCount ?? 0}</p>
+          <div key={g.id} className="rounded-2xl border border-border-soft bg-bg-card p-3">
+            <div className="flex items-center gap-3">
+              <img src={g.variantImage} alt={g.title} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-text-primary">{g.title}</p>
+                <p className="text-[11px] text-text-secondary">틀린곳 {g.diffCount} · {g.status === "published" ? "🟢 발행" : "⚪ 검수대기"} · 플레이 {g.playCount ?? 0}</p>
+              </div>
+              <button onClick={() => startEdit(g)} className="shrink-0 rounded-full border border-brand-orange/40 px-3 py-1 text-[11px] font-semibold text-brand-orange">수정</button>
+              <button onClick={() => publish(g.id, g.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{g.status === "published" ? "비공개" : "발행"}</button>
+              <button onClick={() => remove(g.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
             </div>
-            <button onClick={() => startEdit(g)} className="shrink-0 rounded-full border border-brand-orange/40 px-3 py-1 text-[11px] font-semibold text-brand-orange">수정</button>
-            <button onClick={() => publish(g.id, g.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{g.status === "published" ? "비공개" : "발행"}</button>
-            <button onClick={() => remove(g.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
+            {/* 연결 업체 홈페이지 (게임 아래 CTA로 노출) */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border-soft pt-2">
+              <span className="text-[10px] font-bold text-text-secondary">🏠 연결 홈피</span>
+              <input
+                placeholder="URL (/biz/슬러그 또는 https://…)"
+                defaultValue={g.homepageUrl ?? ""}
+                onChange={(e) => setHpDraft((p) => ({ ...p, [g.id]: { url: e.target.value, name: (p[g.id]?.name ?? g.homepageName ?? "") } }))}
+                className="min-w-0 flex-1 rounded-lg border border-border-soft px-2 py-1 text-[11px]"
+              />
+              <input
+                placeholder="업체명"
+                defaultValue={g.homepageName ?? ""}
+                onChange={(e) => setHpDraft((p) => ({ ...p, [g.id]: { url: (p[g.id]?.url ?? g.homepageUrl ?? ""), name: e.target.value } }))}
+                className="w-24 rounded-lg border border-border-soft px-2 py-1 text-[11px]"
+              />
+              <button onClick={() => saveHomepage(g.id)} disabled={busy === "hp-" + g.id} className="shrink-0 rounded-full bg-brand-navy px-3 py-1 text-[11px] font-bold text-white disabled:opacity-50">
+                {busy === "hp-" + g.id ? "…" : "연결 저장"}
+              </button>
+            </div>
           </div>
         ))}
       </div>

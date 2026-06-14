@@ -19,7 +19,7 @@ export async function createGame(g: SpotGame): Promise<void> {
 
 export async function updateGame(
   id: string,
-  updates: Partial<Pick<SpotGame, "title" | "markers" | "layout" | "diffCount">>
+  updates: Partial<Pick<SpotGame, "title" | "markers" | "layout" | "diffCount" | "homepageUrl" | "homepageName">>
 ): Promise<void> {
   await getAdminDb().collection(GAMES).doc(id).update(updates);
 }

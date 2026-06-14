@@ -21,6 +21,8 @@ export type SpotGame = {
   createdAt: number;
   playCount?: number;
   bizId?: string;         // 비즈계정 연동 (차후)
+  homepageUrl?: string;   // 연결 업체 홈페이지 (내부 /biz/slug 또는 외부 URL) — 게임 아래 CTA
+  homepageName?: string;  // CTA에 표시할 업체명
 };
 
 /** 플레이 기록 (문제별 최단시간 랭킹) */

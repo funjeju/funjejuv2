@@ -43,6 +43,17 @@ export default async function SpotPlayPage({
         <ShareButton title={`${g.title} — 제주 틀린그림찾기 | 펀제주`} url={`https://funjeju.com/game/spot/${id}`} description={`다른 ${g.diffCount}곳을 찾아보세요!`} />
       </div>
       <SpotGamePlay game={game} />
+
+      {/* 연결 업체 홈페이지 CTA — 게임 바로 아래 (틀린그림찾기 → 홈페이지 유입) */}
+      {g.homepageUrl && (
+        <a
+          href={g.homepageUrl}
+          {...(g.homepageUrl.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+          className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-brand-navy py-3.5 text-sm font-bold !text-white shadow-soft transition-colors hover:bg-brand-navy/90"
+        >
+          🏠 {g.homepageName || "이 가게"} 홈페이지 보러가기 →
+        </a>
+      )}
     </div>
   );
 }
