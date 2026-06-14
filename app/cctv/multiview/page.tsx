@@ -605,6 +605,11 @@ export default function MultiviewPage() {
 
   const aspectClass = slotCount === 1 ? "aspect-video" : "aspect-video";
 
+  // 전체화면에선 셀을 aspect 고정 대신 화면을 균등하게 채운다 (안드로이드 세로화면 잘림·어긋남 방지)
+  const colCount = { 1: 1, 2: 2, 4: 2, 6: 3, 9: 3 }[slotCount] ?? 2;
+  const rowCount = Math.ceil(slotCount / colCount);
+  const fsActive = isFullscreen || pseudoFs;
+
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <PageHeader
@@ -760,9 +765,10 @@ export default function MultiviewPage() {
           className={[
             "grid gap-0.5 md:gap-2",
             gridClass,
-            isFullscreen ? "h-screen w-screen bg-black p-1" : "",
-            pseudoFs ? "fixed inset-0 z-[100] h-[100dvh] w-screen content-center overflow-auto bg-black p-1" : "",
+            isFullscreen ? "h-[100dvh] w-screen bg-black p-1" : "",
+            pseudoFs ? "fixed inset-0 z-[100] h-[100dvh] w-screen overflow-hidden bg-black p-1" : "",
           ].join(" ")}
+          style={fsActive ? { gridTemplateRows: `repeat(${rowCount}, 1fr)` } : undefined}
         >
           {pseudoFs && (
             <button
@@ -780,7 +786,7 @@ export default function MultiviewPage() {
             return (
               <div
                 key={idx}
-                className={`${aspectClass} relative transition-all ${isDragOver ? "ring-4 ring-brand-orange ring-offset-2" : ""}`}
+                className={`${fsActive ? "h-full min-h-0" : aspectClass} relative transition-all ${isDragOver ? "ring-4 ring-brand-orange ring-offset-2" : ""}`}
                 onDragOver={(e) => { e.preventDefault(); setDragOverIdx(idx); }}
                 onDragLeave={() => setDragOverIdx(null)}
                 onDrop={(e) => {
