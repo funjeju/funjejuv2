@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
+import { VurixLaunch } from "@/components/cctv/VurixLaunch";
+import { isVurixId } from "@/constants/vurix";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { fetchWeather } from "@/lib/weather";
@@ -155,9 +157,11 @@ export default async function CctvDetailPage({ params }: Props) {
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-4">
 
-          {/* 플레이어 — YouTube 또는 HLS */}
+          {/* 플레이어 — YouTube / vurix(원본 새창) / HLS */}
           {cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
+          ) : isVurixId(cctv.id) ? (
+            <VurixLaunch id={cctv.id} name={cctv.name} />
           ) : (
             <HlsPlayer
               proxyUrl={streamProxyUrl}

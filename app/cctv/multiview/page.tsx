@@ -9,6 +9,7 @@ import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/use
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import type { Cctv, CctvEntry } from "@/types/cctv";
+import { isVurixId } from "@/constants/vurix";
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
 
@@ -367,7 +368,8 @@ function EmptySlot({
 export default function MultiviewPage() {
   const { favoriteIds: savedIds } = useCctvFavorite();
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
-  const allCctvs = useMemo(() => cctvs.map(toView), [cctvs]);
+  // vurix(59.x)는 프록시 끊김이 심해 멀티뷰에서 제외 (개별 화면 새 창 원본재생으로만 제공)
+  const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isVurixId(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);

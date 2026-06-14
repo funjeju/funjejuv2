@@ -510,6 +510,70 @@ app.get("/cctv/:id/seg", async (req, res) => {
 });
 
 // ★ 통계 엔드포인트 — 어드민이 fetch (절대 throw 안 함)
+// ★ vurix 원본 직접재생 뷰어 (평문 HTTP) — HTTP 스트림을 새 창에서 부드럽게.
+// CCTV 모니터 프레임 느낌. id=카메라, name=표시이름(쿼리)
+app.get("/watch", (req, res) => {
+  const id = String(req.query.id || "");
+  const stream = CCTVS[id];
+  if (!stream) return res.status(404).send("<h1 style='font-family:sans-serif'>카메라를 찾을 수 없어요</h1>");
+  res.set("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FunJeju · 라이브</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#070708;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif;color:#eee}
+.stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:min(3vmin,22px);background:radial-gradient(ellipse at 50% 35%,#15161b 0%,#060607 75%)}
+.monitor{position:relative;width:100%;height:100%;background:#000;border:clamp(8px,1.4vmin,16px) solid #15171c;border-radius:16px;box-shadow:0 0 0 2px #2b2f37,inset 0 0 70px rgba(0,0,0,.95),0 26px 70px rgba(0,0,0,.65);overflow:hidden}
+video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+.fx{pointer-events:none;position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(255,255,255,.022) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}
+.vig{pointer-events:none;position:absolute;inset:0;box-shadow:inset 0 0 170px rgba(0,0,0,.72);border-radius:10px}
+.osd{position:absolute;inset:0;pointer-events:none;font-variant-numeric:tabular-nums}
+.live{position:absolute;top:14px;left:16px;display:flex;align-items:center;gap:7px;font-weight:800;font-size:13px;letter-spacing:.6px;color:#fff;text-shadow:0 1px 4px #000}
+.dot{width:9px;height:9px;border-radius:50%;background:#ff3b30;box-shadow:0 0 9px #ff3b30;animation:bl 1.2s infinite}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.clk{position:absolute;top:14px;right:16px;font-size:13px;font-weight:700;color:#d2d5d9;text-shadow:0 1px 4px #000}
+.nm{position:absolute;bottom:13px;left:16px;font-size:15px;font-weight:800;color:#fff;text-shadow:0 1px 5px #000}
+.br{position:absolute;bottom:13px;right:16px;font-size:12px;font-weight:800;color:#ff8a3d;text-shadow:0 1px 4px #000}
+.ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:13px;color:#9aa0a6;font-size:13px}
+.sp{width:38px;height:38px;border:3px solid #2a2d34;border-top-color:#ff8a3d;border-radius:50%;animation:rt 1s linear infinite}
+@keyframes rt{to{transform:rotate(360deg)}}
+.x{position:absolute;top:10px;right:54px;pointer-events:auto;cursor:pointer;color:#aaa;font-size:18px;font-weight:700;opacity:.5;text-shadow:0 1px 4px #000}
+.x:hover{opacity:1}
+</style></head><body>
+<div class="stage"><div class="monitor">
+<video id="v" autoplay muted playsinline></video>
+<div class="fx"></div><div class="vig"></div>
+<div class="osd">
+<div class="live"><span class="dot"></span>LIVE</div>
+<div class="clk" id="clk"></div>
+<div class="x" onclick="window.close()" title="닫기">✕</div>
+<div class="nm" id="nm"></div>
+<div class="br">FunJeju</div>
+</div>
+<div class="ld" id="ld"><div class="sp"></div><div>원본 연결 중…</div></div>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script>
+var STREAM=${JSON.stringify(stream)};
+var nm=new URLSearchParams(location.search).get('name')||'제주 CCTV';
+document.getElementById('nm').textContent=nm;document.title='FunJeju · '+nm;
+function tk(){var d=new Date(),p=function(n){return String(n).padStart(2,'0')};
+document.getElementById('clk').textContent=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'  '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())}
+tk();setInterval(tk,1000);
+var v=document.getElementById('v'),ld=document.getElementById('ld');function hd(){ld.style.display='none'}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')window.close()});
+if(window.Hls&&Hls.isSupported()){
+var hls=new Hls({lowLatencyMode:false,liveSyncDurationCount:2,maxBufferLength:30,fragLoadingMaxRetry:8,fragLoadingRetryDelay:500});
+hls.loadSource(STREAM);hls.attachMedia(v);
+hls.on(Hls.Events.MANIFEST_PARSED,function(){v.play().catch(function(){});hd()});
+hls.on(Hls.Events.ERROR,function(_e,d){if(d.fatal){try{hls.startLoad()}catch(x){}}});
+}else if(v.canPlayType('application/vnd.apple.mpegurl')){
+v.src=STREAM;v.addEventListener('loadedmetadata',function(){v.play();hd()});
+}
+</script></body></html>`);
+});
+
 // ★ vurix 릴레이 세그먼트 — 메모리 버퍼에서 서빙
 app.get("/cctv/:id/relayseg/:file", (req, res) => {
   const rel = relays[req.params.id];

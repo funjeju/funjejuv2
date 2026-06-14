@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { mockCctvs } from "@/constants/mock-cctvs";
+import { isVurixId } from "@/constants/vurix";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { useCctvSession } from "@/hooks/useCctvSession";
 
@@ -260,8 +261,10 @@ export function AutoRotateViewer() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  const savedCctvs = mockCctvs.filter((c) => savedIds.has(c.id));
-  const cctvs = savedCctvs.length > 0 ? savedCctvs : mockCctvs;
+  // vurix(59.x)는 프록시 끊김 심해 자동회전에서 제외
+  const rotatable = mockCctvs.filter((c) => !isVurixId(c.id));
+  const savedCctvs = rotatable.filter((c) => savedIds.has(c.id));
+  const cctvs = savedCctvs.length > 0 ? savedCctvs : rotatable;
   const isPersonalized = savedCctvs.length > 0;
   const current = cctvs[index % cctvs.length];
 
