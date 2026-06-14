@@ -11,6 +11,12 @@ export function isVurixId(id: string): boolean {
   return VURIX_IDS.has(id);
 }
 
+// 멀티뷰에서만 제외(개별 화면은 일반 HLS로 정상 시청) — 간헐적이라 동시재생엔 부적합한 rtmp
+export const MULTIVIEW_EXCLUDE_EXTRA = new Set<string>(["mosulpo", "daepo", "nonjitmul"]);
+export function isMultiviewExcluded(id: string): boolean {
+  return VURIX_IDS.has(id) || MULTIVIEW_EXCLUDE_EXTRA.has(id);
+}
+
 // Vultr 평문 HTTP 뷰어 (HTTPS 페이지는 HTTP 스트림 임베드 불가 → 새 창을 HTTP로 띄움)
 export const VURIX_WATCH_BASE = "http://141.164.53.216:8080";
 

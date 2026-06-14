@@ -20,6 +20,7 @@ type Props = {
 
 export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<import("hls.js").default | null>(null); // togglePlay/스톨에서 startLoad 재개용
   const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
@@ -103,8 +104,14 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         fragLoadingRetryDelay: 500,
       });
 
+      hlsRef.current = hls;
       hls.loadSource(proxyUrl!);
       hls.attachMedia(video);
+
+      // ★ 버퍼 바닥(waiting/stalled) → 즉시 로딩 재개 + 재생 시도 (수동 클릭 없이 자가복구)
+      const resume = () => { try { hls?.startLoad(); } catch { /* */ } video.play().catch(() => { /* */ }); };
+      video.addEventListener("waiting", resume);
+      video.addEventListener("stalled", resume);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         setStatus("playing");
@@ -139,9 +146,9 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
           lastTick = now;
           return;
         }
-        if (now - lastTick > 8000) {
-          console.log(`[HlsPlayer] stalled, restart`);
+        if (now - lastTick > 5000) {
           try { hls?.startLoad(); } catch { /* ignore */ }
+          video.play().catch(() => { /* */ }); // 로딩 재개 후 재생까지 (멈춤 자동복구)
           lastTick = now;
         }
       }, 2000);
@@ -178,6 +185,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       sendEvent("leave"); // 슬롯 제거/페이지 이동
       if (stallTimerId) clearInterval(stallTimerId);
       hls?.destroy();
+      hlsRef.current = null;
       video.removeEventListener("playing", handlePlay);
       video.removeEventListener("pause",   handlePause);
       video.removeEventListener("ended",   handleEnd);
@@ -195,7 +203,12 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     if (!v) return;
     if (v.paused) {
       if (budget.exhausted) return; // 소진 시 재생 차단
-      v.play().catch(() => { /* ignore */ });
+      // ★ 멈춰있을 땐 hls 로딩부터 재개해야 버퍼가 차서 실제로 재생됨 (play()만으론 안 먹음)
+      try { hlsRef.current?.startLoad(); } catch { /* */ }
+      v.play().catch(() => {
+        v.muted = true;
+        v.play().catch(() => setRetryKey((k) => k + 1)); // 그래도 안 되면 전체 재연결
+      });
     } else {
       v.pause();
     }
