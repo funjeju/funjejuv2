@@ -180,12 +180,17 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         enableWorker: true,
         lowLatencyMode: false,
         liveSyncDurationCount: 2,
-        maxBufferLength: 20,
+        // ★ 멀티뷰(최대 9개 동시): 스트림당 버퍼/선읽기를 최소화해 한 호스트로의 동시 요청 폭주 방지.
+        // 9개가 각각 20초씩 미리 당기면 브라우저 연결 한도 초과 → stall → 재시도 폭주 악순환.
+        maxBufferLength: 6,
+        maxMaxBufferLength: 10,
+        maxBufferSize: 8 * 1000 * 1000, // 8MB (704KB 대용량 세그먼트 대비 메모리 캡)
         backBufferLength: 0,
-        manifestLoadingMaxRetry: 6,
-        levelLoadingMaxRetry: 6,
-        fragLoadingMaxRetry: 6,
-        fragLoadingRetryDelay: 500,
+        maxFragLookUpTolerance: 0.5,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingMaxRetry: 4,
+        fragLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 800,
       });
       hls.loadSource(cctv!.streamProxyUrl!);
       hls.attachMedia(video);
@@ -208,9 +213,11 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         }
       });
 
-      // ★ stalled 감지 — currentTime 8초간 변화 없으면 죽었다고 판단
+      // ★ stalled 감지 — 먼저 가벼운 재개(startLoad)로 시도, 그래도 안 되면 전체 재시작.
+      // (9분할 동시 부하 때 stall마다 전체 재로딩하면 요청 폭주 → 악순환이라 단계적 회복)
       let lastTime = -1;
       let lastTick = Date.now();
+      let softTries = 0;
       stallTimerId = setInterval(() => {
         if (cancelled || !video) return;
         if (video.paused) return; // 사용자가 일부러 정지한 거면 무시
@@ -219,10 +226,18 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         if (t !== lastTime) {
           lastTime = t;
           lastTick = now;
+          softTries = 0;
           return;
         }
         if (now - lastTick > STALL_THRESHOLD) {
-          hardRestart(`stalled ${Math.floor((now - lastTick) / 1000)}s`);
+          if (softTries < 2) {
+            softTries++;
+            try { hls?.startLoad(); } catch { /* */ }
+            video.play().catch(() => { /* */ });
+          } else {
+            hardRestart(`stalled ${Math.floor((now - lastTick) / 1000)}s`);
+            softTries = 0;
+          }
           lastTick = now;
         }
       }, 2000);
