@@ -201,11 +201,19 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         video.play().catch(() => setStatus("error"));
       });
 
+      let netErrSoft = 0;
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (!data.fatal) return;
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          // 네트워크 에러 → HLS.js 내장 재시도 + 재시작
-          hardRestart("HLS NETWORK_ERROR");
+          // ★ 디코더 세션 유지하며 가볍게 재개(startLoad) — destroy+new Hls()는 새 디코더를 만들어
+          // 다른 스트림 디코더를 밀어내는 cascade를 일으킴. 2회까지 가볍게, 그래도 안 되면 전체 재시작.
+          if (netErrSoft < 2) {
+            netErrSoft++;
+            try { hls?.startLoad(); } catch { hardRestart("network softfail"); }
+          } else {
+            netErrSoft = 0;
+            hardRestart("HLS NETWORK_ERROR");
+          }
         } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
           try { hls?.recoverMediaError(); } catch { hardRestart("MEDIA recover failed"); }
         } else {
