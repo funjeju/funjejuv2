@@ -9,9 +9,10 @@ export const sidebarItems = [
   { href: "/webzine", label: "여행 웹진",   icon: "📖" },
   { href: "/daily",   label: "AI데일리제주", icon: "🌅" },
   { href: "/trip-ai", label: "AI 여행 일정", icon: "🗓️" },
-  { href: "/game/spot", label: "틀린그림찾기", icon: "🔍" },
-  { href: "/game/acrostic", label: "삼행시 짓기", icon: "✍️" },
-  { href: "/game/typing", label: "한컴타자", icon: "⌨️" },
+  // 게임 3종은 완성 전까지 사이드바에서 임시 숨김 (어드민 /admin/game에서 출제·테스트). 정식은 통합 게임화면으로 노출 예정
+  // { href: "/game/spot", label: "틀린그림찾기", icon: "🔍" },
+  // { href: "/game/acrostic", label: "삼행시 짓기", icon: "✍️" },
+  // { href: "/game/typing", label: "한컴타자", icon: "⌨️" },
   // { href: "/pricing", label: "요금제",       icon: "💎" },  // 정식 요금제 확정 전까지 임시 숨김 (페이지는 보존)
   { href: "/mypage",  label: "마이페이지",  icon: "👤" },
 ] as const;
