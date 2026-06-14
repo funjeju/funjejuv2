@@ -20,11 +20,34 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
   const [name, setName] = useState("");
   const [msg, setMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [liveCpm, setLiveCpm] = useState(0);   // 실시간 타수
+  const [liveAcc, setLiveAcc] = useState(1);    // 실시간 정확도
+  const [muted, setMuted] = useState(false);
 
   const startedAt = useRef<number | null>(null);
   const lockedUpTo = useRef(0); // 확정 평가된 글자 인덱스
   const errors = useRef(0);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+
+  // 합성 사운드 (에셋 없이 Web Audio) — 타건/오타/완료
+  function beep(freq: number, durMs: number, type: OscillatorType = "square", vol = 0.04) {
+    if (muted || typeof window === "undefined") return;
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!audioRef.current) audioRef.current = new AC();
+      const ctx = audioRef.current;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durMs / 1000);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + durMs / 1000);
+    } catch { /* 오디오 미지원 무시 */ }
+  }
+  const sClick = () => beep(440, 28, "square", 0.025);
+  const sError = () => beep(150, 80, "sawtooth", 0.05);
+  const sDone = () => { beep(660, 90); setTimeout(() => beep(880, 110), 90); setTimeout(() => beep(1175, 160), 200); };
 
   useEffect(() => { if (user?.displayName) setName(user.displayName); }, [user]);
 
@@ -41,6 +64,7 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
 
   function reset() {
     setValue(""); setFinished(false); setResult(null); setMsg("");
+    setLiveCpm(0); setLiveAcc(1);
     startedAt.current = null; lockedUpTo.current = 0; errors.current = 0;
     taRef.current?.focus();
   }
@@ -50,10 +74,20 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
     if (startedAt.current == null && v.length > 0) startedAt.current = Date.now();
     // 프론티어(마지막 조합 중 글자) 이전까지 확정 평가 — 조합형 한글 안전
     const frontier = v.length >= target.length ? target.length : v.length - 1;
+    let newErr = 0, advanced = false;
     for (let i = lockedUpTo.current; i < frontier; i++) {
-      if (v[i] !== target[i]) errors.current++;
+      advanced = true;
+      if (v[i] !== target[i]) { errors.current++; newErr++; }
     }
+    if (advanced) (newErr > 0 ? sError : sClick)();
     lockedUpTo.current = Math.max(lockedUpTo.current, frontier);
+    // 실시간 타수·정확도
+    if (startedAt.current) {
+      const min = (Date.now() - startedAt.current) / 60000;
+      if (min > 0) setLiveCpm(Math.round(v.length / min));
+      const evaluated = lockedUpTo.current;
+      setLiveAcc(evaluated > 0 ? Math.max(0, (evaluated - errors.current) / evaluated) : 1);
+    }
     setValue(v);
     if (v.length >= target.length) finish(v);
   }
@@ -66,6 +100,7 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
     const score = Math.round(cpm * Math.pow(accuracy, W));
     const res = { cpm, accuracy, score };
     setResult(res);
+    sDone();
     // 제출
     setSubmitting(true);
     const h = await usageHeaders(user);
@@ -89,15 +124,33 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
 
   return (
     <div>
-      <div className="rounded-2xl bg-brand-navy px-4 py-3 text-center text-white">
-        <p className="text-[11px] text-white/70">{passage.businessName || "타자연습"} · {passage.kind === "long" ? "장문" : "단문"}</p>
-        <p className="text-[11px] text-brand-yellow">
-          타수(글자/분) × 정확도^{W} = 점수 {attemptsLeft != null ? `· 이번 주 ${attemptsLeft}회 남음` : "· 무제한"}
+      <div className="relative rounded-2xl bg-brand-navy px-4 py-3 text-white">
+        <button
+          type="button"
+          onClick={() => setMuted((m) => !m)}
+          className="absolute right-3 top-2.5 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold"
+          title="사운드 켜기/끄기"
+        >
+          {muted ? "🔇" : "🔊"}
+        </button>
+        <p className="text-center text-[11px] text-white/70">{passage.businessName || "타자연습"} · {passage.kind === "long" ? "장문" : "단문"}</p>
+        {/* 실시간 타수·정확도 */}
+        <div className="mt-1 flex items-end justify-center gap-6">
+          <div className="text-center"><p className="text-3xl font-black leading-none">{liveCpm}</p><p className="text-[10px] text-white/60">타수(글자/분)</p></div>
+          <div className="text-center"><p className="text-3xl font-black leading-none text-brand-yellow">{Math.round(liveAcc * 100)}%</p><p className="text-[10px] text-white/60">정확도</p></div>
+        </div>
+        <p className="mt-1 text-center text-[10px] text-white/50">
+          점수 = 타수 × 정확도^{W} {attemptsLeft != null ? `· 이번 주 ${attemptsLeft}회 남음` : "· 무제한"}
         </p>
       </div>
 
+      {/* 진행바 */}
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-bg-secondary">
+        <div className="h-full bg-brand-orange transition-all" style={{ width: `${Math.min(100, Math.round((value.length / target.length) * 100))}%` }} />
+      </div>
+
       {/* 지문 */}
-      <div className="mt-3 rounded-2xl border border-border-soft bg-bg-card p-4 text-lg leading-9 shadow-card">
+      <div className="mt-2 rounded-2xl border border-border-soft bg-bg-card p-4 text-lg leading-9 shadow-card">
         {chars}
       </div>
 
