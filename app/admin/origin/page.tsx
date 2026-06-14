@@ -52,8 +52,9 @@ type Stats = {
   perCctv: Record<string, CctvStats>;
 };
 
-// Worker가 있으면 Worker 통계, 없으면 Lightsail 통계
-const PROXY_URL = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
+// ★ 통계는 Vultr(단일 프로세스)에서 읽는다 — 워커 /stats는 isolate별이라 콜드 인스턴스면 0으로 보임(부정확).
+// Vultr는 전 시청자 요청을 한 프로세스에서 집계해 origin/hit·실시간 로그가 정확. CORS=* 라 브라우저에서 직접 fetch 가능.
+const PROXY_URL = process.env.NEXT_PUBLIC_STATS_URL || "https://stream.funjeju.com";
 
 function formatTime(t: number) {
   return new Date(t).toLocaleTimeString("ko-KR", {
