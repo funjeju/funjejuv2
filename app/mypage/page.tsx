@@ -151,15 +151,17 @@ export default function MyPage() {
           <p className="text-[11px] text-text-secondary">
             {entitlements.betaPerks
               ? "베타 기간이라 멀티뷰 9분할까지 거의 다 열려 있어요!"
-              : "더 많은 기능이 필요하면 요금제를 확인해보세요."}
+              : "지금은 시범 서비스 기간이에요."}
           </p>
         </div>
+        {/* 정식 요금제 확정 전까지 임시 숨김
         <Link
           href="/pricing"
           className="shrink-0 rounded-full bg-brand-orange px-3 py-1.5 text-[11px] font-bold text-white hover:bg-brand-orange/90 transition-colors"
         >
           요금제 보기 →
         </Link>
+        */}
       </div>
 
       {/* Admin 바로가기 */}

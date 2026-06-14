@@ -210,7 +210,7 @@ async function buildDominCards(
   intent: Intent,
   primary: ChatRestaurant[],
   gps: { lat: number; lng: number } | null
-): Promise<DominCard[]> {
+): Promise<{ cards: DominCard[]; picked: ChatRestaurant[] }> {
   const picked: ChatRestaurant[] = [...primary];
 
   // 부족하면 지역 제한 없이 메뉴 기준으로 전 제주에서 보충
@@ -229,7 +229,8 @@ async function buildDominCards(
     } catch { /* 보충 실패 시 있는 만큼만 */ }
   }
 
-  return picked.slice(0, 3).map((r) => {
+  const top = picked.slice(0, 3);
+  const cards = top.map((r) => {
     const lat = typeof r.lat === "number" ? r.lat : undefined;
     const lng = typeof r.lng === "number" ? r.lng : undefined;
     return {
@@ -249,6 +250,7 @@ async function buildDominCards(
             : undefined,
     };
   });
+  return { cards, picked: top };
 }
 
 // ── AI 검색 추천 (구글 검색 그라운딩 + 카카오 좌표 확인) ──
@@ -351,8 +353,17 @@ function buildSystemPrompt(opts: {
   hasGps: boolean;
   gpsInfo: { region?: string; label: string; distanceKm: number } | null;
   gpsOutsideJeju: boolean;
+  hasDominCards: boolean;
 }): string {
-  const { restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju } = opts;
+  const { restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju, hasDominCards } = opts;
+
+  // 음식 의도 + 표시되는 맛집 카드가 있으면: 맛집을 무조건 먼저, "없다"고 말하지 말 것
+  const foodFirstNote = intent.wantsFood && hasDominCards
+    ? `\n[★최우선 규칙] 유저는 "맛집"을 물었고, 화면에는 도민맛집 카드가 이미 표시돼 있어. 그러니:
+- 절대 "도민맛집이 없다/없네"라고 말하지 마. (카드가 떠 있는데 없다고 하면 모순이야)
+- 답변의 맨 처음을 반드시 도민맛집 안내로 시작해. 관광지·명소는 그 다음(아래)에만.
+- 카드의 맛집이 현재 위치에서 멀면 "가까운 곳엔 인증 맛집이 없어서 제주에서 평이 좋은 곳으로 골랐어" 식으로 자연스럽게 안내해.\n`
+    : "";
 
   const locationNote = gpsOutsideJeju
     ? `유저는 현재 제주가 아닌 곳에 있어. "지금 제주 밖에 계시네요!" 한 줄 언급하고 제주 전 지역 대표 명소/맛집 추천해.`
@@ -395,7 +406,7 @@ function buildSystemPrompt(opts: {
 - 제주 이외 지역 추천 금지
 - 폐업·미인증 가게 추천 금지
 
-${restaurantCtx ? `\n${restaurantCtx}\n` : "\n[펀제주 인증 도민맛집: 해당 지역 등록 없음]\n"}`;
+${restaurantCtx ? `\n${restaurantCtx}\n` : "\n[펀제주 인증 도민맛집: 해당 지역 등록 없음]\n"}${foodFirstNote}`;
 }
 
 // ── 메인 ────────────────────────────────────────────────
@@ -409,7 +420,7 @@ export async function POST(req: NextRequest) {
   const gate = await consumeUsage({ ...user, feature: "chat" });
   if (!gate.allowed) {
     return gatedResponse(
-      "오늘 도슨트 대화 횟수를 모두 사용했어요. 내일 다시 충전되거나 요금제를 올리면 더 쓸 수 있어요.",
+      "오늘 도슨트 대화 횟수를 모두 사용했어요. 내일 다시 충전돼요.",
       gate.used,
       gate.limit
     );
@@ -475,8 +486,11 @@ export async function POST(req: NextRequest) {
 
   // 도민맛집 카드 (최대 3개, 부족하면 반경 확장해서 채움)
   let dominCards: DominCard[] = [];
+  let cardRestaurants: ChatRestaurant[] = []; // 실제 카드로 표시되는 맛집(확장 포함) — 프롬프트 컨텍스트 동기화용
   if (intent.wantsFood) {
-    dominCards = await buildDominCards(intent, restaurants, gpsPoint);
+    const built = await buildDominCards(intent, restaurants, gpsPoint);
+    dominCards = built.cards;
+    cardRestaurants = built.picked;
   }
 
   // AI 검색 추천은 텍스트 스트림과 병렬로 진행 (음식 질문일 때만)
@@ -493,8 +507,11 @@ export async function POST(req: NextRequest) {
       })
     : Promise.resolve([]);
 
-  const restaurantCtx = buildRestaurantContext(restaurants);
-  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju });
+  // 프롬프트 컨텍스트는 "실제 카드로 표시되는 맛집"과 일치시킨다.
+  // (지역엔 없어 전 제주로 확장한 경우에도 카드가 뜨므로, AI가 "없다"고 모순되게 답하지 않도록)
+  const ctxRestaurants = intent.wantsFood && cardRestaurants.length > 0 ? cardRestaurants : restaurants;
+  const restaurantCtx = buildRestaurantContext(ctxRestaurants);
+  const systemPrompt  = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju, hasDominCards: dominCards.length > 0 });
 
   console.log("[chat]",
     `gps=${hasGps ? `${lat?.toFixed(4)},${lng?.toFixed(4)}` : "none"}`,

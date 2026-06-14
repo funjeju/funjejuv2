@@ -113,18 +113,20 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const fmtTime = (ms: number) => `${(ms / 1000).toFixed(1)}초`;
 
   const renderImg = (src: string, side: "L" | "R", label: string) => (
-    <div className="relative cursor-crosshair overflow-hidden bg-white leading-none" onClick={(e) => handleClick(e, side)}
-      style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
-      <img
-        ref={side === "L" ? imgRef : undefined}
-        src={src}
-        alt={label}
-        onLoad={side === "L" ? (e) => { const t = e.currentTarget; if (t.naturalHeight) setOrigAspect(t.naturalWidth / t.naturalHeight); } : undefined}
-        className="block h-full w-full select-none"
-        style={{ objectFit: "fill", pointerEvents: "none" }}
-      />
-      <span className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[12px] font-bold text-white">{label}</span>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
+    <div className="leading-none">
+      {/* 이미지 위 라벨 — 겹치지 않게 헤더로 표시 */}
+      <p className="bg-brand-navy pb-1.5 text-center text-[11px] font-bold tracking-wide text-white md:text-xs">{label}</p>
+      <div className="relative cursor-crosshair overflow-hidden bg-white leading-none" onClick={(e) => handleClick(e, side)}
+        style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
+        <img
+          ref={side === "L" ? imgRef : undefined}
+          src={src}
+          alt={label}
+          onLoad={side === "L" ? (e) => { const t = e.currentTarget; if (t.naturalHeight) setOrigAspect(t.naturalWidth / t.naturalHeight); } : undefined}
+          className="block h-full w-full select-none"
+          style={{ objectFit: "fill", pointerEvents: "none" }}
+        />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
           <style>{`
             @keyframes draw-circle {
@@ -161,6 +163,7 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           </g>
         ))}
       </svg>
+      </div>
     </div>
   );
 
@@ -172,8 +175,8 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       </div>
 
       <div className={`grid gap-[3px] bg-brand-navy p-[3px] ${game.layout === "stack" ? "grid-cols-1" : "grid-cols-2"}`}>
-        {renderImg(game.origImage, "L", "①")}
-        {renderImg(game.variantImage, "R", "②")}
+        {renderImg(game.origImage, "L", "원본")}
+        {renderImg(game.variantImage, "R", "틀린그림")}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border-soft bg-bg-secondary px-5 py-3">

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +12,17 @@ function won(n: number): string {
   return n === 0 ? "무료" : `₩${n.toLocaleString()}`;
 }
 
+// 정식 요금제 확정 전까지 임시로 페이지를 가림 — 직접 URL 접근 시 홈으로 보냄.
+// 아래 PricingPageImpl 본문은 그대로 보존(메뉴/링크만 숨긴 상태에서 코드는 유지).
 export default function PricingPage() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/");
+  }, [router]);
+  return null;
+}
+
+function PricingPageImpl() {
   const { user, signInWithGoogle } = useAuth();
   const isBeta = SERVICE_MODE === "beta";
 

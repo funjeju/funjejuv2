@@ -262,13 +262,15 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-gray-950/90 px-6 text-center">
           <span className="text-4xl">⏳</span>
           <p className="text-sm font-bold text-white">오늘 시청시간을 다 썼어요</p>
-          <p className="text-xs text-white/60">내일 다시 충전돼요 · 정식 오픈 후에는 요금제에 따라 달라져요</p>
+          <p className="text-xs text-white/60">내일 다시 충전돼요</p>
+          {/* 정식 요금제 확정 전까지 요금제 링크 임시 숨김
           <Link
             href="/pricing"
             className="mt-2 rounded-full bg-brand-orange px-4 py-2 text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
           >
             요금제 보러가기 →
           </Link>
+          */}
         </div>
       )}
 

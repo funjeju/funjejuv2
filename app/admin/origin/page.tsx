@@ -322,9 +322,13 @@ export default function AdminOriginPage() {
 
       {/* 실시간 이벤트 로그 */}
       <section className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
-        <h2 className="mb-3 text-sm font-bold text-text-primary">
+        <h2 className="mb-1 text-sm font-bold text-text-primary">
           🔴 실시간 요청 로그 (최근 200건)
         </h2>
+        <p className="mb-3 text-[11px] leading-4 text-text-secondary">
+          ※ <b>모든 방문자</b> 기준(내 화면만 아님) · <b>CF 캐시 미스</b>(Vultr 도달분)만 표시돼요.
+          내가 보는 카메라가 안 보이면 CF 엣지 캐시에서 나간 것(=캐시 성공), 안 보던 카메라가 뜨면 다른 방문자 시청 중.
+        </p>
         <div className="rounded-xl bg-gray-950 p-3 max-h-[500px] overflow-y-auto font-mono text-[11px]">
           {data.events.length === 0 ? (
             <p className="text-gray-500 text-center py-4">아직 요청 없음. 사이트에서 영상 켜보세요.</p>

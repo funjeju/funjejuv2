@@ -9,8 +9,13 @@ import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
+import { useAuth } from "@/hooks/useAuth";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
+
+const ADMIN_EMAIL = "naggu1999@gmail.com";
+// 6·9분할은 관리자만 노출 (일반 사용자는 1·2·4분할까지)
+const PUBLIC_MAX_SPLIT = 4;
 
 type SlotCount = 1 | 2 | 4 | 6 | 9;
 
@@ -396,6 +401,8 @@ function EmptySlot({
 }
 
 export default function MultiviewPage() {
+  const { user } = useAuth();
+  const isAdmin = !!user && user.email === ADMIN_EMAIL;
   const { favoriteIds: savedIds } = useCctvFavorite();
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
@@ -496,12 +503,15 @@ export default function MultiviewPage() {
     if (budget.exhausted && playing) setPlaying(false);
   }, [budget.exhausted, playing]);
 
-  // 플랜 한도 초과 분할은 강제로 낮춤 (예: 비회원 1분할)
+  // 6·9분할은 관리자만 — 일반 사용자는 플랜 한도와 무관하게 4분할까지로 제한
+  const effectiveMaxSplit = isAdmin ? budget.maxSplit : Math.min(budget.maxSplit, PUBLIC_MAX_SPLIT);
+
+  // 한도 초과 분할은 강제로 낮춤 (비회원 1분할 / 일반 사용자 6·9 차단)
   useEffect(() => {
-    if (slotCount > budget.maxSplit) {
-      setSlotCount(budget.maxSplit as SlotCount);
+    if (slotCount > effectiveMaxSplit) {
+      setSlotCount(effectiveMaxSplit as SlotCount);
     }
-  }, [budget.maxSplit, slotCount]);
+  }, [effectiveMaxSplit, slotCount]);
 
   // localStorage에서 슬롯 상태 복원
   useEffect(() => {
@@ -598,9 +608,9 @@ export default function MultiviewPage() {
       {/* 컨트롤 바 */}
       <div className="mx-4 mb-3 space-y-1.5 rounded-2xl border border-border-soft bg-bg-card p-1.5 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
         {/* 분할 선택 — 플랜 한도 초과는 잠금 */}
-        <div className="grid grid-cols-5 gap-0.5 rounded-full bg-bg-secondary p-0.5 md:flex md:items-center md:gap-1 md:p-1">
-          {([1, 2, 4, 6, 9] as SlotCount[]).map((n) => {
-            const locked = n > budget.maxSplit;
+        <div className="flex gap-0.5 rounded-full bg-bg-secondary p-0.5 md:items-center md:gap-1 md:p-1">
+          {((isAdmin ? [1, 2, 4, 6, 9] : [1, 2, 4]) as SlotCount[]).map((n) => {
+            const locked = n > effectiveMaxSplit;
             return (
               <button
                 key={n}
@@ -695,7 +705,8 @@ export default function MultiviewPage() {
               <span className="text-lg">⏳</span>
               <p className="flex-1 text-[11px] leading-5 text-text-primary">
                 오늘 시청시간을 다 썼어요! 내일 다시 충전돼요.
-                <Link href="/pricing" className="ml-1 font-bold text-brand-orange">더 길게 보려면 →</Link>
+                {/* 정식 요금제 확정 전까지 임시 숨김
+                <Link href="/pricing" className="ml-1 font-bold text-brand-orange">더 길게 보려면 →</Link> */}
               </p>
             </div>
           ) : (
@@ -708,7 +719,8 @@ export default function MultiviewPage() {
                   <span className="ml-1 text-text-secondary">· 지금 {activeHlsStreams}배 차감 중</span>
                 )}
               </p>
-              <Link href="/pricing" className="shrink-0 text-[10px] font-bold text-brand-orange">늘리기</Link>
+              {/* 정식 요금제 확정 전까지 임시 숨김
+              <Link href="/pricing" className="shrink-0 text-[10px] font-bold text-brand-orange">늘리기</Link> */}
             </div>
           )}
         </div>

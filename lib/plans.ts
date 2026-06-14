@@ -123,7 +123,7 @@ export const SERVICE_MODE: ServiceMode =
  * - 비회원: guest 한도 그대로
  */
 export const BETA_MEMBER_LIMITS: PlanLimits = {
-  cctvMinutesPerDay: 180,      // 하루 3시간(스트림·분) — 베타 원가 통제. 9분할로 보면 ~20분
+  cctvMinutesPerDay: -1,       // 베타: 로그인하면 CCTV 시청 무제한 (사용량은 비용 추정용으로 계속 누적)
   maxSplit: 9,
   ads: false,
   chatPerDay: -1,

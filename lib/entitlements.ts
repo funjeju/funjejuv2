@@ -41,11 +41,11 @@ export function getEntitlements(opts: { loggedIn: boolean; plan?: PlanId | null 
         betaPerks: true,
       };
     }
-    // 비회원은 베타에도 guest 한도
+    // 비회원도 베타에는 guest 한도 — 단, 챗봇(AI 도슨트)은 누구에게나 무제한 개방
     return {
       mode: "beta",
       planLabel: "비회원",
-      limits: PLANS.guest.limits,
+      limits: { ...PLANS.guest.limits, chatPerDay: -1 },
       planId: "guest",
       betaPerks: false,
     };

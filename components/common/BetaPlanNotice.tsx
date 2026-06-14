@@ -7,7 +7,11 @@ import { SERVICE_MODE } from "@/lib/plans";
  * 베타 안내 배너 — "정식 오픈하면 요금제에 따라 달라집니다" + 요금제 보러가기.
  * SERVICE_MODE가 "live"가 되면 자동으로 사라짐.
  */
+// 정식 요금제 확정 전까지 요금제 안내 배너 전체 임시 숨김 (true로 바꾸면 복구)
+const HIDE_PLAN_NOTICE = true;
+
 export function BetaPlanNotice({ compact = false }: { compact?: boolean }) {
+  if (HIDE_PLAN_NOTICE) return null;
   if (SERVICE_MODE !== "beta") return null;
 
   if (compact) {

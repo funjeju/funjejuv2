@@ -4,7 +4,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getContentBySlug, listPublished } from "@/lib/contents";
+import { loadAllRestaurants } from "@/lib/restaurants";
 import { ShareButton } from "@/components/common/ShareButton";
+import { KakaoMap } from "@/components/biz/KakaoMap";
 
 const SITE_URL = "https://funjeju.com";
 export const revalidate = 60;
@@ -51,6 +53,10 @@ export default async function WebzineDetailPage({
   const { slug } = await params;
   const c = await getContentBySlug(slug);
   if (!c || c.status !== "published") notFound();
+
+  // 섹션의 restaurantId → 맛집 좌표/주소 매칭 (지도 썸네일·길찾기용). 모듈 캐시라 비용 0.
+  const restList = await loadAllRestaurants();
+  const restById = new Map(restList.map((r) => [r.id, r]));
 
   // Article JSON-LD
   const jsonLd = {
@@ -102,7 +108,17 @@ export default async function WebzineDetailPage({
 
         {/* 맛집 섹션 — 내부링크(트랙 C: 웹진 → 도민맛집) */}
         <div className="mt-6 space-y-6">
-          {c.sections.map((s, i) => (
+          {c.sections.map((s, i) => {
+            const rest = s.restaurantId ? restById.get(s.restaurantId) : undefined;
+            // 좌표 또는 주소가 있어야 지도 표시 (없으면 잘못된 핀 방지)
+            const hasCoord = !!(rest && (rest.lat && rest.lng));
+            const hasAddr = !!(rest && rest.address);
+            const showMap = hasCoord || hasAddr;
+            const mapName = rest?.title || s.heading;
+            const dirUrl = hasCoord
+              ? `https://map.kakao.com/link/map/${encodeURIComponent(mapName)},${rest!.lat},${rest!.lng}`
+              : `https://map.kakao.com/link/search/${encodeURIComponent(rest?.address || mapName)}`;
+            return (
             <section key={i} className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
               <div className="flex gap-3">
                 {s.image && (
@@ -120,8 +136,29 @@ export default async function WebzineDetailPage({
                   )}
                 </div>
               </div>
+
+              {/* 지도 썸네일 + 마킹 (좌표 우선, 없으면 주소 지오코딩) */}
+              {showMap && (
+                <div className="mt-3 overflow-hidden rounded-xl border border-border-soft">
+                  <KakaoMap
+                    {...(hasCoord ? { lat: rest!.lat, lng: rest!.lng } : {})}
+                    {...(hasAddr ? { address: rest!.address } : {})}
+                    placeName={mapName}
+                    className="h-36 w-full bg-bg-secondary"
+                  />
+                  <a
+                    href={dirUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1 bg-bg-card py-2 text-[12px] font-bold text-brand-navy hover:bg-bg-secondary transition-colors"
+                  >
+                    📍 {rest?.address ? rest.address : mapName} · 카카오맵에서 보기 →
+                  </a>
+                </div>
+              )}
             </section>
-          ))}
+            );
+          })}
         </div>
 
         {/* 글 끝 — 출처 재안내 */}

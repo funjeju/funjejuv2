@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   if (!chk.allowed) {
     return NextResponse.json(
       {
-        error: "이번 달 제주tube 추출 횟수를 모두 사용했어요. 다음 달에 충전되거나 요금제를 올리면 더 쓸 수 있어요.",
+        error: "이번 달 제주tube 추출 횟수를 모두 사용했어요. 다음 달에 충전돼요.",
         gated: true, used: chk.used, limit: chk.limit,
       },
       { status: 429 }
