@@ -21,6 +21,7 @@ export default function AdminSpotDiffPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null); // 수정 중인 게임 id
+  const [origAspect, setOrigAspect] = useState<number | null>(null); // 원본 가로/세로 비율 — 변형도 이 박스에 맞춰 렌더(정렬 보장)
 
   // 기존 문제 목록
   const [games, setGames] = useState<SpotGame[]>([]);
@@ -37,7 +38,10 @@ export default function AdminSpotDiffPage() {
     reader.onload = (e) => {
       const url = e.target?.result as string;
       const img = new Image();
-      img.onload = () => { setLayout(img.naturalWidth >= img.naturalHeight ? "stack" : "side"); };
+      img.onload = () => {
+        setLayout(img.naturalWidth >= img.naturalHeight ? "stack" : "side");
+        setOrigAspect(img.naturalWidth / img.naturalHeight);
+      };
       img.src = url;
       setOrig(url); setVariant(null); setMarkers([]); setNotes([]);
     };
@@ -86,6 +90,11 @@ export default function AdminSpotDiffPage() {
     setEditingId(g.id);
     setOrig(g.origImage);
     setVariant(g.variantImage);
+    // 원본 비율 측정 → 변형도 같은 박스에 맞춰 렌더(옛 게임 해상도 불일치 보정)
+    setOrigAspect(null);
+    const im = new Image();
+    im.onload = () => setOrigAspect(im.naturalWidth / im.naturalHeight);
+    im.src = g.origImage;
     setMarkers(g.markers ?? []);
     setTitle(g.title);
     setLayout(g.layout);
@@ -218,8 +227,8 @@ export default function AdminSpotDiffPage() {
           <div className={`grid gap-3 ${layout === "stack" ? "grid-cols-1" : "grid-cols-2"}`}>
             <div className="overflow-hidden rounded-lg border border-border-soft">
               <div className="bg-bg-secondary px-3 py-1.5 text-[11px] font-bold">① 원본</div>
-              <div className="relative leading-none">
-                <img src={orig} alt="원본" className="block w-full" />
+              <div className="relative leading-none" style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
+                <img src={orig} alt="원본" className="block h-full w-full" style={{ objectFit: "fill" }} />
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
                   {markers.map((m, i) => (<g key={i}><circle cx={m.x} cy={m.y} r={RING_R} fill="rgba(255,60,60,0.18)" stroke="#ff3333" strokeWidth={2} /><text x={m.x} y={m.y + 0.6} textAnchor="middle" dominantBaseline="middle" fontSize={4} fontWeight="bold" fill="#cc2222">{i + 1}</text></g>))}
                 </svg>
@@ -227,8 +236,8 @@ export default function AdminSpotDiffPage() {
             </div>
             <div className="overflow-hidden rounded-lg border border-border-soft">
               <div className="bg-bg-secondary px-3 py-1.5 text-[11px] font-bold">② 변형 — 여기 클릭!</div>
-              <div className="relative cursor-crosshair leading-none" onClick={addMarker}>
-                <img src={variant} alt="변형" className="block w-full select-none" style={{ pointerEvents: "none" }} />
+              <div className="relative cursor-crosshair leading-none" onClick={addMarker} style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
+                <img src={variant} alt="변형" className="block h-full w-full select-none" style={{ objectFit: "fill", pointerEvents: "none" }} />
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
                   {markers.map((m, i) => (<g key={i}><circle cx={m.x} cy={m.y} r={RING_R} fill="rgba(255,60,60,0.18)" stroke="#ff3333" strokeWidth={2} style={{ cursor: "pointer", pointerEvents: "all" }} onClick={(ev) => { ev.stopPropagation(); removeMarker(i); }} /><text x={m.x} y={m.y + 0.6} textAnchor="middle" dominantBaseline="middle" fontSize={4} fontWeight="bold" fill="#cc2222" style={{ pointerEvents: "none" }}>{i + 1}</text></g>))}
                 </svg>

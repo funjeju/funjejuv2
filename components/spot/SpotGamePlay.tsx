@@ -16,6 +16,7 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [rankings, setRankings] = useState<SpotScore[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [comments, setComments] = useState<SpotComment[]>([]);
+  const [origAspect, setOrigAspect] = useState<number | null>(null); // 원본 비율 — 변형도 같은 박스에 맞춰 정렬
   const [commentText, setCommentText] = useState("");
   const [commentSending, setCommentSending] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -112,8 +113,16 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const fmtTime = (ms: number) => `${(ms / 1000).toFixed(1)}초`;
 
   const renderImg = (src: string, side: "L" | "R", label: string) => (
-    <div className="relative cursor-crosshair overflow-hidden bg-white leading-none" onClick={(e) => handleClick(e, side)}>
-      <img ref={side === "L" ? imgRef : undefined} src={src} alt={label} className="block w-full select-none" style={{ pointerEvents: "none" }} />
+    <div className="relative cursor-crosshair overflow-hidden bg-white leading-none" onClick={(e) => handleClick(e, side)}
+      style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
+      <img
+        ref={side === "L" ? imgRef : undefined}
+        src={src}
+        alt={label}
+        onLoad={side === "L" ? (e) => { const t = e.currentTarget; if (t.naturalHeight) setOrigAspect(t.naturalWidth / t.naturalHeight); } : undefined}
+        className="block h-full w-full select-none"
+        style={{ objectFit: "fill", pointerEvents: "none" }}
+      />
       <span className="absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[12px] font-bold text-white">{label}</span>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
