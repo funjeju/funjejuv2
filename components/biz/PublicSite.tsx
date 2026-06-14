@@ -2,6 +2,7 @@
 
 import type { SiteSchema, CtaButton } from "@/lib/biz/types";
 import { BlockRenderer } from "./blocks/BlockRenderer";
+import { ensureGalleryBlock } from "@/lib/biz/utils";
 import { Phone, MessageCircle, MapPin, Navigation, ExternalLink } from "lucide-react";
 
 const CTA_STYLE: Record<CtaButton["type"], { cls: string; icon: typeof Phone }> = {
@@ -16,7 +17,8 @@ const CTA_STYLE: Record<CtaButton["type"], { cls: string; icon: typeof Phone }> 
  * 비즈 홈페이지 퍼블릭 렌더 — layout 블록들을 순서대로 그리고,
  * 하단에 최대 3개의 고정 CTA 버튼(전화·네이버·길찾기 등).
  */
-export function PublicSite({ site }: { site: SiteSchema }) {
+export function PublicSite({ site: rawSite }: { site: SiteSchema }) {
+  const site = ensureGalleryBlock(rawSite);
   const { phone } = site.merchantInfo;
 
   // ctaButtons 우선, 없으면 기존 전화/카카오톡으로 폴백

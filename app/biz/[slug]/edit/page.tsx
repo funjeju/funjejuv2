@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { uploadFeedImage, resizeImageForUpload } from "@/lib/feed";
 import { VIBES, type SiteSchema, type SiteBlock } from "@/lib/biz/types";
+import { ensureGalleryBlock } from "@/lib/biz/utils";
 
 const BLOCK_LABEL: Record<string, string> = {
   Hero: "대표 배너", Menu: "메뉴", FeaturedCard: "추천/특징", Gallery: "사진 갤러리",
@@ -36,7 +37,7 @@ export default function BizEditPage() {
         const token = await user.getIdToken();
         const res = await fetch(`/api/biz/${encodeURIComponent(slug)}`, { headers: { Authorization: `Bearer ${token}` } });
         const d = await res.json();
-        if (res.ok && d.site) setSite(d.site);
+        if (res.ok && d.site) setSite(ensureGalleryBlock(d.site));
         else setMsg(d.error ?? "불러오기 실패");
       } catch { setMsg("불러오기 실패"); }
       finally { setLoading(false); }
@@ -58,7 +59,9 @@ export default function BizEditPage() {
       if (kind === "hero") {
         patchSite({ contentAssets: { ...site.contentAssets, heroImage: urls[0] } });
       } else {
-        patchSite({ contentAssets: { ...site.contentAssets, galleryImages: [...(site.contentAssets.galleryImages ?? []), ...urls].slice(0, 12) } });
+        const next = { ...site, contentAssets: { ...site.contentAssets, galleryImages: [...(site.contentAssets.galleryImages ?? []), ...urls].slice(0, 12) } };
+        // 첫 사진 업로드 시 갤러리 블록이 없으면 자동 추가 (섹션 목록·홈페이지에 노출)
+        setSite(ensureGalleryBlock(next));
       }
     } catch { setMsg("이미지 업로드 실패"); }
     finally { setUploading(null); }

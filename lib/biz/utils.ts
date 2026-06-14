@@ -1,8 +1,31 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { SiteSchema, SiteBlock } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+/**
+ * 갤러리 이미지를 올렸는데 layout에 갤러리 블록이 없는 사이트 보정.
+ * (옛 사이트·갤러리 없는 템플릿으로 생성된 경우 사진이 어디에도 안 떠서 추가)
+ * 추천/메뉴 다음, 리뷰·지도·연락처·CTA 앞에 끼워넣는다.
+ */
+export function ensureGalleryBlock(site: SiteSchema): SiteSchema {
+  const hasImages = (site.contentAssets?.galleryImages?.length ?? 0) > 0;
+  const hasGallery = site.layout.some((b) => b.componentType.startsWith("Gallery"));
+  if (!hasImages || hasGallery) return site;
+
+  const galleryBlock: SiteBlock = {
+    blockId: "gallery-auto",
+    componentType: "GalleryGrid-v1",
+    data: { title: "갤러리" },
+    visible: true,
+  };
+  const layout = [...site.layout];
+  const tailIdx = layout.findIndex((b) => /^(Review|Map|Contact|CTA|Blog)/.test(b.componentType));
+  layout.splice(tailIdx >= 0 ? tailIdx : layout.length, 0, galleryBlock);
+  return { ...site, layout };
 }
 
 // 루트 경로와 충돌하면 안 되는 예약어 (siteId가 이것과 같으면 안 됨)
