@@ -52,6 +52,8 @@ export function getAdminApp(): App {
 export function getAdminDb(): Firestore {
   if (adminDb) return adminDb;
   adminDb = getFirestore(getAdminApp());
+  // 빈 옵션 필드(undefined)를 set/update 시 에러 대신 무시 — 삼행시·타자 등 옵션 많은 문서 저장 안정화
+  try { adminDb.settings({ ignoreUndefinedProperties: true }); } catch { /* 이미 초기화됨 */ }
   return adminDb;
 }
 

@@ -18,7 +18,8 @@ export function weekKeyOf(d = new Date()): string {
 
 // ── 지문(Passage) ────────────────────────────────────────
 export async function createPassage(p: TypingPassage): Promise<void> {
-  await getAdminDb().collection(PASSAGES).doc(p.id).set(p);
+  const clean = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined));
+  await getAdminDb().collection(PASSAGES).doc(p.id).set(clean);
 }
 export async function updatePassage(
   id: string,

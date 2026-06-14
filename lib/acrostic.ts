@@ -9,7 +9,8 @@ const LIKES = "acrostic_likes";
 
 // ── 주제(Topic) ──────────────────────────────────────────
 export async function createTopic(t: AcrosticTopic): Promise<void> {
-  await getAdminDb().collection(TOPICS).doc(t.id).set(t);
+  const clean = Object.fromEntries(Object.entries(t).filter(([, v]) => v !== undefined));
+  await getAdminDb().collection(TOPICS).doc(t.id).set(clean);
 }
 
 export async function updateTopic(
