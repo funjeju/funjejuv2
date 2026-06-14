@@ -18,6 +18,9 @@ let CCTVS = {
   hyeopjae:        "http://211.114.96.121:1935/jejusi6/11-17.stream/playlist.m3u8",
   ongpo:           "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100005/0/1/1.m3u8",
   sinchang:        "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100004/0/1/1.m3u8",
+  beophwan_po:     "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100007/0/1/1.m3u8",
+  beophwan_eo:     "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100008/0/1/1.m3u8",
+  onpyeong:        "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100011/0/1/1.m3u8",
   panpo:           "http://211.114.96.121:1935/jejusi6/11-18.stream/playlist.m3u8",
   udo_cheonjin:    "http://211.114.96.121:1935/jejusi7/11-24.stream/playlist.m3u8",
   udo_haumoktong:  "http://211.114.96.121:1935/jejusi7/11-23.stream/playlist.m3u8",
@@ -83,6 +86,20 @@ const M3U8_TTL = 6000;
 const TS_TTL = 30000;
 const TS_MAX = 200;
 
+// ★ vurix(59.8.86.94)는 1초 세그먼트 + 보관 ~3초라 묵은 재생목록이면 404.
+// origin이 /vurix/ 면: m3u8 캐시를 1초로 줄여 거의 실시간 + 콜드스타트(4.5s) 대비 타임아웃 확대.
+function isVurix(id) {
+  const o = CCTVS[id];
+  return !!o && o.includes("/vurix/");
+}
+function m3u8TtlFor(id) {
+  return isVurix(id) ? 1000 : M3U8_TTL;
+}
+function fetchTimeoutFor(id, isM3u8) {
+  if (isVurix(id)) return 6000;            // vurix 세션 콜드스타트(~4.5s) 흡수
+  return isM3u8 ? 2500 : 3500;
+}
+
 function getCache(map, key, ttl) {
   const v = map.get(key);
   if (!v) return null;
@@ -106,8 +123,8 @@ const counters = {}; // cctvId -> { origin, hit, lastAccess, lastIPs:Set }
 // ★ Circuit Breaker — cctv별 origin 실패 추적
 // 연속 N회 실패 시 일정 시간 origin 호출 차단 (소켓 누적 방지)
 const circuit = {}; // cctvId -> { failures, openUntil }
-const CB_FAILURE_THRESHOLD = 3;     // 3회 연속 실패 시 차단
-const CB_OPEN_DURATION = 30000;     // 30초간 차단
+const CB_FAILURE_THRESHOLD = 5;     // 5회 연속 실패 시 차단 (vurix 간헐 실패에 덜 민감)
+const CB_OPEN_DURATION = 8000;      // 8초간 차단 (30s→8s, 빠른 자가복구)
 
 function cbAllow(cctvId) {
   const c = circuit[cctvId];
@@ -224,7 +241,7 @@ app.get("/cctv/:id", async (req, res) => {
   if (!origin) return res.status(404).json({ error: "not found" });
 
   const cacheKey = req.params.id;
-  const cached = getCache(m3u8Cache, cacheKey, M3U8_TTL);
+  const cached = getCache(m3u8Cache, cacheKey, m3u8TtlFor(req.params.id));
   if (cached) {
     logEvent(req, req.params.id, "m3u8", "hit");
     res.set("Content-Type", "application/vnd.apple.mpegurl");
@@ -242,7 +259,7 @@ app.get("/cctv/:id", async (req, res) => {
     // ★ Dedup — 같은 cctv 동시 origin fetch 1개로
     const rewritten = await dedupedFetch(`m3u8:${req.params.id}`, async () => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500); // 5s → 2.5s
+      const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutFor(req.params.id, true));
       try {
         const r = await fetch(origin, {
           headers: { "User-Agent": "Mozilla/5.0 FunJeju/1.0" },
@@ -298,7 +315,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
       })();
 
   if (isM3u8) {
-    const cached = getCache(m3u8Cache, cacheKey, M3U8_TTL);
+    const cached = getCache(m3u8Cache, cacheKey, m3u8TtlFor(req.params.id));
     if (cached) {
       logEvent(req, req.params.id, "chunklist", "hit");
       res.set("Content-Type", "application/vnd.apple.mpegurl");
@@ -327,7 +344,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
     // ★ Dedup — 같은 cacheKey 동시 origin fetch 1개로
     const result = await dedupedFetch(cacheKey, async () => {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), isM3u8 ? 2500 : 3500); // 5/8s → 2.5/3.5s
+      const timeoutId = setTimeout(() => controller.abort(), fetchTimeoutFor(req.params.id, isM3u8));
       try {
         const headers = { "User-Agent": "Mozilla/5.0 FunJeju/1.0" };
         if (req.headers.range) headers.Range = req.headers.range;

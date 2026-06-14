@@ -95,6 +95,11 @@ const CCTVS = [
   // ── 서귀포시 ───────────────────────────────────────────────
   { id: "seogwipo_hang1",name: "서귀포항",   region: "서귀포시",        category: "항구", originUrl: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100009/0/1/1.m3u8" },
   { id: "seogwipo_hang2",name: "서귀포항2",  region: "서귀포시",        category: "항구", originUrl: "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8" },
+
+  // ── 서귀포시 법환동·성산읍 온평 (vurix) ─────────────────────
+  { id: "beophwan_po", name: "법환포구",     region: "서귀포시 법환동", category: "포구", originUrl: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100007/0/1/1.m3u8" },
+  { id: "beophwan_eo", name: "법환어촌계",   region: "서귀포시 법환동", category: "포구", originUrl: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100008/0/1/1.m3u8" },
+  { id: "onpyeong",    name: "온평어촌계",   region: "서귀포시 성산읍", category: "포구", originUrl: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100011/0/1/1.m3u8" },
 ];
 
 async function put(id, data) {

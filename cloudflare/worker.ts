@@ -67,6 +67,17 @@ function isAllowed(request: Request, env: Env): boolean {
 const M3U8_TTL_SEC = 12;
 const TS_TTL_SEC = 600; // ts는 불변 → 길게(10분) 잡아 시청자 시차 흡수폭 ↑ → HIT률 ↑
 
+// ★ vurix(59.8.86.94) 카메라: 1초 세그먼트 + 보관 ~3초.
+// 재생목록을 12초 캐시하면 이미 삭제된 세그먼트를 가리켜 404 → 끊김.
+// 이 카메라들만 m3u8 캐시를 1초로 줄여 거의 실시간 재생목록 제공 (ts 캐시는 그대로라 비용 영향 미미).
+const VURIX_IDS = new Set([
+  "sinchang", "ongpo", "namwon_deokdol", "seogwipo_hang1", "jungmun", "sanbangsan",
+  "beophwan_po", "beophwan_eo", "onpyeong",
+]);
+function m3u8TtlFor(id: string): number {
+  return VURIX_IDS.has(id) ? 1 : M3U8_TTL_SEC;
+}
+
 // 정상 브라우저 UA (봇 탐지 회피)
 const SAFE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
@@ -157,7 +168,7 @@ export default {
       if (isM3u8) {
         return cachedFetch({
           cacheKeyId: `chunklist:${id}`,
-          ttlSec:     M3U8_TTL_SEC,
+          ttlSec:     m3u8TtlFor(id),
           originUrl:  originSegUrl,
           proxyKey, cors,
           ctx, request, cctvId: id, type: "chunklist",
@@ -185,7 +196,7 @@ export default {
     // ── 메인 m3u8 ────────────────────────────────────────────
     return cachedFetch({
       cacheKeyId: `m3u8:${id}`,
-      ttlSec:     M3U8_TTL_SEC,
+      ttlSec:     m3u8TtlFor(id),
       originUrl:  effectiveOrigin,
       proxyKey, cors,
       ctx, request, cctvId: id, type: "m3u8",

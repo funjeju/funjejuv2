@@ -62,6 +62,9 @@ const SEED: {
   { id:"nonjitmul",      name:"논짓물",        region:"서귀포시 하예동", category:"관광지",description:"서귀포 하예동 해안 용천수 명소입니다.",             lat:33.233, lng:126.488, originUrl:"http://211.34.191.215:1935/live/1-193.stream/playlist.m3u8" },
   { id:"seogwipo_hang1", name:"서귀포항",      region:"서귀포시",        category:"항구",  description:"서귀포 여객터미널 항구입니다.",                     lat:33.240, lng:126.561, originUrl:"http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100009/0/1/1.m3u8" },
   { id:"seogwipo_hang2", name:"서귀포항2",     region:"서귀포시",        category:"항구",  description:"서귀포항 추가 앵글입니다.",                         lat:33.241, lng:126.563, originUrl:"http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8" },
+  { id:"beophwan_po",    name:"법환포구",      region:"서귀포시 법환동", category:"포구",  description:"서귀포 법환동 해안 포구입니다.",                     lat:33.2447, lng:126.5305, originUrl:"http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100007/0/1/1.m3u8" },
+  { id:"beophwan_eo",    name:"법환어촌계",    region:"서귀포시 법환동", category:"포구",  description:"법환 어촌계 앞 해안입니다.",                         lat:33.2440, lng:126.5285, originUrl:"http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100008/0/1/1.m3u8" },
+  { id:"onpyeong",       name:"온평어촌계",    region:"서귀포시 성산읍", category:"포구",  description:"성산읍 온평리 어촌계 해안입니다.",                   lat:33.3920, lng:126.9010, originUrl:"http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100011/0/1/1.m3u8" },
 ];
 
 export async function POST(req: NextRequest) {
