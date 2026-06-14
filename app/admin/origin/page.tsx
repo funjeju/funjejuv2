@@ -50,6 +50,7 @@ type Stats = {
   eventCount: number;
   events: Event[];
   perCctv: Record<string, CctvStats>;
+  cf?: { hit: number; miss: number; ratio: number; events: Event[] };
 };
 
 // ★ 통계는 Vultr(단일 프로세스)에서 읽는다 — 워커 /stats는 isolate별이라 콜드 인스턴스면 0으로 보임(부정확).
@@ -188,6 +189,30 @@ export default function AdminOriginPage() {
           <p className="text-[10px] text-text-secondary">m3u8 {data.m3u8CacheSize} / ts {data.tsCacheSize}</p>
         </div>
       </div>
+
+      {/* 🌐 CF 엣지 캐시 (워커) — 시청자 바로 앞단. 여기서 흡수되면 Vultr까지 안 옴 */}
+      {data.cf && (
+        <div className="mb-6 rounded-2xl border-2 border-ocean-blue/30 bg-ocean-blue/5 p-4">
+          <p className="mb-2 text-sm font-black text-ocean-blue">🌐 CF 엣지 캐시 (시청자 바로 앞단 · Vultr 도달 전 흡수)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-[11px] font-bold text-jeju-green">CF HIT</p>
+              <p className="text-2xl font-black text-text-primary">{data.cf.hit.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-brand-orange">CF MISS (→Vultr)</p>
+              <p className="text-2xl font-black text-text-primary">{data.cf.miss.toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-text-secondary">CF 적중률</p>
+              <p className="text-2xl font-black text-ocean-blue">{Math.round(data.cf.ratio * 100)}%</p>
+            </div>
+          </div>
+          <p className="mt-2 text-[10px] text-text-secondary">
+            이게 진짜 시청자 앞단 캐시율. HIT는 Vultr·origin에 아예 안 감. (아래 Vultr 적중률은 CF가 거른 나머지 중 Vultr가 추가로 잡은 것)
+          </p>
+        </div>
+      )}
 
       {/* Cloudflare 비용 추정 카드 */}
       {cost && (() => {

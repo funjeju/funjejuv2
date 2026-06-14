@@ -173,7 +173,7 @@ export default {
           cacheKeyId: `chunklist:${id}`,
           ttlSec:     m3u8TtlFor(id),
           originUrl:  originSegUrl,
-          proxyKey, cors,
+          proxyKey, cors, reportBase: chainBase,
           ctx, request, cctvId: id, type: "chunklist",
           transform: async (text) => rewriteM3u8(text, originSegUrl, workerBase),
           contentType: "application/vnd.apple.mpegurl",
@@ -188,7 +188,7 @@ export default {
           cacheKeyId: `ts:${id}:${chunkNum}`,
           ttlSec:     TS_TTL_SEC,
           originUrl:  originSegUrl,
-          proxyKey, cors,
+          proxyKey, cors, reportBase: chainBase,
           ctx, request, cctvId: id, type: "ts",
           contentType: "video/MP2T",
           passThroughRange: true,
@@ -201,7 +201,7 @@ export default {
       cacheKeyId: `m3u8:${id}`,
       ttlSec:     m3u8TtlFor(id),
       originUrl:  effectiveOrigin,
-      proxyKey, cors,
+      proxyKey, cors, reportBase: chainBase,
       ctx, request, cctvId: id, type: "m3u8",
       transform: async (text) => rewriteM3u8(text, effectiveOrigin, workerBase),
       contentType: "application/vnd.apple.mpegurl",
@@ -212,6 +212,18 @@ export default {
 // ─────────────────────────────────────────────────────────────
 // 캐시 우선 + SWR + dedup fetch
 // ─────────────────────────────────────────────────────────────
+// CF 엣지 캐시 HIT/MISS를 Vultr(단일 프로세스)로 fire-and-forget 보고 → 대시보드가 정확히 집계.
+function reportCf(opts: { reportBase?: string; proxyKey?: string; ctx: ExecutionContext; cctvId: string; type: string }, result: "hit" | "miss") {
+  if (!opts.reportBase) return;
+  opts.ctx.waitUntil(
+    fetch(`${opts.reportBase}/cf-report`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...(opts.proxyKey ? { "x-proxy-key": opts.proxyKey } : {}) },
+      body: JSON.stringify({ cctvId: opts.cctvId, type: opts.type, result }),
+    }).catch(() => {}),
+  );
+}
+
 async function cachedFetch(opts: {
   cacheKeyId: string;
   ttlSec: number;
@@ -227,6 +239,8 @@ async function cachedFetch(opts: {
   contentType: string;
   transform?: (text: string) => Promise<string>;
   passThroughRange?: boolean;
+  /** CF 캐시 통계 보고용 Vultr 베이스(ORIGIN_PROXY_BASE) */
+  reportBase?: string;
 }): Promise<Response> {
   const cache = caches.default;
   // ⚠️ 캐시 키는 반드시 "워커 자기 존(custom domain)" 안의 URL이어야 cache.put이 실제 저장됨.
@@ -241,6 +255,7 @@ async function cachedFetch(opts: {
   const cached = await cache.match(cacheReq);
   if (cached) {
     logEvent(opts.request, opts.cctvId, opts.type, "hit", seg);
+    reportCf(opts, "hit"); // ★ CF 엣지 캐시 HIT 보고
     const hitRes = withCors(cached, opts.cors);
     hitRes.headers.set("X-Cache", "HIT");
     return hitRes;
@@ -265,8 +280,9 @@ async function cachedFetch(opts: {
     return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`, opts.cors);
   }
 
-  // follower = origin 안 때리고 leader 결과 공유 → dedup HIT 로깅
+  // follower = origin 안 때리고 leader 결과 공유 → dedup HIT / leader = 실제 fetch = MISS
   if (isFollower) logEvent(opts.request, opts.cctvId, opts.type, "hit", seg);
+  reportCf(opts, isFollower ? "hit" : "miss"); // ★ CF 엣지 캐시 통계 보고
 
   return new Response(data.body, {
     status: data.status,

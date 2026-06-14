@@ -587,6 +587,18 @@ app.get("/cctv/:id/relayseg/:file", (req, res) => {
   res.send(seg.data);
 });
 
+// ★ CF 엣지 캐시 통계 — 워커가 매 요청의 HIT/MISS를 여기로 보고. 단일 프로세스라 전 isolate 집계가 정확.
+const cf = { hit: 0, miss: 0, events: [] };
+app.post("/cf-report", express.json({ limit: "2kb" }), (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  if (req.headers["x-proxy-key"] !== PROXY_KEY) return res.status(403).json({ error: "forbidden" });
+  const b = req.body || {};
+  if (b.result === "hit") cf.hit++; else cf.miss++;
+  cf.events.push({ t: Date.now(), cctvId: b.cctvId || "", type: b.type || "", result: b.result === "hit" ? "cf-hit" : "cf-miss" });
+  if (cf.events.length > 300) cf.events.shift();
+  res.json({ ok: true });
+});
+
 app.get("/stats", (req, res) => {
   try {
     const now = Date.now();
@@ -625,6 +637,12 @@ app.get("/stats", (req, res) => {
       eventCount: events.length,
       events: events.slice(-200).reverse(),
       perCctv,
+      cf: {
+        hit: cf.hit,
+        miss: cf.miss,
+        ratio: cf.hit + cf.miss ? cf.hit / (cf.hit + cf.miss) : 0,
+        events: cf.events.slice(-100).reverse(),
+      },
     });
   } catch (e) {
     console.error("[stats]", e.message);
