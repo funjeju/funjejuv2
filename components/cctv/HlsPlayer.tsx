@@ -96,8 +96,11 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         // ★ 라이브 끝단 추격(lowLatency) 끔 — 끝단에 붙으면 1초 세그먼트(vurix)에서 지터에 바로 끊김.
         // 2세그먼트 뒤를 재생해 쿠션 확보 + 세그먼트 재시도 늘려 일시 502/404 흡수.
         lowLatencyMode: false,
-        liveSyncDurationCount: 2,
-        maxBufferLength: 30,
+        // 끝단 3칸 뒤 재생 → 시청자들이 같은 ts를 봐 캐시 HIT↑ (실시간에 가까운 뷰어, 지연 허용)
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 20,
+        backBufferLength: 0,
         manifestLoadingMaxRetry: 4,
         levelLoadingMaxRetry: 4,
         fragLoadingMaxRetry: 6,

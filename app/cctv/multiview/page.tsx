@@ -179,12 +179,14 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
-        liveSyncDurationCount: 2,
-        // ★ 멀티뷰(최대 9개 동시): 스트림당 버퍼/선읽기를 최소화해 한 호스트로의 동시 요청 폭주 방지.
-        // 9개가 각각 20초씩 미리 당기면 브라우저 연결 한도 초과 → stall → 재시도 폭주 악순환.
-        maxBufferLength: 6,
-        maxMaxBufferLength: 10,
-        maxBufferSize: 8 * 1000 * 1000, // 8MB (704KB 대용량 세그먼트 대비 메모리 캡)
+        // ★ "실시간에 가까운 CCTV 뷰어"(15~20초 지연 허용) 전략:
+        // 라이브 끝단이 아니라 3세그먼트 뒤에서 재생 → 시청자들이 같은 ts를 봐서 캐시 HIT 급상승(서버 부하↓).
+        // 앞 버퍼는 넉넉히(jitter 흡수→stall=reconnect 감소), 과거 버퍼는 0(누적 차단).
+        liveSyncDurationCount: 3,
+        liveMaxLatencyDurationCount: 10,
+        maxBufferLength: 10,
+        maxMaxBufferLength: 18,
+        maxBufferSize: 12 * 1000 * 1000, // 12MB 캡 (대용량 세그먼트 메모리 방어)
         backBufferLength: 0,
         maxFragLookUpTolerance: 0.5,
         manifestLoadingMaxRetry: 4,

@@ -65,7 +65,7 @@ function isAllowed(request: Request, env: Env): boolean {
 // chunklist는 느린 카메라(세그먼트 길이>6s)도 캐시 재사용되도록 12초로.
 // ts는 불변 데이터(이미 녹화된 조각)라 길게 잡아도 안전 → 180초로 늘려 Vultr 대역폭 절감 극대화.
 const M3U8_TTL_SEC = 12;
-const TS_TTL_SEC = 600; // ts는 불변 → 길게(10분) 잡아 시청자 시차 흡수폭 ↑ → HIT률 ↑
+const TS_TTL_SEC = 3600; // ts는 불변 → 1시간 캐시(시청자 시차 흡수폭 극대화 → HIT률 ↑). 실시간 뷰어라 신선도 무관
 
 // ★ vurix(59.8.86.94) 카메라: 1초 세그먼트 + 보관 ~3초.
 // 재생목록을 12초 캐시하면 이미 삭제된 세그먼트를 가리켜 404 → 끊김.
