@@ -15,7 +15,9 @@ export function ShareButton({ title, url, imageUrl, description, compact = false
   const [open, setOpen] = useState(false);
 
   function getUrl() {
-    return url ?? (typeof window !== "undefined" ? window.location.href : "");
+    const raw = url ?? (typeof window !== "undefined" ? window.location.href : "");
+    // bare funjeju.com은 미작동 → 공유 링크는 항상 www로 정규화
+    return raw.replace(/:\/\/funjeju\.com/, "://www.funjeju.com");
   }
 
   async function copyLink() {
