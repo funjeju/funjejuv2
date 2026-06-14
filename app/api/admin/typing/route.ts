@@ -1,4 +1,4 @@
-/** 어드민 — 한컴타자 지문 관리. GET 목록 / POST 생성 / PUT 수정 / PATCH 발행 / DELETE */
+/** 어드민 — 타자연습 지문 관리. GET 목록 / POST 생성 / PUT 수정 / PATCH 발행 / DELETE */
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";

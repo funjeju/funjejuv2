@@ -17,7 +17,7 @@ const GAMES = [
   },
   {
     emoji: "⌨️",
-    title: "한컴타자",
+    title: "타자연습",
     desc: "매장 설명 타이핑 → 타수×정확도 점수 · 주간순위 · 메뉴 각인",
     author: "/admin/typing",
     play: "/game/typing",
@@ -65,7 +65,7 @@ export default function AdminGameHub() {
       <div className="mt-6 rounded-2xl border border-dashed border-border-soft bg-bg-secondary/50 p-4">
         <p className="text-[12px] font-bold text-text-secondary">📌 TODO — 메인 노출</p>
         <p className="mt-1 text-[11px] leading-5 text-text-secondary">
-          게임이 충분히 쌓이면 앱 메인에 <b>&lt;게임&gt; 단일 메뉴</b>를 노출하고, 그 화면 안에서 3종(틀린그림·삼행시·한컴타자)을 탭/카드로 고를 수 있게 통합 예정. (현재는 사이드바에서 숨김)
+          게임이 충분히 쌓이면 앱 메인에 <b>&lt;게임&gt; 단일 메뉴</b>를 노출하고, 그 화면 안에서 3종(틀린그림·삼행시·타자연습)을 탭/카드로 고를 수 있게 통합 예정. (현재는 사이드바에서 숨김)
         </p>
       </div>
     </div>

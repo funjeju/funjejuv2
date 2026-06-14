@@ -6,9 +6,9 @@ import { listPassages } from "@/lib/typing";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "제주 한컴타자 — 매장 설명 타자연습 + 주간순위 | 펀제주",
+  title: "제주 타자연습 — 매장 설명 타자연습 + 주간순위 | 펀제주",
   description: "제주 가게·메뉴 설명을 타이핑하며 타수에 도전하세요. 주간 순위로 경쟁!",
-  keywords: ["제주 타자연습", "한컴타자", "제주 게임"],
+  keywords: ["제주 타자연습", "타자연습", "제주 게임"],
   alternates: { canonical: "https://funjeju.com/game/typing" },
 };
 
@@ -17,7 +17,7 @@ export default async function TypingGalleryPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-0 md:px-4 md:py-6">
-      <PageHeader title="제주 한컴타자" subtitle="매장 설명 타이핑하고 주간 순위에 도전!" emoji="⌨️" />
+      <PageHeader title="제주 타자연습" subtitle="매장 설명 타이핑하고 주간 순위에 도전!" emoji="⌨️" />
 
       {passages.length === 0 ? (
         <p className="px-4 py-16 text-center text-sm text-text-secondary md:px-0">곧 첫 지문이 올라옵니다.</p>

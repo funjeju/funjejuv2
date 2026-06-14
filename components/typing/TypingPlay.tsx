@@ -90,7 +90,7 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
   return (
     <div>
       <div className="rounded-2xl bg-brand-navy px-4 py-3 text-center text-white">
-        <p className="text-[11px] text-white/70">{passage.businessName || "한컴타자"} · {passage.kind === "long" ? "장문" : "단문"}</p>
+        <p className="text-[11px] text-white/70">{passage.businessName || "타자연습"} · {passage.kind === "long" ? "장문" : "단문"}</p>
         <p className="text-[11px] text-brand-yellow">
           타수(글자/분) × 정확도^{W} = 점수 {attemptsLeft != null ? `· 이번 주 ${attemptsLeft}회 남음` : "· 무제한"}
         </p>

@@ -50,7 +50,7 @@ export default function AdminTypingPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-1 text-lg font-black text-text-primary">⌨️ 한컴타자 지문 출제</h1>
+      <h1 className="mb-1 text-lg font-black text-text-primary">⌨️ 타자연습 지문 출제</h1>
       <p className="mb-4 text-[11px] text-text-secondary">매장·메뉴 설명을 지문으로. 발행하면 <Link href="/game/typing" className="text-brand-orange underline">타자 목록</Link>에 노출돼요. 주간순위는 점수(=타수×정확도^W) 기준.</p>
 
       <div className="space-y-2 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">

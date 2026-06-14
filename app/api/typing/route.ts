@@ -1,4 +1,4 @@
-/** 한컴타자 — 유저용. GET 주간순위(+내 도전횟수) / POST 점수 제출 */
+/** 타자연습 — 유저용. GET 주간순위(+내 도전횟수) / POST 점수 제출 */
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { resolveUser } from "@/lib/usage";
