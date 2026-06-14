@@ -16,6 +16,15 @@ export async function saveSite(site: SiteSchema): Promise<void> {
   await db.collection(COLLECTION).doc(site.siteId).set(site, { merge: true });
 }
 
+/** 전체 사이트 (어드민 대시보드용) — 최신순 */
+export async function listAllSites(): Promise<SiteSchema[]> {
+  const db = getAdminDb();
+  const snap = await db.collection(COLLECTION).get();
+  return snap.docs
+    .map((d) => d.data() as SiteSchema)
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
 export async function getSite(slug: string): Promise<SiteSchema | null> {
   const db = getAdminDb();
 

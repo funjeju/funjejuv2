@@ -198,6 +198,14 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     };
   }, [proxyUrl, retryKey]);
 
+  // ★ "연결 실패" 후 자동 재시도 — 12초마다 전체 재연결 (origin 복구 시 알아서 부활).
+  // 멈춰서 끝까지 못 받는 카메라(모슬포·대포 등)도 방치하면 계속 재시도해 결국 잡힘.
+  useEffect(() => {
+    if (status !== "error" || budget.exhausted) return;
+    const id = setTimeout(() => { setStatus("loading"); setRetryKey((k) => k + 1); }, 12000);
+    return () => clearTimeout(id);
+  }, [status, budget.exhausted]);
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
@@ -288,13 +296,16 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 gap-3">
           <span className="text-4xl">📡</span>
           <p className="text-sm font-bold text-white">스트림 연결 실패</p>
-          <p className="text-xs text-white/50">잠시 후 다시 시도해주세요</p>
+          <p className="flex items-center gap-1.5 text-xs text-white/50">
+            <span className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/70" />
+            자동 재시도 중…
+          </p>
           <button
             type="button"
             onClick={() => { setStatus("loading"); setRetryKey((k) => k + 1); }}
             className="mt-1 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
           >
-            재연결
+            지금 재연결
           </button>
         </div>
       )}
