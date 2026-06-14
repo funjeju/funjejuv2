@@ -87,6 +87,9 @@ const counters: Record<string, CctvCounter> = {};
 const events: Array<{ t: number; ip: string; cctvId: string; type: string; result: string; seg?: string }> = [];
 const EVENT_MAX = 200;
 
+// ★ in-flight dedup: 같은 캐시키를 동시에 가져오는 중인 요청을 1개로 합침(thundering herd 방어). isolate 단위.
+const inFlight = new Map<string, Promise<{ body: ArrayBuffer | string; status: number }>>();
+
 function shortIp(ipRaw?: string): string {
   if (!ipRaw) return "????";
   let h = 0;
@@ -243,60 +246,74 @@ async function cachedFetch(opts: {
     return hitRes;
   }
 
-  // 2) Origin fetch
-  // ⚠️ Range를 origin에 넘기지 않는다. 넘기면 origin이 206(Partial)으로 응답하고,
-  // Cloudflare는 206 응답을 cache.put으로 저장하지 않음 → ts가 영원히 캐시 안 됨 → 항상 ORIGIN.
-  // 대신 항상 전체(200)로 받아 캐시 → 재요청 시 HIT. (ts 조각은 작아서 전체 전송이 문제 없음)
+  // 1.5) ★ in-flight dedup (thundering herd 방어) — 같은 키를 동시에 가져오는 중이면
+  // origin을 또 때리지 말고 그 결과를 공유. 인기 카메라 새 세그먼트에 100명이 몰려도 origin은 1번만.
+  let leaderPromise = inFlight.get(opts.cacheKeyId);
+  const isFollower = !!leaderPromise;
+  if (!leaderPromise) {
+    leaderPromise = fetchOriginData(opts, cacheReq, cache, seg);
+    inFlight.set(opts.cacheKeyId, leaderPromise);
+    leaderPromise.finally(() => {
+      if (inFlight.get(opts.cacheKeyId) === leaderPromise) inFlight.delete(opts.cacheKeyId);
+    });
+  }
+
+  let data: { body: ArrayBuffer | string; status: number };
+  try {
+    data = await leaderPromise;
+  } catch (e) {
+    return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`, opts.cors);
+  }
+
+  // follower = origin 안 때리고 leader 결과 공유 → dedup HIT 로깅
+  if (isFollower) logEvent(opts.request, opts.cctvId, opts.type, "hit", seg);
+
+  return new Response(data.body, {
+    status: data.status,
+    headers: {
+      ...opts.cors,
+      "Content-Type": opts.contentType,
+      "Cache-Control": `public, max-age=${opts.ttlSec}`,
+      "X-Cache": isFollower ? "HIT" : "MISS",
+    },
+  });
+}
+
+// origin fetch + transform + 캐시 저장 (leader 1회만 실행). 실패 시 throw.
+async function fetchOriginData(
+  opts: { originUrl: string; proxyKey?: string; ctx: ExecutionContext; request: Request; cctvId: string; type: string; contentType: string; ttlSec: number; transform?: (t: string) => Promise<string> },
+  cacheReq: Request,
+  cache: Cache,
+  seg?: string,
+): Promise<{ body: ArrayBuffer | string; status: number }> {
   const headers: Record<string, string> = { "User-Agent": SAFE_UA };
   if (opts.proxyKey) headers["x-proxy-key"] = opts.proxyKey;
 
   let originRes: Response;
   try {
-    // 타임아웃 필수 — origin이 hang하면 워커도 같이 hang → CF 522.
-    // 빠른 실패(502)가 차라리 낫다 (클라 HLS.js가 재시도).
-    originRes = await fetch(opts.originUrl, {
-      headers,
-      redirect: "follow",
-      signal: AbortSignal.timeout(8000),
-    });
+    originRes = await fetch(opts.originUrl, { headers, redirect: "follow", signal: AbortSignal.timeout(8000) });
   } catch (e) {
-    // origin 실패 — stale 캐시라도 있으면 (없으면 502)
     logEvent(opts.request, opts.cctvId, opts.type, "error", seg);
-    return jsonError(502, `Origin fetch failed: ${String(e).slice(0, 100)}`, opts.cors);
+    throw e;
   }
-
   if (!originRes.ok && originRes.status !== 206) {
     logEvent(opts.request, opts.cctvId, opts.type, "error", seg);
-    return jsonError(originRes.status, `Origin returned ${originRes.status}`, opts.cors);
+    throw new Error(`Origin returned ${originRes.status}`);
   }
 
   logEvent(opts.request, opts.cctvId, opts.type, "origin", seg);
 
-  // 3) Transform (m3u8 URL 재작성)
-  let body: BodyInit;
-  if (opts.transform) {
-    const text = await originRes.text();
-    body = await opts.transform(text);
-  } else {
-    body = await originRes.arrayBuffer();
-  }
+  const body: ArrayBuffer | string = opts.transform
+    ? await opts.transform(await originRes.text())
+    : await originRes.arrayBuffer();
 
-  const responseHeaders: Record<string, string> = {
-    ...opts.cors,
-    "Content-Type": opts.contentType,
-    "Cache-Control": `public, max-age=${opts.ttlSec}`,
-    "X-Cache": "MISS",
-  };
-
-  const response = new Response(body, {
-    status: originRes.status,
-    headers: responseHeaders,
+  // 캐시 저장 (waitUntil로 응답 차단 X)
+  const cacheResp = new Response(body, {
+    headers: { "Content-Type": opts.contentType, "Cache-Control": `public, max-age=${opts.ttlSec}` },
   });
+  opts.ctx.waitUntil(cache.put(cacheReq, cacheResp));
 
-  // 4) Cache에 저장 (waitUntil로 응답 차단 X)
-  opts.ctx.waitUntil(cache.put(cacheReq, response.clone()));
-
-  return response;
+  return { body, status: originRes.status };
 }
 
 // ─────────────────────────────────────────────────────────────
