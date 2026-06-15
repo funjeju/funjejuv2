@@ -29,10 +29,13 @@ export default function AdminContentsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function generate(type: ContentType | "webzine-feed") {
-    setBusy(`gen-${type}`); setMsg("");
+  async function generate(type: ContentType | "webzine-feed", source?: string) {
+    setBusy(`gen-${type}${source ? `-${source}` : ""}`); setMsg("");
     try {
-      const qs = type !== "webzine" ? `?type=${type}` : "";
+      const params = new URLSearchParams();
+      if (type !== "webzine") params.set("type", type);
+      if (source) params.set("source", source);
+      const qs = params.toString() ? `?${params.toString()}` : "";
       const res = await fetch(`/api/admin/contents${qs}`, { method: "POST" });
       const d = await res.json();
       setMsg(res.ok ? `초안 생성: ${d.title ?? d.error}` : `실패: ${d.error}`);
@@ -85,6 +88,13 @@ export default function AdminContentsPage() {
             className="rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
             {busy === "gen-briefing" ? "생성 중…" : "☀️ 브리핑 생성"}
           </button>
+          {/* 카드뉴스 — 소스별 생성 (인스타/스레드 캐러셀) */}
+          {([["webzine", "🃏 카드(맛집)"], ["feed", "🃏 카드(피드)"], ["briefing", "🃏 카드(브리핑)"]] as const).map(([src, label]) => (
+            <button key={src} type="button" onClick={() => generate("card_news", src)} disabled={busy === `gen-card_news-${src}`}
+              className="rounded-full bg-jeju-green px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
+              {busy === `gen-card_news-${src}` ? "생성 중…" : label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -122,7 +132,7 @@ export default function AdminContentsPage() {
               <h3 className="mt-1.5 text-sm font-bold text-text-primary">{c.title}</h3>
               <p className="mt-0.5 line-clamp-2 text-[12px] text-text-secondary">{c.intro}</p>
               <div className="mt-2 flex gap-2">
-                <Link href={`/admin/contents/preview/${c.slug}`}
+                <Link href={c.type === "card_news" ? `/card/${c.slug}` : `/admin/contents/preview/${c.slug}`}
                   className="rounded-full border-2 border-brand-navy bg-white px-3 py-1 text-[11px] font-bold !text-brand-navy hover:bg-brand-navy/5">
                   👁 미리보기
                 </Link>

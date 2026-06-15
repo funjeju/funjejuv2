@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { listContents, publishContent, deleteContent, createContent, getContentById } from "@/lib/contents";
 import { pickWebzineTopic, generateWebzineDraft, generateFeedWebzineDraft } from "@/lib/webzine-ai";
 import { generateBriefingDraft } from "@/lib/briefing-ai";
+import { generateCardNewsDraft, type CardNewsSource } from "@/lib/cardnews-ai";
 import type { ContentStatus } from "@/types/content";
 
 export const runtime = "nodejs";
@@ -63,6 +64,15 @@ export async function POST(req: NextRequest) {
 
   if (type === "briefing") {
     const draft = await generateBriefingDraft();
+    await createContent(draft);
+    return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, title: draft.title });
+  }
+
+  // 카드뉴스 (인스타/스레드 캐러셀) — ?type=card_news&source=webzine|briefing|feed
+  if (type === "card_news") {
+    const source = (req.nextUrl.searchParams.get("source") ?? "webzine") as CardNewsSource;
+    const draft = await generateCardNewsDraft(source);
+    if (!draft) return NextResponse.json({ error: "카드뉴스 소스가 부족해 생성할 수 없어요." }, { status: 200 });
     await createContent(draft);
     return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, title: draft.title });
   }
