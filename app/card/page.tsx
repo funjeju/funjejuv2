@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { listPublished } from "@/lib/contents";
+import { fetchGovCardNews } from "@/lib/jeju-gov-cardnews";
 
 export const revalidate = 60;
 
@@ -22,7 +23,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CardNewsListPage() {
-  const items = await listPublished("card_news", 60);
+  const [items, govCards] = await Promise.all([
+    listPublished("card_news", 60),
+    fetchGovCardNews(12),
+  ]);
 
   return (
     <div className="mx-auto max-w-screen-lg px-4 py-6">
@@ -48,6 +52,27 @@ export default async function CardNewsListPage() {
             </Link>
           ))}
         </div>
+      )}
+
+      {/* 제주도청 소식 카드뉴스 (공공누리 · 출처표시) */}
+      {govCards.length > 0 && (
+        <section className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-black text-text-primary">🟦 제주도청 소식</h2>
+            <span className="text-[11px] text-text-secondary">출처: 제주특별자치도</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            {govCards.map((g) => (
+              <a key={g.seq} href={g.detailUrl} target="_blank" rel="noopener noreferrer"
+                className="group block overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={g.imageUrl} alt={g.title} className="aspect-square w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                <p className="line-clamp-2 px-2.5 py-2 text-[12px] font-bold leading-snug text-text-primary">{g.title}</p>
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-text-secondary">제주특별자치도가 발행한 카드뉴스입니다. 이미지를 누르면 도청 원문으로 이동합니다.</p>
+        </section>
       )}
     </div>
   );
