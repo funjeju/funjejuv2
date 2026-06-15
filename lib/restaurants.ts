@@ -98,10 +98,35 @@ export async function loadRestaurantSummaries(): Promise<RestaurantSummary[]> {
   }));
 }
 
-/** 단일 조회 */
+/** 단일 조회 — JSON 589 + Firestore 신규(비짓제주 적재·어드민 추가) 폴백 */
 export async function getRestaurant(id: string): Promise<Restaurant | null> {
   const all = await loadAllRestaurants();
-  return all.find((r) => r.id === id) ?? null;
+  const found = all.find((r) => r.id === id);
+  if (found) return found;
+  // Firestore restaurants 폴백 (vj_*, new_* 등 신규 맛집 상세 페이지)
+  try {
+    const { getAdminDb } = await import("@/lib/firebase-admin");
+    const snap = await getAdminDb().collection("restaurants").doc(id).get();
+    if (!snap.exists) return null;
+    const f = snap.data() as Record<string, unknown>;
+    const imageUrl = (f.imageUrl as string) || "";
+    return {
+      id,
+      title: (f.title as string) ?? "",
+      content: (f.description as string) ?? "",
+      region: (f.region as string) ?? "",
+      menu: (f.menu as string) ?? "",
+      options: Array.isArray(f.options) ? (f.options as string[]).join("|") : "",
+      hours: (f.hours as string) ?? "",
+      prices: "",
+      images: imageUrl ? [imageUrl] : [],
+      address: (f.address as string) || undefined,
+      lat: typeof f.lat === "number" ? (f.lat as number) : undefined,
+      lng: typeof f.lng === "number" ? (f.lng as number) : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** 전체 지역/메뉴 목록 (필터용) */

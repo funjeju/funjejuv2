@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllIds } from "@/lib/restaurants";
+import { loadMergedRestaurants } from "@/lib/restaurants-merged";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { GUIDE_SLUGS } from "@/lib/guides";
 import { listPublished } from "@/lib/contents";
@@ -116,8 +117,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.75,
   }));
 
-  // 도민맛집 상세 페이지 (589개)
-  const foodIds = await getAllIds();
+  // 도민맛집 상세 페이지 — JSON 589 + Firestore 신규(비짓제주 적재 등) 병합
+  let foodIds: string[] = [];
+  try {
+    const merged = await loadMergedRestaurants();
+    foodIds = merged.map((r) => r.id);
+  } catch {
+    foodIds = await getAllIds(); // 폴백: JSON만
+  }
   const foodPages: MetadataRoute.Sitemap = foodIds.map((id) => ({
     url: `${BASE}/food/${id}`,
     lastModified: now,
