@@ -15,7 +15,7 @@
     },
     {
       "path": "/api/cron/food-ingest",
-      "schedule": "30 0 * * *"
+      "schedule": "30 23 * * *"
     }
   ]
 }
