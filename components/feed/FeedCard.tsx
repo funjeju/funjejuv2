@@ -209,7 +209,8 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
             </span>
             {/* 이탈 없이 인앱 모달로 지도 표시 (길찾기는 모달 안에서) */}
             <button type="button" onClick={() => setMapOpen(true)}
-              className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors">🗺️ 지도보기</button>
+              className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors">
+              <span className="text-[9px] leading-none">🗺️</span> 지도</button>
           </div>
         );
       })()}
