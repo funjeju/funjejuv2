@@ -37,13 +37,38 @@ const nextConfig: NextConfig = {
         destination: "/food",
         permanent: true,
       },
-      // 옛 CCTV 게시판: /bbs/board.php?bo_table=cctv(&wr_id=N) → /cctv (목록)
-      // 신규 CCTV id는 숫자 wr_id와 1:1 매칭이 없어 목록으로 통합(관련성 높은 301).
-      // 네이버에 색인·트래픽 살아있던 옛 URL의 403을 살려 유입 회수.
+      // 옛 CCTV 게시판 — 트래픽 확인된 wr_id는 새 전용 페이지로 1:1 매핑(랭킹 승계).
+      //  wr_id=53 = "엉또폭포 실시간" → /cctv/ungddo
+      {
+        source: "/bbs/board.php",
+        has: [
+          { type: "query", key: "bo_table", value: "cctv" },
+          { type: "query", key: "wr_id", value: "53" },
+        ],
+        destination: "/cctv/ungddo",
+        permanent: true,
+      },
+      //  wr_id=52 = "애월 해안도로 실시간" → /cctv/hagwi (하귀애월해안도로)
+      {
+        source: "/bbs/board.php",
+        has: [
+          { type: "query", key: "bo_table", value: "cctv" },
+          { type: "query", key: "wr_id", value: "52" },
+        ],
+        destination: "/cctv/hagwi",
+        permanent: true,
+      },
+      // 그 외 옛 CCTV 게시판 → /cctv 목록 (관련성 높은 301, 403 출혈 차단)
       {
         source: "/bbs/board.php",
         has: [{ type: "query", key: "bo_table", value: "cctv" }],
         destination: "/cctv",
+        permanent: true,
+      },
+      // 옛 여행팁 게시판: /tip/{한글슬러그} → /guide (이용 가이드/여행 정보)
+      {
+        source: "/tip/:slug*",
+        destination: "/guide",
         permanent: true,
       },
     ];
