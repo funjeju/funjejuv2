@@ -46,7 +46,7 @@ for (const l of locs) {
   const dropped = (l.nearby || []).filter((n) => !realIds.has(n));
   if (dropped.length) warnings.push(`⚠️ ${l.id}: nearby 무효 id 제거 → ${dropped.join(", ")}`);
   // G2: 분량
-  const bodyLen = (l.weatherNote || "").length + (l.faq || []).reduce((s, f) => s + (f.a || "").length, 0);
+  const bodyLen = (l.about || "").length + (l.weatherNote || "").length + (l.faq || []).reduce((s, f) => s + (f.a || "").length, 0);
   if (bodyLen < 400) warnings.push(`⚠️ ${l.id}: 본문 ${bodyLen}자 (<400, 보완 권장)`);
 
   const meta = cctvMeta.get(l.id) || {};
