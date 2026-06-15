@@ -196,6 +196,24 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         </span>
       </div>
 
+      {/* 위치 — 주소 + 지도/길찾기 (좌표 있을 때) */}
+      {feed.gps && (() => {
+        const addr = [feed.regionName, feed.subRegion].filter(Boolean).join(" ");
+        const mapName = feed.placeName || addr || "촬영 위치";
+        const { lat, lng } = feed.gps;
+        return (
+          <div className="flex items-center gap-1.5 border-t border-border-soft px-2.5 py-1.5 md:px-4">
+            <span className="min-w-0 flex-1 truncate text-[10px] text-text-secondary md:text-[11px]">
+              📍 {addr || mapName}{feed.placeName && addr ? ` · ${feed.placeName}` : ""}
+            </span>
+            <a href={`https://map.kakao.com/link/map/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
+              className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors">🗺️ 지도</a>
+            <a href={`https://map.kakao.com/link/to/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
+              className="shrink-0 rounded-full bg-brand-yellow/30 px-2 py-0.5 text-[10px] font-bold text-brand-navy hover:bg-brand-yellow transition-colors">🧭 길찾기</a>
+          </div>
+        );
+      })()}
+
       {/* 작성자 + 인터랙션 — 한 줄 컴팩트 */}
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 md:gap-2 md:px-4 md:py-2">
         <div className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-secondary md:h-7 md:w-7">
