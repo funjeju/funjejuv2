@@ -7,10 +7,16 @@ import type { TypingPassage, TypingScore } from "@/types/typing";
 
 type Result = { cpm: number; accuracy: number; score: number };
 
-export function TypingPlay({ passage }: { passage: TypingPassage }) {
+export function TypingPlay({ passage, onComplete, progress, isLast }: {
+  passage: TypingPassage;
+  onComplete?: (r: Result) => void;        // 세트 모드 — 개별 제출 대신 결과를 상위로 보고
+  progress?: { cur: number; total: number }; // 세트 진행 (예: 2/5)
+  isLast?: boolean;
+}) {
   const { user } = useAuth();
   const target = passage.text;
   const W = passage.weightW ?? 1;
+  const solo = !onComplete; // onComplete 없으면 단일(개별 제출·랭킹) 모드
 
   const [value, setValue] = useState("");
   const [finished, setFinished] = useState(false);
@@ -57,10 +63,10 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
     const d = await r.json();
     setTop(d.top ?? []); setAttempts(d.attempts ?? 0);
   }, [user, passage.id]);
-  useEffect(() => { loadRank(); }, [loadRank]);
+  useEffect(() => { if (solo) loadRank(); }, [loadRank, solo]);
 
-  const attemptsLeft = passage.maxAttempts > 0 ? Math.max(0, passage.maxAttempts - attempts) : null;
-  const outOfTries = passage.maxAttempts > 0 && attempts >= passage.maxAttempts;
+  const attemptsLeft = solo && passage.maxAttempts > 0 ? Math.max(0, passage.maxAttempts - attempts) : null;
+  const outOfTries = solo && passage.maxAttempts > 0 && attempts >= passage.maxAttempts;
 
   function reset() {
     setValue(""); setFinished(false); setResult(null); setMsg("");
@@ -101,7 +107,8 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
     const res = { cpm, accuracy, score };
     setResult(res);
     sDone();
-    // 제출
+    if (!solo) return; // 세트 모드: 개별 제출 안 함(상위에서 평균 집계)
+    // 단일 모드: 개별 기록 제출
     setSubmitting(true);
     const h = await usageHeaders(user);
     const r = await fetch("/api/typing", {
@@ -133,7 +140,9 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
         >
           {muted ? "🔇" : "🔊"}
         </button>
-        <p className="text-center text-[11px] text-white/70">{passage.businessName || "타자연습"} · {passage.kind === "long" ? "장문" : "단문"}</p>
+        <p className="text-center text-[11px] text-white/70">
+          {progress ? `${progress.cur}/${progress.total} · ` : ""}{passage.businessName || "타자연습"} · {passage.kind === "long" ? "장문" : "단문"}
+        </p>
         {/* 실시간 타수·정확도 */}
         <div className="mt-1 flex items-end justify-center gap-6">
           <div className="text-center"><p className="text-3xl font-black leading-none">{liveCpm}</p><p className="text-[10px] text-white/60">타수(글자/분)</p></div>
@@ -181,11 +190,14 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
             <div><p className="text-2xl font-black text-brand-orange">{result.score}</p><p className="text-[10px] text-text-secondary">최종점수</p></div>
           </div>
           {msg && <p className="mt-1.5 text-[11px] font-bold text-live-red">{msg}</p>}
-          {!outOfTries && <button onClick={reset} className="mt-3 rounded-full bg-brand-navy px-5 py-2 text-sm font-bold text-white">다시 도전</button>}
+          {solo
+            ? (!outOfTries && <button onClick={reset} className="mt-3 rounded-full bg-brand-navy px-5 py-2 text-sm font-bold text-white">다시 도전</button>)
+            : <button onClick={() => onComplete!(result)} className="mt-3 rounded-full bg-brand-orange px-6 py-2 text-sm font-bold text-white">{isLast ? "세트 완료 →" : "다음 →"}</button>}
         </div>
       )}
 
-      {/* 주간 순위 */}
+      {/* 주간 순위 (단일 모드만 — 세트는 세트 랭킹을 상위에서 표시) */}
+      {solo && (
       <div className="mt-4">
         <p className="mb-2 text-xs font-bold text-text-secondary">🏆 이번 주 순위</p>
         <div className="space-y-1">
@@ -200,6 +212,7 @@ export function TypingPlay({ passage }: { passage: TypingPassage }) {
           {top.length === 0 && <p className="py-6 text-center text-sm text-text-secondary">이번 주 1등의 주인공이 되어보세요!</p>}
         </div>
       </div>
+      )}
     </div>
   );
 }

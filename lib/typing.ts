@@ -1,10 +1,12 @@
 import "server-only";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import type { TypingPassage, TypingScore } from "@/types/typing";
+import type { TypingPassage, TypingScore, TypingSet, TypingSetScore } from "@/types/typing";
 
 const PASSAGES = "typing_passages";
 const SCORES = "typing_scores";
+const SETS = "typing_sets";
+const SET_SCORES = "typing_set_scores";
 
 /** ISO 주차 키 (예: 2026-W24) */
 export function weekKeyOf(d = new Date()): string {
@@ -103,4 +105,82 @@ export async function weeklyTop(passageId: string, limit = 20): Promise<TypingSc
     .where("weekKey", "==", weekKeyOf())
     .get();
   return snap.docs.map((d) => d.data() as TypingScore).sort((a, b) => b.bestScore - a.bestScore).slice(0, limit);
+}
+
+// ── 묶음 세트(Set) ───────────────────────────────────────
+export async function createSet(s: TypingSet): Promise<void> {
+  const clean = Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined));
+  await getAdminDb().collection(SETS).doc(s.id).set(clean);
+}
+export async function updateSet(
+  id: string,
+  updates: Partial<Pick<TypingSet, "title" | "businessName" | "homepageUrl" | "homepageName" | "passageIds" | "maxAttempts">>
+): Promise<void> {
+  await getAdminDb().collection(SETS).doc(id).update(updates);
+}
+export async function setSetPublished(id: string, published: boolean): Promise<void> {
+  await getAdminDb().collection(SETS).doc(id).update({ status: published ? "published" : "draft" });
+}
+export async function deleteSet(id: string): Promise<void> {
+  await getAdminDb().collection(SETS).doc(id).delete();
+}
+export async function getSet(id: string): Promise<TypingSet | null> {
+  const snap = await getAdminDb().collection(SETS).doc(id).get();
+  return snap.exists ? (snap.data() as TypingSet) : null;
+}
+export async function listSets(opts?: { publishedOnly?: boolean }): Promise<TypingSet[]> {
+  const snap = await getAdminDb().collection(SETS).orderBy("createdAt", "desc").limit(100).get();
+  let items = snap.docs.map((d) => d.data() as TypingSet);
+  if (opts?.publishedOnly) items = items.filter((s) => s.status === "published");
+  return items;
+}
+/** 세트 구성 지문들을 passageIds 순서대로 반환(발행 여부 무관 — 세트가 발행이면 구성지문도 플레이 가능) */
+export async function getSetPassages(set: TypingSet): Promise<TypingPassage[]> {
+  if (!set.passageIds.length) return [];
+  const refs = set.passageIds.map((id) => getAdminDb().collection(PASSAGES).doc(id));
+  const snaps = await getAdminDb().getAll(...refs);
+  const byId = new Map(snaps.filter((s) => s.exists).map((s) => [s.id, s.data() as TypingPassage]));
+  return set.passageIds.map((id) => byId.get(id)).filter((p): p is TypingPassage => !!p);
+}
+
+/** 세트 점수 제출 — 1인 1주 1도큐먼트(평균 최고기록). 주당 도전 제한. */
+export async function submitSetScore(opts: {
+  setId: string; userId: string; name: string;
+  avgScore: number; avgCpm: number; avgAccuracy: number; maxAttempts: number;
+}): Promise<{ blocked: boolean; bestAvgScore: number; attempts: number; attemptsLeft: number | null }> {
+  const db = getAdminDb();
+  const wk = weekKeyOf();
+  const ref = db.collection(SET_SCORES).doc(`${opts.setId}__${opts.userId}__${wk}`);
+  const res = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const prev = snap.exists ? (snap.data() as TypingSetScore) : null;
+    const attempts = prev?.attempts ?? 0;
+    if (opts.maxAttempts > 0 && attempts >= opts.maxAttempts) {
+      return { blocked: true, bestAvgScore: prev?.bestAvgScore ?? 0, attempts, attemptsLeft: 0 };
+    }
+    const newAttempts = attempts + 1;
+    const isBest = opts.avgScore > (prev?.bestAvgScore ?? -1);
+    const doc: TypingSetScore = {
+      setId: opts.setId, userId: opts.userId, name: opts.name, weekKey: wk,
+      bestAvgScore: isBest ? opts.avgScore : (prev?.bestAvgScore ?? 0),
+      bestAvgCpm: isBest ? opts.avgCpm : (prev?.bestAvgCpm ?? 0),
+      bestAvgAccuracy: isBest ? opts.avgAccuracy : (prev?.bestAvgAccuracy ?? 0),
+      attempts: newAttempts, updatedAt: Date.now(),
+    };
+    tx.set(ref, doc);
+    return { blocked: false, bestAvgScore: doc.bestAvgScore, attempts: newAttempts, attemptsLeft: opts.maxAttempts > 0 ? Math.max(0, opts.maxAttempts - newAttempts) : null };
+  });
+  if (!res.blocked) await db.collection(SETS).doc(opts.setId).update({ playCount: FieldValue.increment(1) }).catch(() => {});
+  return res;
+}
+
+export async function getUserSetAttempts(setId: string, userId: string): Promise<number> {
+  const snap = await getAdminDb().collection(SET_SCORES).doc(`${setId}__${userId}__${weekKeyOf()}`).get();
+  return snap.exists ? ((snap.data() as TypingSetScore).attempts ?? 0) : 0;
+}
+
+export async function setWeeklyTop(setId: string, limit = 20): Promise<TypingSetScore[]> {
+  const snap = await getAdminDb().collection(SET_SCORES)
+    .where("setId", "==", setId).where("weekKey", "==", weekKeyOf()).get();
+  return snap.docs.map((d) => d.data() as TypingSetScore).sort((a, b) => b.bestAvgScore - a.bestAvgScore).slice(0, limit);
 }

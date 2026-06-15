@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import type { TypingPassage } from "@/types/typing";
+import type { TypingPassage, TypingSet } from "@/types/typing";
 
 export default function AdminTypingPage() {
   const [text, setText] = useState("");
@@ -18,13 +18,48 @@ export default function AdminTypingPage() {
   const [aiKeyword, setAiKeyword] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMsg, setAiMsg] = useState("");
+  // 세트
+  const [sets, setSets] = useState<TypingSet[]>([]);
+  const [setTitle, setSetTitle] = useState("");
+  const [setBiz, setSetBiz] = useState("");
+  const [setMaxAtt, setSetMaxAtt] = useState(0);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [bundleMsg, setBundleMsg] = useState("");
 
   const load = useCallback(async () => {
-    const r = await fetch("/api/admin/typing");
+    const [r, rs] = await Promise.all([fetch("/api/admin/typing"), fetch("/api/admin/typing/set")]);
     const d = await r.json().catch(() => ({}));
+    const ds = await rs.json().catch(() => ({}));
     setItems(d.items ?? []);
+    setSets(ds.items ?? []);
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const published = items.filter((p) => p.status === "published");
+  function togglePick(id: string) {
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  }
+  async function createSet() {
+    if (picked.length < 2) { setBundleMsg("지문을 2개 이상(권장 5개) 골라주세요"); return; }
+    setBundleMsg("");
+    const r = await fetch("/api/admin/typing/set", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: setTitle, businessName: setBiz, passageIds: picked, maxAttempts: setMaxAtt }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { setBundleMsg(d.error ?? "실패"); return; }
+    setSetTitle(""); setSetBiz(""); setPicked([]); setSetMaxAtt(0); setBundleMsg("✅ 세트 생성됨 (아래에서 발행)");
+    load();
+  }
+  async function publishSet(id: string, on: boolean) {
+    await fetch("/api/admin/typing/set", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, published: on }) });
+    load();
+  }
+  async function removeSet(id: string) {
+    if (!confirm("세트 삭제?")) return;
+    await fetch(`/api/admin/typing/set?id=${id}`, { method: "DELETE" });
+    load();
+  }
 
   async function create() {
     if (text.trim().length < 4) { setMsg("지문이 너무 짧아요"); return; }
@@ -123,6 +158,44 @@ export default function AdminTypingPage() {
               <button onClick={() => remove(p.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
             </div>
             <p className="mt-1 line-clamp-1 text-[11px] text-text-secondary">{p.status === "published" ? "🟢 발행" : "⚪ 대기"} · W{p.weightW} · {p.maxAttempts === 0 ? "무제한" : `주${p.maxAttempts}회`} · {p.text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* 🔥 묶음 세트 만들기 (발행된 지문에서 선택) */}
+      <h2 className="mb-2 mt-10 text-sm font-black text-text-primary">🔥 묶음 세트 만들기</h2>
+      <div className="space-y-2 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 p-4">
+        <p className="text-[11px] text-text-secondary">발행된 지문 중 골라 묶으면(권장 5개) 연속 플레이 + 평균 타수 랭킹이 돼요.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={setTitle} onChange={(e) => setSetTitle(e.target.value)} placeholder="세트 제목" className={inputCls} />
+          <input value={setBiz} onChange={(e) => setSetBiz(e.target.value)} placeholder="업체명(표시용)" className={inputCls} />
+        </div>
+        <input type="number" min={0} value={setMaxAtt} onChange={(e) => setSetMaxAtt(Math.max(0, Number(e.target.value) || 0))} placeholder="주당 도전 횟수(0=무제한)" className={inputCls} />
+        <div className="max-h-60 space-y-1 overflow-y-auto rounded-lg border border-border-soft bg-bg-card p-2">
+          {published.length === 0 && <p className="py-2 text-center text-[11px] text-text-secondary">먼저 지문을 발행하세요</p>}
+          {published.map((p) => (
+            <label key={p.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[11px] hover:bg-bg-secondary">
+              <input type="checkbox" checked={picked.includes(p.id)} onChange={() => togglePick(p.id)} />
+              <span className="rounded bg-brand-navy px-1.5 text-[9px] font-bold text-white">{p.kind === "long" ? "장" : "단"}</span>
+              <span className="min-w-0 flex-1 truncate text-text-secondary">{p.businessName ? `[${p.businessName}] ` : ""}{p.text}</span>
+            </label>
+          ))}
+        </div>
+        <p className="text-[11px] font-bold text-brand-orange">선택 {picked.length}개</p>
+        {bundleMsg && <p className="text-[11px] font-bold text-brand-orange">{bundleMsg}</p>}
+        <button onClick={createSet} className="w-full rounded-full bg-brand-orange py-2.5 text-sm font-bold text-white">세트 생성</button>
+      </div>
+
+      <h3 className="mb-2 mt-6 text-sm font-black text-text-primary">만든 세트 ({sets.length})</h3>
+      <div className="space-y-2">
+        {sets.map((s) => (
+          <div key={s.id} className="flex items-center gap-2 rounded-2xl border border-border-soft bg-bg-card p-3">
+            <span className="rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-bold text-white">{s.passageIds.length}개</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold text-text-primary">{s.title}</span>
+            <span className="shrink-0 text-[10px] text-text-secondary">{s.status === "published" ? "🟢" : "⚪"}</span>
+            <Link href={`/game/typing/set/${s.id}`} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[11px] font-semibold text-brand-orange">보기 ↗</Link>
+            <button onClick={() => publishSet(s.id, s.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{s.status === "published" ? "비공개" : "발행"}</button>
+            <button onClick={() => removeSet(s.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
           </div>
         ))}
       </div>
