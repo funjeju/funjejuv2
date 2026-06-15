@@ -128,6 +128,12 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // 제주여행 AI 허브(/jeju-ai)의 예시 질문 → ?q= 프리필 (자동전송 X, 사용자가 보내기)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) { setInput(q); inputRef.current?.focus(); }
+  }, []);
+
   // 제주 바운딩 박스
   const isInJeju = (lat: number, lng: number) =>
     lat >= 33.10 && lat <= 33.65 && lng >= 126.10 && lng <= 127.00;
