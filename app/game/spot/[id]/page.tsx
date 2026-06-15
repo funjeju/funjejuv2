@@ -18,11 +18,30 @@ export async function generateMetadata({
   const { id } = await params;
   const g = await getGame(id);
   if (!g) return { title: "문제를 찾을 수 없습니다 | 펀제주" };
+  const url = `https://funjeju.com/game/spot/${id}`;
+  const title = `${g.title} — 제주 틀린그림찾기 | 펀제주`;
+  const description = `제주 사진 속 다른 ${g.diffCount}곳을 찾아보세요. 최단시간 랭킹에 도전!`;
+  // 카톡/페북 미리보기용 og:image — 문제 원본 사진(절대 URL)
+  const image = g.origImage?.startsWith("http") ? g.origImage : undefined;
   return {
-    title: `${g.title} — 제주 틀린그림찾기 | 펀제주`,
-    description: `제주 사진 속 다른 ${g.diffCount}곳을 찾아보세요. 최단시간 랭킹에 도전!`,
+    title,
+    description,
     keywords: ["제주 틀린그림찾기", g.title, "제주 게임"],
-    alternates: { canonical: `https://funjeju.com/game/spot/${id}` },
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      url,
+      title,
+      description,
+      siteName: "펀제주",
+      ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: g.title }] } : {}),
+    },
+    twitter: {
+      card: image ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
   };
 }
 
