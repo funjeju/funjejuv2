@@ -3,8 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
-import { mockCctvs } from "@/constants/mock-cctvs";
+import { useCctvs } from "@/hooks/useCctvs";
 import { isMultiviewExcluded } from "@/constants/vurix";
+
+// CCTV 스트림 프록시 URL (mock-cctvs와 동일 규칙) — id만 있으면 자동 생성
+const _WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? "";
+const _PROXY_BASE = process.env.NEXT_PUBLIC_PROXY_URL ?? "";
+function streamProxyUrlFor(id: string): string | null {
+  if (_WORKER_URL) return `${_WORKER_URL}/cctv/${id}`;
+  if (_PROXY_BASE) return `${_PROXY_BASE}/cctv/${id}`;
+  return null;
+}
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { useCctvSession } from "@/hooks/useCctvSession";
 
@@ -261,8 +270,13 @@ export function AutoRotateViewer() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // vurix + 간헐적 rtmp는 자동회전에서 제외(끊김 방지)
-  const rotatable = mockCctvs.filter((c) => !isMultiviewExcluded(c.id));
+  // 실시간 Firestore 구독 — CCTV가 늘어나면 자동 반영 (mock은 초기값/폴백)
+  const { cctvs: liveCctvs } = useCctvs();
+
+  // vurix + 간헐적 rtmp는 자동회전에서 제외(끊김 방지) · active한 것만
+  const rotatable = liveCctvs
+    .filter((c) => c.active !== false && !isMultiviewExcluded(c.id))
+    .map((c) => ({ ...c, streamProxyUrl: streamProxyUrlFor(c.id) }));
   const savedCctvs = rotatable.filter((c) => savedIds.has(c.id));
   const cctvs = savedCctvs.length > 0 ? savedCctvs : rotatable;
   const isPersonalized = savedCctvs.length > 0;
