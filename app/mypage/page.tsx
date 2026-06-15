@@ -150,8 +150,8 @@ export default function MyPage() {
           </div>
           <p className="text-[11px] text-text-secondary">
             {entitlements.betaPerks
-              ? "베타 기간이라 멀티뷰 9분할까지 거의 다 열려 있어요!"
-              : "지금은 시범 서비스 기간이에요."}
+              ? "모든 기능을 자유롭게 이용하고 있어요!"
+              : "제주 여행을 더 편하게 즐겨보세요."}
           </p>
         </div>
         {/* 정식 요금제 확정 전까지 임시 숨김

@@ -687,7 +687,7 @@ export default function MultiviewPage() {
                 type="button"
                 disabled={locked}
                 onClick={() => setSlotCount(n)}
-                title={locked ? `${budget.maxSplit}분할까지 가능해요 (요금제 업그레이드 시 확장)` : `${n}분할`}
+                title={locked ? `로그인하면 ${PUBLIC_MAX_SPLIT}분할까지 가능해요` : `${n}분할`}
                 className={[
                   "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 font-bold transition-colors md:flex-none md:px-3.5 md:py-2",
                   selected
@@ -964,12 +964,13 @@ export default function MultiviewPage() {
         </div>
       </div>
 
-      {/* 안내 */}
+      {/* 안내 — 프리미엄/요금제 예고 문구 정식 확정 전까지 임시 숨김
       <div className="mx-4 mt-4 rounded-2xl bg-brand-yellow/20 border border-brand-yellow/30 p-3 text-center md:mx-0">
         <p className="text-xs font-medium text-text-primary">
           향후 멀티뷰는 프리미엄 회원 전용 기능이 될 예정이에요. 지금은 모두 무료!
         </p>
       </div>
+      */}
 
       {/* CCTV 선택 모달 (+ 버튼) */}
       {pickerIdx !== null && (
