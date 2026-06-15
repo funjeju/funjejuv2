@@ -428,7 +428,7 @@ export default function MultiviewPage() {
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [presets, setPresets] = useState<{ name: string; slots: (string | null)[] }[]>([]);
   const [rotating, setRotating] = useState(false);   // 프리셋 자동 순환(디스플레이 모드)
-  const [rotateSec, setRotateSec] = useState(30);
+  const [rotateSec, setRotateSec] = useState(60);    // 전환 간격(초) — 짧을수록 재초기화 부담↑이라 30초 이상만
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [pickerIdx, setPickerIdx] = useState<number | null>(null); // + 버튼으로 연 슬롯
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
@@ -743,11 +743,10 @@ export default function MultiviewPage() {
                 onChange={(e) => setRotateSec(Number(e.target.value))}
                 className="rounded-full border border-border-soft bg-bg-card px-1.5 py-1 text-[11px] font-semibold text-text-secondary"
               >
-                <option value={10}>10초</option>
                 <option value={30}>30초</option>
                 <option value={60}>1분</option>
+                <option value={120}>2분</option>
                 <option value={180}>3분</option>
-                <option value={600}>10분</option>
               </select>
             </span>
           )}
