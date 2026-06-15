@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/origin", label: "🔴 Origin",  short: "Origin" },
   { href: "/admin/logs",   label: "📋 로그",     short: "로그"  },
   { href: "/admin/cctv",   label: "📡 CCTV",    short: "CCTV"  },
+  { href: "/admin/cctv-seo", label: "📍 CCTV SEO", short: "SEO" },
   { href: "/admin/food",   label: "🍽️ 도민맛집", short: "맛집"  },
   { href: "/admin/feed",   label: "📸 라이브피드",short: "피드"  },
   { href: "/admin/jejutube", label: "▶ 제주tube", short: "튜브" },
