@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ShareButton } from "@/components/common/ShareButton";
 
@@ -13,6 +13,17 @@ export function CardNewsViewer({ slug, total, title, subtitle }: { slug: string;
   const [downloading, setDownloading] = useState(false);
 
   const src = (i: number) => `/api/og/cardnews?slug=${slug}&i=${i}`;
+
+  // 전체 카드를 백그라운드로 미리 로드 → 캐시에 올려 캐러셀 이동을 즉각 반응하게
+  useEffect(() => {
+    const imgs = Array.from({ length: total }, (_, i) => {
+      const im = new Image();
+      im.src = src(i);
+      return im;
+    });
+    return () => imgs.forEach((im) => { im.src = ""; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, total]);
 
   async function downloadOne(i: number) {
     const res = await fetch(src(i));
