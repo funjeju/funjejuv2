@@ -12,6 +12,7 @@ const ORIGIN = "https://www.jeju.go.kr";
 export type GovCardNews = {
   seq: string;
   title: string;
+  thumbUrl: string;   // 썸네일(목록 표시용·가벼움)
   imageUrl: string;   // 대표 카드 이미지(원본)
   detailUrl: string;  // 제주도청 원문
 };
@@ -36,9 +37,11 @@ export async function fetchGovCardNews(limit = 12): Promise<GovCardNews[]> {
       seen.add(seq);
       const title = rawTitle.replace(/&amp;/g, "&").replace(/\?+$/, "").trim();
       if (!title) continue;
+      const thumb = path.replace(/\/files\/board\//, "/files/board/thumb-");
       out.push({
         seq,
         title,
+        thumbUrl: `${ORIGIN}${thumb}`,
         imageUrl: `${ORIGIN}${path}`,
         detailUrl: `${LIST_URL}?act=view&seq=${seq}`,
       });

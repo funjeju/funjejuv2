@@ -66,7 +66,7 @@ export default async function CardNewsListPage() {
               <a key={g.seq} href={g.detailUrl} target="_blank" rel="noopener noreferrer"
                 className="group block overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={g.imageUrl} alt={g.title} className="aspect-square w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                <img src={g.thumbUrl} alt={g.title} className="aspect-square w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
                 <p className="line-clamp-2 px-2.5 py-2 text-[12px] font-bold leading-snug text-text-primary">{g.title}</p>
               </a>
             ))}
