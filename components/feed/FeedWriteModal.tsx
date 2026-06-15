@@ -64,24 +64,16 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     }
   }, [open]);
 
-  // 추가 사진 선택 — 각 장 EXIF(GPS·카메라) 검증 후 추가 (총 5장 제한)
-  async function handleExtraSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  // 추가 사진 선택 — 대표 사진이 EXIF(시간·위치) 보증을 하므로 추가분은 EXIF 없이도 허용 (총 5장 제한)
+  function handleExtraSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (picked.length === 0) return;
     setExtraErr("");
-    const exifr = (await import("exifr")).default;
     const room = 4 - extras.length; // 대표 1 + 추가 최대 4
-    const added: { file: File; url: string }[] = [];
-    for (const f of picked.slice(0, Math.max(0, room))) {
-      const data = await exifr.parse(f, { pick: ["Make", "Model", "FNumber", "ISO", "latitude", "longitude", "GPSLatitude", "GPSLongitude"] }).catch(() => null);
-      const hasGps = typeof (data?.latitude ?? data?.GPSLatitude) === "number";
-      const hasCam = !!(data?.Make || data?.Model || data?.FNumber || data?.ISO);
-      if (hasGps && hasCam) added.push({ file: f, url: URL.createObjectURL(f) });
-    }
-    if (added.length < picked.length) {
-      setExtraErr("EXIF(GPS·카메라) 없는 사진은 제외했어요");
-    }
+    const imgs = picked.filter((f) => f.type.startsWith("image/"));
+    const added = imgs.slice(0, Math.max(0, room)).map((f) => ({ file: f, url: URL.createObjectURL(f) }));
+    if (imgs.length > Math.max(0, room)) setExtraErr("추가 사진은 최대 4장까지예요");
     setExtras((prev) => [...prev, ...added].slice(0, 4));
   }
 
