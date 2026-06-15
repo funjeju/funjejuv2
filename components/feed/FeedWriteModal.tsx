@@ -108,9 +108,16 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   if (!open) return null;
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const selected = e.target.files?.[0];
+    const all = Array.from(e.target.files ?? []);
+    const selected = all[0];
     if (!selected) return;
     e.target.value = "";   // 같은 파일 재선택 허용
+
+    // 한 번에 여러 장 고르면: 첫 장 = 대표, 나머지 = 추가(최대 4, EXIF 불필요)
+    const rest = all.slice(1).filter((f) => f.type.startsWith("image/"));
+    if (rest.length) {
+      setExtras((prev) => [...prev, ...rest.map((f) => ({ file: f, url: URL.createObjectURL(f) }))].slice(0, 4));
+    }
 
     setError("");
     setFile(selected);
@@ -686,7 +693,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
           </div>
         )}
 
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
         <input ref={extraInputRef} type="file" accept="image/*" multiple onChange={handleExtraSelect} className="hidden" />
       </div>
     </div>
