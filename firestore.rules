@@ -34,6 +34,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // BGM(배경음악) 트랙 — 본인만 읽기/쓰기
+    match /users/{userId}/bgmTracks/{trackId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // CCTV 실시간 채팅 (누구나 읽기, 로그인 사용자만 작성)
     match /cctv_chats/{cctvId}/messages/{messageId} {
       allow read: if true;

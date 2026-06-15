@@ -21,6 +21,7 @@ export type PlanLimits = {
   tripComplexPerMonth: number; // 여행일정 복잡(맞춤)모드 월 횟수
   tripSimplePerMonth: number;  // 여행일정 단순(빠른)모드 월 횟수
   bizTools: boolean;           // 홈페이지 자동생성·CTA·매장 키오스크
+  bgmMax: number;              // BGM(MP3) 업로드 가능 곡수 (-1=무제한)
 };
 
 export type PlanDef = {
@@ -44,6 +45,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     limits: {
       cctvMinutesPerDay: 10, maxSplit: 1, ads: true,
       chatPerDay: 5, ytExtractPerMonth: 3, tripComplexPerMonth: 0, tripSimplePerMonth: 3,
+      bgmMax: 1, // BGM
       bizTools: false,
     },
     perks: ["CCTV 하루 10분", "챗봇 하루 5회", "여행일정 단순 3회", "제주tube 추출 총 3건"],
@@ -56,6 +58,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     limits: {
       cctvMinutesPerDay: 180, maxSplit: 4, ads: true,
       chatPerDay: 20, ytExtractPerMonth: 3, tripComplexPerMonth: 1, tripSimplePerMonth: -1,
+      bgmMax: 3, // BGM
       bizTools: false,
     },
     perks: ["CCTV 하루 3시간 · 4분할", "챗봇 하루 20회", "여행일정 복잡 월 1회", "제주tube 추출 월 3건"],
@@ -68,6 +71,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     limits: {
       cctvMinutesPerDay: 540, maxSplit: 4, ads: false,
       chatPerDay: -1, ytExtractPerMonth: 10, tripComplexPerMonth: 3, tripSimplePerMonth: -1,
+      bgmMax: 10, // BGM
       bizTools: false,
     },
     perks: ["CCTV 하루 9시간 · 4분할", "광고 제거", "챗봇 무제한", "여행일정 복잡 월 3회", "제주tube 월 10건"],
@@ -81,6 +85,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     limits: {
       cctvMinutesPerDay: 1800, maxSplit: 9, ads: false,
       chatPerDay: -1, ytExtractPerMonth: 30, tripComplexPerMonth: 8, tripSimplePerMonth: -1,
+      bgmMax: 30, // BGM
       bizTools: false,
     },
     perks: ["CCTV 하루 30시간 · 9분할", "광고 제거", "챗봇 무제한", "여행일정 복잡 월 8회", "제주tube 월 30건"],
@@ -94,6 +99,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     limits: {
       cctvMinutesPerDay: 3000, maxSplit: 9, ads: false,
       chatPerDay: -1, ytExtractPerMonth: -1, tripComplexPerMonth: 2, tripSimplePerMonth: -1,
+      bgmMax: -1, // BGM
       bizTools: true,
     },
     perks: [
@@ -131,4 +137,5 @@ export const BETA_MEMBER_LIMITS: PlanLimits = {
   tripComplexPerMonth: -1,
   tripSimplePerMonth: -1,
   bizTools: false,
+  bgmMax: -1, // 베타 회원 BGM 무제한
 };

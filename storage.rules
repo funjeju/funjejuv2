@@ -23,6 +23,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // BGM(배경음악) MP3 — 누구나 읽기(재생), 로그인 사용자가 자기 폴더에만 업로드(15MB·오디오)
+    match /bgm/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('audio/.*');
+    }
+
     // 나머지 거부
     match /{allPaths=**} {
       allow read, write: if false;

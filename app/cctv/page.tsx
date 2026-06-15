@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
+import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { DIRECTION_META } from "@/constants/cctv-directions";
@@ -32,6 +33,7 @@ export default function CctvPage() {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
+      <BgmPlayer />
       <PageHeader
         title="실시간 제주 CCTV"
         subtitle="지금 제주 현장을 실시간으로 확인하세요"
