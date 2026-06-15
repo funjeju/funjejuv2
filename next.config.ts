@@ -82,6 +82,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "firebasestorage.googleapis.com" },
       { protocol: "https", hostname: "storage.googleapis.com" }, // 비즈 사진 재호스팅(네이버 이미지검색)
+      { protocol: "https", hostname: "api.cdn.visitjeju.net" }, // 비짓제주 적재 맛집 대표사진
     ],
   },
 };
