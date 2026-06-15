@@ -108,7 +108,7 @@ function AiSpotCards({ cards }: { cards: AiSpotCard[] }) {
 const INITIAL: Message[] = [
   {
     role: "model",
-    text: "안녕! 제주 여행 도슨트 돌AI야.\n\n🍽️ 도민맛집 + 🏞️ 가볼만한 곳을 함께 추천해줄게.\n지역명이나 메뉴를 알려주면 더 정확해!",
+    text: "혼저옵서예! 제주 여행 도슨트 돌AI우다. 🗿\n\n🍽️ 도민맛집광 🏞️ 가볼만한 디를 곹이 추천해드리쿠다.\n지역이름이영 메뉴를 골아주민 더 정확허우다!\n\n※ 제주어가 어렵거든 아래 입력창 위 '제주어 모드'를 꺼줍서.",
   },
 ];
 
@@ -119,7 +119,7 @@ export default function ChatPage() {
   const [loading,  setLoading]  = useState(false);
   const [gps,      setGps]      = useState<GPS>(null);
   const [gpsState, setGpsState] = useState<"idle" | "asking" | "ok" | "outside" | "denied">("idle");
-  const [jejuMode, setJejuMode] = useState(false); // 돌AI 제주어 모드
+  const [jejuMode, setJejuMode] = useState(true); // 돌AI 제주어 모드 (디폴트 ON)
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
@@ -360,6 +360,11 @@ export default function ChatPage() {
             <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${jejuMode ? "left-[18px]" : "left-0.5"}`} />
           </button>
         </div>
+        {jejuMode && (
+          <p className="mb-2 text-center text-[11px] text-text-secondary">
+            💬 제주어가 어려우시면 위 <span className="font-bold text-brand-orange">‘제주어 모드’</span>를 꺼주세요. 표준어로 답해드려요!
+          </p>
+        )}
         <div className="flex items-center gap-2 rounded-full border border-border-soft bg-bg-primary px-4 py-2">
           <input
             ref={inputRef}
