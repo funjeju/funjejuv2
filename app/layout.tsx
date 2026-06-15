@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   description:
     "실시간 제주 CCTV 40개, 도민이 추천하는 맛집 589곳, AI 도슨트 챗봇, 유튜브 영상 요약, AI 여행 일정까지. 제주 여행 필수 플랫폼 펀제주.",
   keywords: ["제주 여행", "제주 맛집", "도민맛집", "제주 CCTV", "실시간 제주", "펀제주", "제주도 여행"],
+  // 검색엔진 사이트 소유확인 (네이버 서치어드바이저 / 구글 서치콘솔)
+  verification: {
+    other: {
+      "naver-site-verification": "478ebb575ea38f998084d300bfca76b833d87001",
+    },
+  },
   openGraph: {
     type: "website",
     locale: "ko_KR",
