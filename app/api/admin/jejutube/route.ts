@@ -24,10 +24,10 @@ export async function POST(req: NextRequest) {
   const unauth = await authCheck();
   if (unauth) return unauth;
 
-  const { url } = (await req.json()) as { url?: string };
+  const { url, force } = (await req.json()) as { url?: string; force?: boolean };
   if (!url) return NextResponse.json({ error: "URL을 입력해주세요" }, { status: 400 });
 
-  const result = await analyzeAndSaveVideo(url);
+  const result = await analyzeAndSaveVideo(url, undefined, { force: !!force });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }

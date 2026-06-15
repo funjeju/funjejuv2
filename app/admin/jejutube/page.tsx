@@ -43,6 +43,29 @@ export default function AdminJejutubePage() {
     }
   }
 
+  const [reanalyzing, setReanalyzing] = useState<string | null>(null);
+
+  async function handleReanalyze(videoUrl: string, videoId: string) {
+    if (reanalyzing) return;
+    setReanalyzing(videoId);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/jejutube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: videoUrl, force: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "재분석 실패");
+      setLastResult(data as JejutubeVideo);
+      loadVideos();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "오류 발생");
+    } finally {
+      setReanalyzing(null);
+    }
+  }
+
   async function handleDelete(videoId: string) {
     setVideos((prev) => prev.filter((v) => v.videoId !== videoId));
     try {
@@ -114,13 +137,24 @@ export default function AdminJejutubePage() {
                 {v.spots.map((s) => s.name).join(", ")}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => handleDelete(v.videoId)}
-              className="shrink-0 self-start rounded-full border border-border-soft px-2.5 py-1 text-[11px] text-text-secondary hover:border-live-red hover:text-live-red transition-colors"
-            >
-              삭제
-            </button>
+            <div className="flex shrink-0 flex-col gap-1.5 self-start">
+              <button
+                type="button"
+                onClick={() => handleReanalyze(v.url, v.videoId)}
+                disabled={reanalyzing === v.videoId}
+                title="AI로 좌표를 다시 찾아 스팟을 보정합니다 (찜 활성화)"
+                className="rounded-full border border-border-soft px-2.5 py-1 text-[11px] text-brand-orange hover:border-brand-orange disabled:opacity-40 transition-colors"
+              >
+                {reanalyzing === v.videoId ? "분석 중..." : "🔄 재분석"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(v.videoId)}
+                className="rounded-full border border-border-soft px-2.5 py-1 text-[11px] text-text-secondary hover:border-live-red hover:text-live-red transition-colors"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         ))}
         {videos.length === 0 && (

@@ -168,18 +168,134 @@ async function kakaoSearch(query: string): Promise<KakaoDoc | null> {
   } catch { return null; }
 }
 
-async function geocodeSpots(spots: JejutubeSpot[]): Promise<JejutubeSpot[]> {
-  // 카카오 검색을 병렬 실행 — 순차 대비 스팟 수만큼 시간 단축
-  return Promise.all(
+/** 표기 차이를 흡수하기 위해 여러 쿼리 변형으로 카카오 검색 */
+async function kakaoSearchBest(name: string): Promise<KakaoDoc | null> {
+  const clean = name.replace(/\(.*?\)/g, "").trim();
+  const queries = [`제주 ${clean}`, clean, `제주도 ${clean}`];
+  for (const q of queries) {
+    const hit = await kakaoSearch(q);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+// ── AI 좌표 보정 (카카오가 못 찾은 스팟을 실제 제주 장소로 특정) ──
+const RESOLVE_SYSTEM = `너는 제주 지리 전문가야. 주어진 스팟 이름이 가리키는 "제주도 안의 실제 장소"를 특정해줘.
+
+[규칙]
+- officialName: 카카오맵/네이버지도에서 그대로 검색되는 정확한 공식 상호명·지명 (영상 표기가 줄임말·별칭이면 정식 명칭으로 교정)
+- lat/lng: 그 장소의 실제 WGS84 좌표. 위치를 확실히 아는 유명 장소면 정확한 값을, 모르면 null
+- 제주도(위도 33.1~33.65, 경도 126.1~127.0) 밖이거나 실재 여부가 불확실하면 lat/lng를 null로
+- 추측으로 아무 좌표나 만들어내지 마. 확신 없으면 null이 맞아`;
+
+const RESOLVE_SCHEMA = {
+  type: "object",
+  properties: {
+    places: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "입력으로 받은 원래 스팟 이름 그대로" },
+          officialName: { type: "string", description: "카카오맵에서 검색되는 정확한 공식 명칭" },
+          lat: { type: ["number", "null"] },
+          lng: { type: ["number", "null"] },
+        },
+        required: ["name", "officialName", "lat", "lng"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["places"],
+  additionalProperties: false,
+} as const;
+
+type ResolvedPlace = { name: string; officialName: string; lat: number | null; lng: number | null };
+
+/** 카카오가 못 찾은 스팟들을 GPT로 한 번에 보정 (공식명 교정 + 좌표 추정) */
+async function resolveSpotsViaAI(spots: JejutubeSpot[], title: string): Promise<Map<string, ResolvedPlace>> {
+  const map = new Map<string, ResolvedPlace>();
+  if (spots.length === 0) return map;
+  try {
+    const res = await getOpenAI().chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [
+        { role: "system", content: RESOLVE_SYSTEM },
+        {
+          role: "user",
+          content: `영상 제목: ${title}\n\n아래 스팟들의 제주도 내 실제 위치를 특정해줘:\n${spots
+            .map((s) => `- ${s.name} (${s.category}): ${s.description}`)
+            .join("\n")}`,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "resolve_places", strict: true, schema: RESOLVE_SCHEMA },
+      },
+      reasoning_effort: "low",
+      max_completion_tokens: 4096,
+    });
+    const text = res.choices[0]?.message?.content;
+    if (text) {
+      const parsed = JSON.parse(text) as { places: ResolvedPlace[] };
+      for (const p of parsed.places ?? []) map.set(p.name, p);
+    }
+  } catch (e) {
+    console.warn("[jejutube] AI 좌표 보정 실패:", e instanceof Error ? e.message : e);
+  }
+  return map;
+}
+
+async function geocodeSpots(spots: JejutubeSpot[], title: string): Promise<JejutubeSpot[]> {
+  // 1차: 카카오 다중 쿼리 검색을 병렬 실행
+  const pass1 = await Promise.all(
     spots.map(async (spot) => {
       const enriched = { ...spot };
-      const hit = await kakaoSearch(`제주 ${spot.name}`);
+      const hit = await kakaoSearchBest(spot.name);
       if (hit) {
         enriched.lat = Number(hit.y);
         enriched.lng = Number(hit.x);
         enriched.address = hit.road_address_name || hit.address_name;
       }
       return enriched;
+    })
+  );
+
+  // 2차: 1차에서 좌표를 못 찾은 스팟을 AI로 보정
+  const unresolved = pass1.filter((s) => typeof s.lat !== "number");
+  if (unresolved.length === 0) return pass1;
+
+  const resolved = await resolveSpotsViaAI(unresolved, title);
+
+  return Promise.all(
+    pass1.map(async (spot) => {
+      if (typeof spot.lat === "number") return spot;
+      const r = resolved.get(spot.name);
+      if (!r) return spot;
+
+      // 2-a) AI가 교정한 공식명으로 카카오 재검색 (가장 정확)
+      if (r.officialName && r.officialName !== spot.name) {
+        const hit = await kakaoSearchBest(r.officialName);
+        if (hit) {
+          return {
+            ...spot,
+            name: hit.place_name || r.officialName,
+            lat: Number(hit.y),
+            lng: Number(hit.x),
+            address: hit.road_address_name || hit.address_name,
+          };
+        }
+      }
+      // 2-b) 카카오에 없으면 AI 좌표 사용 (제주 범위 안일 때만)
+      if (typeof r.lat === "number" && typeof r.lng === "number" && inJeju(r.lat, r.lng)) {
+        return {
+          ...spot,
+          name: r.officialName || spot.name,
+          lat: r.lat,
+          lng: r.lng,
+        };
+      }
+      return spot;
     })
   );
 }
@@ -252,7 +368,8 @@ export async function countTodayByUser(uid: string): Promise<number> {
 
 export async function analyzeAndSaveVideo(
   url: string,
-  addedBy?: { uid: string; name?: string }
+  addedBy?: { uid: string; name?: string },
+  opts?: { force?: boolean }
 ): Promise<AnalyzeResult> {
   if (!process.env.OPENAI_API_KEY) return { ok: false, error: "OPENAI_API_KEY 미설정", status: 500 };
 
@@ -262,8 +379,9 @@ export async function analyzeAndSaveVideo(
   const db = getAdminDb();
 
   // 이미 분석된 영상이면 그대로 반환 (공유 풀 — 재분석 비용 절약)
+  // force=true면 좌표 보정 등 파이프라인 개선 반영을 위해 다시 분석
   const existing = await db.collection("jejutube_videos").doc(videoId).get();
-  if (existing.exists) {
+  if (existing.exists && !opts?.force) {
     return { ok: true, video: existing.data() as JejutubeVideo, alreadyExists: true };
   }
 
@@ -306,7 +424,7 @@ export async function analyzeAndSaveVideo(
     // 3) 지오코딩 + 제목 스팟 보완을 병렬 실행 (제목 보완은 스팟 이름만 필요 — 좌표 불필요)
     const gptSpots = extracted.spots.slice(0, 12);
     const [geocoded, titleExtra] = await Promise.all([
-      geocodeSpots(gptSpots),
+      geocodeSpots(gptSpots, meta.title),
       enrichSpotsFromTitle(meta.title, gptSpots),
     ]);
     const spots = [...geocoded, ...titleExtra].slice(0, 15);
