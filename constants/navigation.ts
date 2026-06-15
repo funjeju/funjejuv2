@@ -6,9 +6,7 @@ export const sidebarItems = [
   { href: "/food",    label: "도민맛집",    icon: "🍽️" },
   { href: "/chat",    label: "AI 도슨트 챗봇", icon: "🤖" },
   { href: "/youtube", label: "제주tube",    icon: "▶️" },
-  { href: "/webzine", label: "여행 웹진",   icon: "📖" },
-  { href: "/card",    label: "카드뉴스",    icon: "🃏" },
-  { href: "/daily",   label: "AI데일리제주", icon: "🌅" },
+  { href: "/magazine", label: "제주 매거진", icon: "📖" }, // 웹진·카드뉴스·AI데일리제주 통합
   { href: "/trip-ai", label: "AI 여행 일정", icon: "🗓️" },
   { href: "/game/spot", label: "틀린그림찾기", icon: "🔍" },
   // 삼행시·타자연습은 완성·발행 전까지 사이드바 숨김 (어드민 /admin/game에서 출제·테스트). 정식은 통합 게임화면으로 노출 예정
