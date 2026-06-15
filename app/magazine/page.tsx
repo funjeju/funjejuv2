@@ -16,14 +16,20 @@ export const metadata: Metadata = {
   openGraph: { type: "website", url: `${SITE}/magazine`, title: "제주 매거진 — 한곳에서 보는 제주 콘텐츠", description: "데일리 소식·여행 웹진·카드뉴스", siteName: "펀제주" },
 };
 
-function SectionHead({ emoji, title, more }: { emoji: string; title: string; more: string }) {
+function SectionHead({ id, emoji, title, more }: { id: string; emoji: string; title: string; more: string }) {
   return (
-    <div className="mb-3 mt-8 flex items-end justify-between">
+    <div id={id} className="mb-3 mt-8 flex items-end justify-between scroll-mt-20">
       <h2 className="text-lg font-black text-text-primary">{emoji} {title}</h2>
       <Link href={more} className="text-xs font-bold text-brand-orange">더보기 →</Link>
     </div>
   );
 }
+
+const TABS = [
+  { id: "daily", label: "🌅 AI데일리제주" },
+  { id: "webzine", label: "📰 여행 웹진" },
+  { id: "card", label: "🃏 카드뉴스" },
+];
 
 export default async function MagazinePage() {
   const [briefings, webzines, cards] = await Promise.all([
@@ -36,10 +42,17 @@ export default async function MagazinePage() {
     <div className="mx-auto max-w-screen-lg px-4 py-6">
       <PageHeader title="제주 매거진" subtitle="오늘의 소식 · 여행 웹진 · 카드뉴스를 한곳에" emoji="📖" />
 
+      {/* 최상단 3섹션 퀵메뉴 (모바일 포함, 앵커 이동) */}
+      <div className="sticky top-0 z-10 -mx-4 mt-2 flex gap-2 overflow-x-auto bg-bg-primary/90 px-4 py-2 backdrop-blur">
+        {TABS.map((t) => (
+          <a key={t.id} href={`#${t.id}`} className="shrink-0 rounded-full border border-border-soft bg-bg-card px-3 py-1.5 text-xs font-bold text-text-primary hover:bg-brand-navy hover:text-white">{t.label}</a>
+        ))}
+      </div>
+
       {/* AI데일리제주 */}
       {briefings.length > 0 && (
         <>
-          <SectionHead emoji="🌅" title="AI데일리제주" more="/daily" />
+          <SectionHead id="daily" emoji="🌅" title="AI데일리제주" more="/daily" />
           <div className="grid gap-3 sm:grid-cols-2">
             {briefings.map((b) => (
               <Link key={b.id} href={`/daily/${b.slug}`} className="block overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card hover:border-brand-navy">
@@ -60,7 +73,7 @@ export default async function MagazinePage() {
       {/* 여행 웹진 */}
       {webzines.length > 0 && (
         <>
-          <SectionHead emoji="📰" title="여행 웹진" more="/webzine" />
+          <SectionHead id="webzine" emoji="📰" title="여행 웹진" more="/webzine" />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {webzines.map((w) => (
               <Link key={w.id} href={`/webzine/${w.slug}`} className="block overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card hover:border-brand-navy">
@@ -76,7 +89,7 @@ export default async function MagazinePage() {
       )}
 
       {/* 카드뉴스 */}
-      <SectionHead emoji="🃏" title="카드뉴스" more="/card" />
+      <SectionHead id="card" emoji="🃏" title="카드뉴스" more="/card" />
       {cards.length === 0 ? (
         <p className="text-sm text-text-secondary">곧 카드뉴스가 올라옵니다. <Link href="/card" className="font-bold text-brand-orange">제주도청 소식 보기 →</Link></p>
       ) : (

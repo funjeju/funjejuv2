@@ -14,10 +14,9 @@ export const revalidate = 20;
 const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNode; bg: string; color: string }[] = [
   { href: "/cctv",      label: "실시간 CCTV",  icon: <CctvIcon size={26} />,   bg: "bg-blue-50",    color: "text-blue-600"   },
   { href: "/feed",      label: "라이브 피드",   icon: <CameraIcon size={26} />, bg: "bg-yellow-50",  color: "text-yellow-600" },
-  { href: "/chat",      label: "도슨트 챗봇",   emoji: "🤖", bg: "bg-purple-50",  color: "text-purple-600" },
-  { href: "/trip-ai",   label: "AI 여행 일정", emoji: "🗓️", bg: "bg-green-50",   color: "text-green-600"  },
+  { href: "/jeju-ai",   label: "제주여행 AI",  emoji: "🤖", bg: "bg-purple-50",  color: "text-purple-600" },
   { href: "/food",      label: "도민맛집",      emoji: "🍽️", bg: "bg-orange-50",  color: "text-orange-500" },
-  { href: "/webzine",   label: "여행 웹진",     emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
+  { href: "/magazine",  label: "제주 매거진",   emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
   { href: "/game/spot", label: "틀린그림찾기",  emoji: "🔍", bg: "bg-teal-50",    color: "text-teal-600"   },
   { href: "/youtube",   label: "제주tube",      icon: <TubeIcon size={26} />,   bg: "bg-red-50",     color: "text-red-600"    },
 ];
