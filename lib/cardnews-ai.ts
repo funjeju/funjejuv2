@@ -1,8 +1,10 @@
 import "server-only";
-import { generateJSON } from "@/lib/biz/gemini";
+import { generateJSON, analyzeImageJSON } from "@/lib/biz/gemini";
 import { loadAllRestaurants, stripHtml } from "@/lib/restaurants";
 import { listRecentFeedsRich } from "@/lib/feed-server";
 import { pickWebzineTopic } from "@/lib/webzine-ai";
+import { getCardNewsConfig } from "@/lib/cardnews-config";
+import { getAdminDb, uploadPublicImage } from "@/lib/firebase-admin";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -14,7 +16,7 @@ import type { Content, ContentSection } from "@/types/content";
  * 표지(coverImage+title)와 CTA는 og 템플릿이 자동 합성한다.
  */
 
-export type CardNewsSource = "webzine" | "briefing" | "feed";
+export type CardNewsSource = "webzine" | "briefing" | "feed" | "weather";
 
 function slug(): string {
   return `cn-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -194,9 +196,90 @@ JSON 형식:
   };
 }
 
+// ── 실시간 날씨 ─────────────────────────────────────────────
+type WeatherAI = { weather: string; scene: string };
+
+/** Vultr 스냅샷 1장 가져오기 (ffmpeg 1프레임) */
+async function grabSnapshot(id: string): Promise<Buffer | null> {
+  const base = process.env.NEXT_PUBLIC_PROXY_URL || "";
+  const key = process.env.PROXY_KEY || "";
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/snapshot?cctv=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`, {
+      signal: AbortSignal.timeout(20000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return ab.byteLength > 0 ? Buffer.from(ab) : null;
+  } catch {
+    return null;
+  }
+}
+
+const WEATHER_SYS = `너는 제주 CCTV 화면을 보고 현장 날씨를 읽는 분석가다. 보이는 것만 판단하고 추측·날조 금지.
+반환(JSON): { "weather": "맑음|구름조금|흐림|비|눈|안개|야간 중 하나", "scene": "현장 모습 한 줄(파도·하늘·혼잡 등, 18자 이내)" }`;
+
+async function fromWeather(): Promise<Content | null> {
+  const { weatherCameraIds } = await getCardNewsConfig();
+  if (weatherCameraIds.length === 0) return null;
+
+  const db = getAdminDb();
+  const ts = Date.now();
+  const sections: ContentSection[] = [];
+  let coverImage: string | undefined;
+
+  for (const id of weatherCameraIds) {
+    const buf = await grabSnapshot(id);
+    if (!buf) continue; // 캡처 실패(다운/멈춤) 카메라는 건너뜀
+    let imageUrl: string;
+    try {
+      imageUrl = await uploadPublicImage(`cctv-snapshots/${id}-${ts}.jpg`, buf, "image/jpeg");
+    } catch {
+      continue;
+    }
+    // 카메라 메타
+    const camSnap = await db.collection("cctvs").doc(id).get();
+    const cam = camSnap.exists ? (camSnap.data() as { name?: string; region?: string }) : {};
+    const name = cam.name || id;
+    // 비전 분석
+    let ai: WeatherAI = { weather: "—", scene: "" };
+    try { ai = await analyzeImageJSON<WeatherAI>(WEATHER_SYS, buf.toString("base64"), "image/jpeg"); } catch { /* 분석 실패 시 기본값 */ }
+    sections.push({
+      heading: name,
+      body: `${ai.weather}${ai.scene ? ` · ${ai.scene}` : ""}`,
+      image: imageUrl,
+      category: cam.region || undefined,
+    });
+    if (!coverImage) coverImage = imageUrl;
+  }
+
+  if (sections.length === 0) return null;
+
+  const now = new Date();
+  const hh = now.getHours();
+  const part = hh < 12 ? "오전" : "오후";
+  const dateStr = `${now.getMonth() + 1}월 ${now.getDate()}일 ${part}`;
+  return {
+    id: crypto.randomUUID(),
+    type: "card_news",
+    status: "draft",
+    slug: slug(),
+    title: `제주 실시간 날씨\n${dateStr}`,
+    subtitle: "동서남북 지금 이 모습",
+    intro: "",
+    sections,
+    keywords: ["제주 날씨", "제주 실시간", "제주 CCTV", "제주 여행", "제주 카드뉴스"],
+    coverImage,
+    sourceIds: weatherCameraIds,
+    createdAt: now.toISOString(),
+  };
+}
+
 /** 소스별 카드뉴스 초안 생성 */
 export async function generateCardNewsDraft(source: CardNewsSource): Promise<Content | null> {
   if (source === "feed") return fromFeed();
   if (source === "briefing") return fromBriefing();
+  if (source === "weather") return fromWeather();
   return fromWebzine();
 }

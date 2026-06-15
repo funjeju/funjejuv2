@@ -1,7 +1,9 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { initializeApp, getApps, cert, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getAuth, type Auth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
 
 /**
  * Firebase Admin SDK 싱글톤
@@ -59,6 +61,20 @@ export function getAdminDb(): Firestore {
 
 export function getAdminAuth(): Auth {
   return getAuth(getAdminApp());
+}
+
+const STORAGE_BUCKET = "funjejuv2.firebasestorage.app";
+
+/** 버퍼를 Storage에 업로드하고 공개 다운로드 URL(토큰 방식) 반환 */
+export async function uploadPublicImage(path: string, buf: Buffer, contentType = "image/jpeg"): Promise<string> {
+  const token = randomUUID();
+  const file = getStorage(getAdminApp()).bucket(STORAGE_BUCKET).file(path);
+  await file.save(buf, {
+    resumable: false,
+    contentType,
+    metadata: { contentType, metadata: { firebaseStorageDownloadTokens: token } },
+  });
+  return `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 }
 
 /** Authorization: Bearer <Firebase ID 토큰> 검증 → uid/email 반환 (실패 시 null) */

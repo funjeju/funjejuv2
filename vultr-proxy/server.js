@@ -689,6 +689,29 @@ app.get("/health", (req, res) => {
   });
 });
 
+// ── 스냅샷: ffmpeg로 origin에서 1프레임 추출 → JPEG (카드뉴스 실시간 날씨용) ──
+// GET /snapshot?cctv=ID&key=PROXY_KEY   (PROXY_KEY로 보호 · 원본은 이미 origin 접근 가능한 이 박스에서만)
+const { execFile } = require("child_process");
+app.get("/snapshot", (req, res) => {
+  const key = req.query.key;
+  if (process.env.PROXY_KEY && key !== process.env.PROXY_KEY) return res.status(403).json({ error: "forbidden" });
+  const id = String(req.query.cctv || "");
+  const origin = CCTVS[id];
+  if (!origin) return res.status(404).json({ error: "unknown cctv" });
+  // -frames:v 1 → 첫 키프레임 1장만 mjpeg로 stdout. 짧은 타임아웃으로 멈춘 카메라 방어.
+  execFile(
+    "ffmpeg",
+    ["-y", "-loglevel", "error", "-i", origin, "-frames:v", "1", "-q:v", "3", "-f", "image2", "-vcodec", "mjpeg", "pipe:1"],
+    { timeout: 15000, maxBuffer: 12 * 1024 * 1024, encoding: "buffer" },
+    (err, stdout) => {
+      if (err || !stdout || !stdout.length) return res.status(502).json({ error: "capture failed" });
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(stdout);
+    }
+  );
+});
+
 app.get("/", (req, res) => res.send("FunJeju CCTV Proxy v4 (self-healing)"));
 
 app.listen(PORT, "0.0.0.0", () => {
