@@ -15,10 +15,11 @@ const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNod
   { href: "/cctv",      label: "실시간 CCTV",  icon: <CctvIcon size={26} />,   bg: "bg-blue-50",    color: "text-blue-600"   },
   { href: "/feed",      label: "라이브 피드",   icon: <CameraIcon size={26} />, bg: "bg-yellow-50",  color: "text-yellow-600" },
   { href: "/jeju-ai",   label: "제주여행 AI",  emoji: "🤖", bg: "bg-purple-50",  color: "text-purple-600" },
+  { href: "/game/spot", label: "틀린그림찾기",  emoji: "🔍", bg: "bg-teal-50",    color: "text-teal-600"   },
   { href: "/food",      label: "도민맛집",      emoji: "🍽️", bg: "bg-orange-50",  color: "text-orange-500" },
   { href: "/magazine",  label: "제주 매거진",   emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
-  { href: "/game/spot", label: "틀린그림찾기",  emoji: "🔍", bg: "bg-teal-50",    color: "text-teal-600"   },
   { href: "/youtube",   label: "제주tube",      icon: <TubeIcon size={26} />,   bg: "bg-red-50",     color: "text-red-600"    },
+  { href: "/mypage",    label: "마이페이지",    emoji: "👤", bg: "bg-gray-100",   color: "text-gray-600"   },
 ];
 
 export default async function HomePage() {
