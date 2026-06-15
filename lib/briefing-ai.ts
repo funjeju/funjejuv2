@@ -2,6 +2,7 @@ import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { fetchJejuNewsEnriched, type EnrichedNewsItem } from "@/lib/news-fetch";
 import { listFeedPhotos } from "@/lib/feed-server";
+import { fetchGovPressReleases } from "@/lib/jeju-gov-news";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -56,6 +57,24 @@ function slugify(): string {
 
 export async function generateBriefingDraft(): Promise<Content> {
   const news = await fetchJejuNewsEnriched(10);
+
+  // 제주도청 보도자료 합류 (공식 소스 — 출처표시)
+  try {
+    const gov = await fetchGovPressReleases(4);
+    const nowIso = new Date().toISOString();
+    for (const g of gov) {
+      if (!g.body || g.body.length < 30) continue;
+      news.push({
+        title: g.title,
+        description: g.body.slice(0, 150),
+        link: g.link,
+        pubDate: nowIso,
+        body: g.body,
+        source: "제주특별자치도",
+      });
+    }
+  } catch { /* 보도자료 실패 시 뉴스만 */ }
+
   if (news.length === 0) {
     throw new Error("오늘 가져온 제주 뉴스가 없습니다 (네이버 검색 결과 0건 또는 본문 크롤 실패)");
   }
