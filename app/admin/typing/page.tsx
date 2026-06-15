@@ -15,6 +15,9 @@ export default function AdminTypingPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [items, setItems] = useState<TypingPassage[]>([]);
+  const [aiKeyword, setAiKeyword] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState("");
 
   const load = useCallback(async () => {
     const r = await fetch("/api/admin/typing");
@@ -36,6 +39,19 @@ export default function AdminTypingPage() {
     setText(""); setBusinessName(""); setHomepageUrl(""); setHomepageName(""); setKind("short"); setWeightW(1); setMaxAttempts(0);
     setMsg("✅ 지문 생성됨 (아래에서 발행)"); load();
   }
+  async function aiGenerate() {
+    if (aiKeyword.trim().length < 2) { setAiMsg("키워드를 입력하세요"); return; }
+    setAiBusy(true); setAiMsg("");
+    const r = await fetch("/api/admin/typing/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keyword: aiKeyword, businessName, homepageUrl, homepageName }),
+    });
+    const d = await r.json().catch(() => ({}));
+    setAiBusy(false);
+    if (!r.ok) { setAiMsg(d.error ?? "실패"); return; }
+    setAiMsg(`✅ ${(d.made ?? []).join("·")} 생성됨 (아래에서 검토·발행)`);
+    load();
+  }
   async function publish(id: string, on: boolean) {
     await fetch("/api/admin/typing", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, published: on }) });
     load();
@@ -52,6 +68,20 @@ export default function AdminTypingPage() {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-1 text-lg font-black text-text-primary">⌨️ 타자연습 지문 출제</h1>
       <p className="mb-4 text-[11px] text-text-secondary">매장·메뉴 설명을 지문으로. 발행하면 <Link href="/game/typing" className="text-brand-orange underline">타자 목록</Link>에 노출돼요. 주간순위는 점수(=타수×정확도^W) 기준.</p>
+
+      {/* ✨ AI 생성 — 키워드 → 단문+장문 자동 출제 */}
+      <div className="mb-4 space-y-2 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 p-4">
+        <p className="text-xs font-bold text-brand-orange">✨ AI 자동 생성 — 키워드 하나로 단문+장문 동시 출제</p>
+        <div className="flex gap-2">
+          <input value={aiKeyword} onChange={(e) => setAiKeyword(e.target.value)} placeholder="예: 협재 흑돼지 맛집 / 한라봉 케이크"
+            className="min-w-0 flex-1 rounded-lg border border-border-soft px-3 py-2 text-sm" />
+          <button onClick={aiGenerate} disabled={aiBusy} className="shrink-0 rounded-full bg-brand-orange px-4 text-sm font-bold text-white disabled:opacity-50">
+            {aiBusy ? "생성 중…" : "✨ AI 생성"}
+          </button>
+        </div>
+        <p className="text-[10px] text-text-secondary">위 업체명·홈피 칸을 채워두면 생성물에 함께 연결돼요. 결과는 draft로 들어가니 검토 후 발행.</p>
+        {aiMsg && <p className="text-[11px] font-bold text-brand-orange">{aiMsg}</p>}
+      </div>
 
       <div className="space-y-2 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
         <label className="block text-xs font-bold text-text-secondary">지문 (매장/메뉴 설명·병맛 문장)</label>
