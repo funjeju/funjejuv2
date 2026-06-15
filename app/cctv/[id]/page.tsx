@@ -10,6 +10,7 @@ import { fetchWeather } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
+import { getLocation } from "@/lib/cctv-location";
 import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
@@ -54,10 +55,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
 
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
-  const cleanName = cctv.name.replace(/\s+/g, "");
-  const title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
-  const description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 물때를 라이브로 확인하세요.`;
   const url = `${SITE_URL}/cctv/${id}`;
+
+  // 지역 SEO 데이터(cctv_locations)가 있으면 출력 계약(2-1) 우선 적용
+  const loc = await getLocation(id);
+  let title: string;
+  let description: string;
+  if (loc) {
+    const lead = loc.titleLead || loc.formal;
+    const alt = loc.short || loc.facility?.[0] || loc.formal;
+    title = `${lead}날씨 실시간 | ${alt} CCTV로 보는 지금 제주 날씨 - 펀제주`;
+    description = `지금 ${loc.formal}(${loc.short}) 날씨가 궁금하다면? ${loc.facility?.[0] ?? loc.formal} 실시간 CCTV로 파도·바람·하늘을 직접 확인하세요. 펀제주가 24시간 송출하는 제주 ${loc.formal} 라이브 화면.`;
+  } else {
+    const cleanName = cctv.name.replace(/\s+/g, "");
+    title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
+    description = `${cleanName} 실시간 라이브 영상! ${cctv.description} 지금 ${cctv.name}의 날씨, 파도, 물때를 라이브로 확인하세요.`;
+  }
 
   return {
     title, description,
@@ -67,7 +80,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [{ url: `${SITE_URL}/og-cctv.png`, width: 1200, height: 630, alt: `${cctv.name} 실시간 CCTV` }],
     },
     twitter: { card: "summary_large_image", title, description },
-    keywords: [...seo.keywords, ...seo.longTailKeywords],
+    keywords: loc
+      ? [`${loc.formal}날씨`, `${loc.formal} cctv`, `${loc.short}날씨`, `${loc.short} cctv`, ...(loc.facility ?? []).map((f) => `${f} 실시간`), ...seo.keywords]
+      : [...seo.keywords, ...seo.longTailKeywords],
   };
 }
 
@@ -81,6 +96,11 @@ export default async function CctvDetailPage({ params }: Props) {
     : (PROXY_BASE ? `${PROXY_BASE}/cctv/${cctv.id}` : null);
 
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
+  const loc = await getLocation(id); // 지역 SEO 데이터(있으면 출력 계약 본문 렌더)
+  // nearby 내부링크용 이름 매핑 (실제 cctv id → 이름)
+  const nearbyLinks = loc
+    ? (await Promise.all(loc.nearby.map(async (nid) => ({ id: nid, name: (await getCctvById(nid))?.name ?? nid }))))
+    : [];
 
   // 같은 지역 + 부족하면 mock에서 보충
   const nearbyFromDb = await getNearbyCctvs(cctv.region, cctv.id, 3);
@@ -133,10 +153,24 @@ export default async function CctvDetailPage({ params }: Props) {
     ],
   };
 
+  // VideoObject + BroadcastEvent(상시 라이브 · startDate만, endDate 없음) — loc 있을 때
+  const videoLd = loc ? {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: `${loc.formal} 실시간 CCTV — 지금 제주 ${loc.formal} 날씨`,
+    description: `지금 ${loc.formal}(${loc.short}) 날씨를 실시간 CCTV로 확인하세요.`,
+    thumbnailUrl: [`${SITE_URL}/og-cctv.png`],
+    uploadDate: loc.updatedAt || new Date().toISOString(),
+    ...(streamProxyUrl ? { contentUrl: streamProxyUrl } : {}),
+    embedUrl: `${SITE_URL}/cctv/${id}`,
+    publication: { "@type": "BroadcastEvent", isLiveBroadcast: true, startDate: loc.updatedAt || "2026-01-01T00:00:00+09:00" },
+  } : null;
+
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      {videoLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoLd) }} />}
 
       <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
         <ol className="flex flex-wrap items-center gap-1 text-xs text-text-secondary">
@@ -261,7 +295,53 @@ export default async function CctvDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* SEO 콘텐츠 */}
+          {/* 지역 SEO 콘텐츠 (cctv_locations 있을 때 — 출력 계약 본문) */}
+          {loc && (
+            <article className="mx-4 space-y-5 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
+              <h1 className="text-lg font-black text-text-primary">{loc.formal} 실시간 CCTV — 지금 {loc.formal} 날씨 바로 확인</h1>
+              <p className="text-sm leading-7 text-text-primary">
+                {loc.formal}({loc.short}) 날씨가 궁금하다면 영상으로 즉시 확인하세요. {loc.facility?.[0] ?? loc.formal}의 파도·바람·하늘을 펀제주가 24시간 실시간 송출합니다.
+              </p>
+
+              <div>
+                <h2 className="mb-1.5 text-sm font-bold text-text-primary">이 지역 날씨, 이런 특징이 있어요</h2>
+                <p className="text-sm leading-7 text-text-primary">{loc.weatherNote}</p>
+              </div>
+
+              {loc.checkPoints.length > 0 && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">이 CCTV로 확인할 수 있는 것</h2>
+                  <ul className="space-y-1">
+                    {loc.checkPoints.map((cp, i) => <li key={i} className="text-sm leading-6 text-text-primary">• {cp}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {loc.faq.length > 0 && (
+                <div className="space-y-3">
+                  {loc.faq.map((f, i) => (
+                    <div key={i}>
+                      <h3 className="text-sm font-bold text-text-primary">{f.q}</h3>
+                      <p className="mt-0.5 text-sm leading-7 text-text-secondary">{f.a}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {nearbyLinks.length > 0 && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">주변 실시간 CCTV</h2>
+                  <div className="flex flex-wrap gap-1.5">
+                    {nearbyLinks.map((n) => (
+                      <Link key={n.id} href={`/cctv/${n.id}`} className="rounded-full bg-bg-secondary px-2.5 py-1 text-xs font-semibold text-text-primary hover:bg-brand-navy hover:text-white">{n.name}</Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </article>
+          )}
+
+          {/* SEO 콘텐츠 (기존 — loc 없는 카메라 폴백) */}
           <article className="mx-4 space-y-4 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
             <h2 className="text-base font-black text-text-primary">{cctv.name} 실시간 라이브캠 안내</h2>
             <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
