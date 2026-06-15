@@ -140,16 +140,24 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setStatus("analyzing");
 
     try {
-      // EXIF 추출 — 카메라 태그는 parse, GPS는 전용 추출기(Ref 태그 자동 처리로 신뢰성↑)
+      // EXIF 추출 — 카메라 태그는 parse, GPS는 전용 추출기 + 전체파싱 폴백(Ref 태그 자동 처리)
       const exifr = await import("exifr");
       const data = await exifr.default.parse(selected, {
         pick: ["Make","Model","LensModel","FocalLength","FNumber","ISO","ExposureTime","DateTimeOriginal"],
       }).catch(() => null);
-      const gpsData = await exifr.default.gps(selected).catch(() => null);
 
-      const lat = gpsData?.latitude;
-      const lng = gpsData?.longitude;
+      let lat: number | undefined, lng: number | undefined;
+      try {
+        const g = await exifr.default.gps(selected);
+        if (g) { lat = g.latitude; lng = g.longitude; }
+      } catch { /* ignore */ }
+      if (typeof lat !== "number" || typeof lng !== "number") {
+        // 폴백 — 전체 파싱(gps 블록 포함)으로 latitude/longitude 계산
+        const full = await exifr.default.parse(selected, { gps: true }).catch(() => null);
+        if (typeof full?.latitude === "number") { lat = full.latitude; lng = full.longitude; }
+      }
       const hasGps = typeof lat === "number" && typeof lng === "number";
+      console.log("[FeedUpload] GPS 추출:", { lat, lng, hasGps, hasCamera: !!(data?.Make || data?.Model) });
 
       // 카메라 EXIF 정보 확인 (1개라도 있는지)
       const hasCameraExif = !!(
