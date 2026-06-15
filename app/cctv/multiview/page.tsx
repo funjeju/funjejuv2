@@ -9,12 +9,10 @@ import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
-import { useAuth } from "@/hooks/useAuth";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
 
-const ADMIN_EMAIL = "naggu1999@gmail.com";
-// 6·9분할은 관리자만 노출 (일반 사용자는 1·2·4분할까지)
+// 멀티뷰 최대 분할 — 안정성·대역폭 위해 4분할로 제한 (모든 사용자)
 const PUBLIC_MAX_SPLIT = 4;
 
 // 분할 수에 맞는 격자 미리보기 아이콘 (1·2·4·6·9분할 레이아웃 그대로 표현)
@@ -422,14 +420,13 @@ function EmptySlot({
 }
 
 export default function MultiviewPage() {
-  const { user } = useAuth();
-  const isAdmin = !!user && user.email === ADMIN_EMAIL;
   const { favoriteIds: savedIds } = useCctvFavorite();
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
+  const [presets, setPresets] = useState<{ name: string; slots: (string | null)[] }[]>([]);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [pickerIdx, setPickerIdx] = useState<number | null>(null); // + 버튼으로 연 슬롯
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
@@ -524,8 +521,8 @@ export default function MultiviewPage() {
     if (budget.exhausted && playing) setPlaying(false);
   }, [budget.exhausted, playing]);
 
-  // 6·9분할은 관리자만 — 일반 사용자는 플랜 한도와 무관하게 4분할까지로 제한
-  const effectiveMaxSplit = isAdmin ? budget.maxSplit : Math.min(budget.maxSplit, PUBLIC_MAX_SPLIT);
+  // 멀티뷰는 4분할까지로 제한 (안정성·대역폭). 모든 사용자 동일.
+  const effectiveMaxSplit = Math.min(budget.maxSplit, PUBLIC_MAX_SPLIT);
 
   // 한도 초과 분할은 강제로 낮춤 (비회원 1분할 / 일반 사용자 6·9 차단)
   useEffect(() => {
@@ -551,6 +548,31 @@ export default function MultiviewPage() {
   useEffect(() => {
     localStorage.setItem("multiview_slot_count", String(slotCount));
   }, [slotCount]);
+
+  // ── 프리셋: 현재 4분할 조합을 이름 붙여 저장·불러오기 (localStorage) ──
+  useEffect(() => {
+    const p = localStorage.getItem("multiview_presets");
+    if (p) { try { setPresets(JSON.parse(p)); } catch { /* ignore */ } }
+  }, []);
+  function persistPresets(next: { name: string; slots: (string | null)[] }[]) {
+    setPresets(next);
+    localStorage.setItem("multiview_presets", JSON.stringify(next));
+  }
+  function savePreset() {
+    const chosen = slots.slice(0, 4).filter(Boolean);
+    if (chosen.length === 0) { alert("먼저 슬롯에 CCTV를 채워주세요."); return; }
+    const name = prompt("이 조합 이름 (예: 노을 4종)")?.trim();
+    if (!name) return;
+    const slots4 = slots.slice(0, 4);
+    persistPresets([...presets.filter((p) => p.name !== name), { name, slots: slots4 }].slice(-12));
+  }
+  function loadPreset(p: { name: string; slots: (string | null)[] }) {
+    setSlotCount(4);
+    setSlots([...p.slots.slice(0, 4), ...Array(5).fill(null)]);
+  }
+  function deletePreset(name: string) {
+    persistPresets(presets.filter((p) => p.name !== name));
+  }
 
   function handleDrop(idx: number, cctvId: string) {
     setSlots((prev) => {
@@ -635,7 +657,7 @@ export default function MultiviewPage() {
       <div className="mx-4 mb-3 space-y-1.5 rounded-2xl border border-border-soft bg-bg-card p-1.5 shadow-card md:mx-0 md:flex md:flex-wrap md:items-center md:gap-2 md:space-y-0 md:p-3">
         {/* 분할 선택 — 플랜 한도 초과는 잠금 */}
         <div className="flex gap-1 rounded-2xl bg-bg-secondary p-1 md:items-center md:gap-1.5">
-          {((isAdmin ? [1, 2, 4, 6, 9] : [1, 2, 4]) as SlotCount[]).map((n) => {
+          {(([1, 2, 4]) as SlotCount[]).map((n) => {
             const locked = n > effectiveMaxSplit;
             const selected = slotCount === n;
             return (
@@ -664,6 +686,25 @@ export default function MultiviewPage() {
             );
           })}
         </div>
+
+        {/* 프리셋 — 내 4분할 조합 저장·불러오기 */}
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto no-scrollbar md:flex-1">
+          <button
+            type="button"
+            onClick={savePreset}
+            className="flex shrink-0 items-center gap-0.5 rounded-full bg-brand-orange/10 px-2.5 py-1 text-[11px] font-bold text-brand-orange hover:bg-brand-orange/20 transition-colors"
+            title="현재 4분할 조합을 프리셋으로 저장"
+          >
+            💾 조합 저장
+          </button>
+          {presets.map((p) => (
+            <span key={p.name} className="flex shrink-0 items-center rounded-full border border-border-soft bg-bg-secondary pl-2.5 text-[11px] font-semibold text-text-secondary">
+              <button type="button" onClick={() => loadPreset(p)} className="py-1 hover:text-brand-navy" title="이 조합 불러오기">⭐ {p.name}</button>
+              <button type="button" onClick={() => deletePreset(p.name)} className="px-1.5 py-1 text-text-secondary/50 hover:text-live-red" title="삭제">✕</button>
+            </span>
+          ))}
+        </div>
+
         {/* 액션 4칸 — 모바일은 아이콘 없이 글자만 7px */}
         <div className="grid grid-cols-4 gap-0.5 md:ml-auto md:flex md:gap-2">
           <button
