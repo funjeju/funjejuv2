@@ -37,6 +37,15 @@ const nextConfig: NextConfig = {
         destination: "/food",
         permanent: true,
       },
+      // 옛 CCTV 게시판: /bbs/board.php?bo_table=cctv(&wr_id=N) → /cctv (목록)
+      // 신규 CCTV id는 숫자 wr_id와 1:1 매칭이 없어 목록으로 통합(관련성 높은 301).
+      // 네이버에 색인·트래픽 살아있던 옛 URL의 403을 살려 유입 회수.
+      {
+        source: "/bbs/board.php",
+        has: [{ type: "query", key: "bo_table", value: "cctv" }],
+        destination: "/cctv",
+        permanent: true,
+      },
     ];
   },
 
