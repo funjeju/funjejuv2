@@ -12,6 +12,7 @@ const NAV = [
   { href: "/admin/feed",   label: "📸 라이브피드",short: "피드"  },
   { href: "/admin/jejutube", label: "▶ 제주tube", short: "튜브" },
   { href: "/admin/contents", label: "📝 콘텐츠",  short: "콘텐츠" },
+  { href: "/admin/cardnews", label: "🃏 카드뉴스", short: "카드" },
   { href: "/admin/game",   label: "🎮 게임",     short: "게임"  },
   { href: "/admin/biz",    label: "🏠 홈페이지",  short: "홈피"  },
   { href: "/admin/users",  label: "👥 사용자",   short: "사용자" },

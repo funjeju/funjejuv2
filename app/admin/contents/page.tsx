@@ -88,13 +88,10 @@ export default function AdminContentsPage() {
             className="rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
             {busy === "gen-briefing" ? "생성 중…" : "☀️ 브리핑 생성"}
           </button>
-          {/* 카드뉴스 — 소스별 생성 (인스타/스레드 캐러셀) */}
-          {([["webzine", "🃏 카드(맛집)"], ["feed", "🃏 카드(피드)"], ["briefing", "🃏 카드(브리핑)"]] as const).map(([src, label]) => (
-            <button key={src} type="button" onClick={() => generate("card_news", src)} disabled={busy === `gen-card_news-${src}`}
-              className="rounded-full bg-jeju-green px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
-              {busy === `gen-card_news-${src}` ? "생성 중…" : label}
-            </button>
-          ))}
+          <Link href="/admin/cardnews"
+            className="rounded-full border border-jeju-green bg-jeju-green/10 px-3 py-1.5 text-[11px] font-bold text-jeju-green">
+            🃏 카드뉴스 →
+          </Link>
         </div>
       </div>
 
