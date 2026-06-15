@@ -15,6 +15,45 @@ export async function loadAllRestaurants(): Promise<Restaurant[]> {
   return cache;
 }
 
+/**
+ * 콘텐츠 생성용 통합 맛집 로더 — JSON 589 + Firestore 신규(비짓제주 적재 등).
+ * 웹진·카드뉴스 토픽 풀이 이걸 써야 새로 추가된 맛집이 자동으로 콘텐츠 소재가 된다.
+ */
+export async function loadContentRestaurants(): Promise<Restaurant[]> {
+  const json = await loadAllRestaurants();
+  try {
+    const { getAdminDb } = await import("@/lib/firebase-admin");
+    const snap = await getAdminDb().collection("restaurants").get();
+    const fsList: Restaurant[] = snap.docs.map((d) => {
+      const f = d.data() as Record<string, unknown>;
+      const imageUrl = (f.imageUrl as string) || "";
+      return {
+        id: d.id,
+        title: (f.title as string) ?? "",
+        content: (f.description as string) ?? "",
+        region: (f.region as string) ?? "",
+        menu: (f.menu as string) ?? "",
+        options: Array.isArray(f.options) ? (f.options as string[]).join("|") : "",
+        hours: (f.hours as string) ?? "",
+        prices: "",
+        images: imageUrl ? [imageUrl] : [],
+        address: (f.address as string) || undefined,
+        lat: typeof f.lat === "number" ? (f.lat as number) : undefined,
+        lng: typeof f.lng === "number" ? (f.lng as number) : undefined,
+      };
+    });
+    return [...json, ...fsList];
+  } catch {
+    return json; // Firestore 실패 시 JSON만
+  }
+}
+
+/** 맛집 이미지 경로 정규화 — 외부 URL(비짓제주 등)은 그대로, 파일명은 /restaurant-images/ */
+export function restaurantImageUrl(imageOrName?: string): string | undefined {
+  if (!imageOrName) return undefined;
+  return imageOrName.startsWith("http") ? imageOrName : `/restaurant-images/${imageOrName}`;
+}
+
 /** HTML 태그 제거 후 첫 N자만 */
 export function stripHtml(html: string, length = 120): string {
   return html

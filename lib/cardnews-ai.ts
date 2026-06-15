@@ -1,6 +1,6 @@
 import "server-only";
 import { generateJSON, analyzeImageJSON } from "@/lib/biz/gemini";
-import { loadAllRestaurants, stripHtml } from "@/lib/restaurants";
+import { stripHtml, restaurantImageUrl } from "@/lib/restaurants";
 import { listRecentFeedsRich } from "@/lib/feed-server";
 import { pickWebzineTopic } from "@/lib/webzine-ai";
 import { getCardNewsConfig } from "@/lib/cardnews-config";
@@ -67,7 +67,7 @@ JSON 형식:
         heading: c.heading || r.title,
         body: c.body || "",
         restaurantId: r.id,
-        image: r.images?.[0] ? `/restaurant-images/${r.images[0]}` : undefined,
+        image: restaurantImageUrl(r.images?.[0]),
         category: r.region,
       };
     });
@@ -85,7 +85,7 @@ JSON 형식:
     intro: "",
     sections,
     keywords: [...(ai.keywords ?? []), `제주 ${topic.menu}`, `${topic.region} 맛집`, "제주 카드뉴스"],
-    coverImage: cover?.images?.[0] ? `/restaurant-images/${cover.images[0]}` : sections[0]?.image,
+    coverImage: restaurantImageUrl(cover?.images?.[0]) ?? sections[0]?.image,
     region: topic.region,
     menu: topic.menu,
     sourceIds: picks.map((r) => r.id),

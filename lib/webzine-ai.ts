@@ -1,6 +1,6 @@
 import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
-import { loadAllRestaurants, stripHtml } from "@/lib/restaurants";
+import { loadContentRestaurants, stripHtml, restaurantImageUrl } from "@/lib/restaurants";
 import { listRecentFeedsRich, type FeedRich } from "@/lib/feed-server";
 import type { Restaurant } from "@/types/restaurant";
 import type { Content, ContentSection } from "@/types/content";
@@ -24,7 +24,7 @@ export type WebzineTopic = {
 
 /** 맛집이 충분(3+)한 지역×메뉴 조합 중 하나를 무작위 선정 */
 export async function pickWebzineTopic(seed?: number): Promise<WebzineTopic | null> {
-  const all = await loadAllRestaurants();
+  const all = await loadContentRestaurants();
   const groups = new Map<string, Restaurant[]>();
   for (const r of all) {
     if (!r.region || !r.menu) continue;
@@ -103,7 +103,7 @@ ${list}
         heading: s.heading || r.title,
         body: s.body || "",
         restaurantId: r.id,
-        image: r.images?.[0] ? `/restaurant-images/${r.images[0]}` : undefined,
+        image: restaurantImageUrl(r.images?.[0]),
       };
     });
 
@@ -130,7 +130,7 @@ ${list}
       "도민맛집",
       "제주 맛집 추천",
     ],
-    coverImage: cover?.images?.[0] ? `/restaurant-images/${cover.images[0]}` : undefined,
+    coverImage: restaurantImageUrl(cover?.images?.[0]),
     region: topic.region,
     menu: topic.menu,
     sourceIds: topic.picks.map((r) => r.id),
