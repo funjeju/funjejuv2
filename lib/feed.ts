@@ -94,6 +94,7 @@ export async function createFeed(input: {
   category: string;
   regionId?: string;
   regionName?: string;
+  subRegion?: string;
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
   placeName?: string;

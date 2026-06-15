@@ -25,6 +25,7 @@ export type Feed = {
   category: string;           // "자연" | "카페" | "맛집" | "액티비티" | "숙소"
   regionId?: string;          // "jeju-hallim" 등 JEJU_REGIONS id
   regionName?: string;        // "한림읍" (표시용)
+  subRegion?: string;         // "협재리" — 리/동 단위 (Kakao 역지오코딩)
   regionCity?: "제주시" | "서귀포시";
   gps?: { lat: number; lng: number };
   placeName?: string;         // 업소명 (GPS로 매칭 후 확인/편집)

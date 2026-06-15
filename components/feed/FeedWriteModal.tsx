@@ -35,6 +35,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [category,    setCategory]    = useState("자연");
   const [filter,      setFilter]      = useState<FeedFilter>("none");
   const [region,      setRegion]      = useState<JejuRegion | null>(null);
+  const [subRegion,   setSubRegion]   = useState<string>("");  // 리/동 (Kakao 역지오코딩)
   const [gps,         setGps]         = useState<{ lat: number; lng: number } | null>(null);
   // GPS로 매칭한 업소
   const [placeName,   setPlaceName]   = useState("");
@@ -55,7 +56,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     if (!open) {
       setFile(null); setPreviewUrl(null); setExif({});
       setAiCopy(""); setUserCopy(""); setFilter("none");
-      setRegion(null); setGps(null); setExifMissing(false);
+      setRegion(null); setSubRegion(""); setGps(null); setExifMissing(false);
       setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
       setHomepageUrl("");
@@ -172,6 +173,19 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       const matched = findNearestRegion(lat as number, lng as number);
       if (matched) setRegion(matched);
 
+      // 리/동 단위 — Kakao 좌표→법정동 역지오코딩 (region_4depth = 리)
+      setSubRegion("");
+      const restKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
+      if (restKey) {
+        fetch(`https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x=${lng}&y=${lat}`, { headers: { Authorization: `KakaoAK ${restKey}` } })
+          .then((r) => r.json())
+          .then((d) => {
+            const b = (d.documents ?? []).find((x: { region_type: string }) => x.region_type === "B");
+            if (b?.region_4depth_name) setSubRegion(b.region_4depth_name as string);
+          })
+          .catch(() => {});
+      }
+
       // 근처 업소 매칭 — "이 업소 맞나요?" 확인용
       fetch(`/api/feed/place?lat=${lat}&lng=${lng}`)
         .then((r) => r.json())
@@ -256,6 +270,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
         ...(images.length > 1 ? { images } : {}),
         exif, aiCopy: finalCopy, filter, category,
         ...(region && { regionId: region.id, regionName: region.name, regionCity: region.city }),
+        ...(subRegion && { subRegion }),
         ...(gps && { gps }),
         ...(placeName.trim() && { placeName: placeName.trim() }),
         ...(homepageUrl && {

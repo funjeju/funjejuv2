@@ -45,6 +45,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
   const [likeCount, setLikeCount] = useState(feed.likes);
   const [deleting,  setDeleting]  = useState(false);
   const [zoomed,    setZoomed]    = useState(false);
+  const [imgIdx,    setImgIdx]    = useState(0); // 다중 이미지 현재 인덱스
 
   const { isSpot, toggle: toggleSpot } = useMySpot();
   const isOwner = !!user && user.uid === feed.authorId;
@@ -107,20 +108,39 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
       {/* 이미지 + 오버레이 — 탭하면 전체화면. 여러 장이면 가로 스와이프 */}
       <div className="relative aspect-[4/5] bg-gray-900 overflow-hidden">
         {images.length > 1 ? (
-          <div className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto">
-            {images.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={src}
-                alt={`${feed.aiCopy} ${i + 1}`}
-                onClick={() => setZoomed(true)}
-                className="h-full w-full shrink-0 cursor-zoom-in snap-center object-cover"
-                style={{ filter: filterStyle }}
-                loading="lazy"
-              />
-            ))}
-          </div>
+          <>
+            {/* 인덱스 기반 캐러셀 — 모든 기기에서 화살표·점으로 이동 */}
+            <div className="flex h-full w-full transition-transform duration-300" style={{ transform: `translateX(-${imgIdx * 100}%)` }}>
+              {images.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={i}
+                  src={src}
+                  alt={`${feed.aiCopy} ${i + 1}`}
+                  onClick={() => setZoomed(true)}
+                  className="h-full w-full shrink-0 cursor-zoom-in object-cover"
+                  style={{ filter: filterStyle }}
+                  loading="lazy"
+                />
+              ))}
+            </div>
+            {/* 좌우 화살표 */}
+            {imgIdx > 0 && (
+              <button type="button" onClick={(e) => { e.stopPropagation(); setImgIdx((i) => i - 1); }}
+                className="absolute left-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur hover:bg-black/65">‹</button>
+            )}
+            {imgIdx < images.length - 1 && (
+              <button type="button" onClick={(e) => { e.stopPropagation(); setImgIdx((i) => i + 1); }}
+                className="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur hover:bg-black/65">›</button>
+            )}
+            {/* 점 인디케이터 */}
+            <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+              {images.map((_, i) => (
+                <button key={i} type="button" onClick={(e) => { e.stopPropagation(); setImgIdx(i); }}
+                  className={`h-1.5 rounded-full transition-all ${i === imgIdx ? "w-4 bg-white" : "w-1.5 bg-white/50"}`} />
+              ))}
+            </div>
+          </>
         ) : (
           <div className="h-full w-full cursor-zoom-in" onClick={() => setZoomed(true)}>
             <Image
@@ -135,8 +155,8 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
           </div>
         )}
         {images.length > 1 && (
-          <span className="pointer-events-none absolute left-1/2 top-1.5 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur md:top-3">
-            📷 1+{images.length - 1}
+          <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur md:top-3">
+            📷 {imgIdx + 1}/{images.length}
           </span>
         )}
 
@@ -160,7 +180,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
           </span>
           {feed.regionName && (
             <span className="rounded-full bg-brand-navy/90 px-1.5 py-0 text-[8px] font-bold text-white backdrop-blur md:px-2.5 md:py-0.5 md:text-[10px]">
-              📍 {feed.regionName}
+              📍 {feed.regionName}{feed.subRegion ? ` ${feed.subRegion}` : ""}
             </span>
           )}
           {feed.placeName && (
@@ -299,11 +319,20 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
             ✕
           </button>
           {images.length > 1 ? (
-            <div className="no-scrollbar flex h-full w-full snap-x snap-mandatory items-center overflow-x-auto" onClick={(e) => e.stopPropagation()}>
-              {images.map((src, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={src} alt={`${feed.aiCopy} ${i + 1}`} className="h-full w-full shrink-0 snap-center object-contain" style={{ filter: filterStyle }} />
-              ))}
+            <div className="flex h-full w-full items-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="flex h-full w-full transition-transform duration-300" style={{ transform: `translateX(-${imgIdx * 100}%)` }}>
+                {images.map((src, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={src} alt={`${feed.aiCopy} ${i + 1}`} className="h-full w-full shrink-0 object-contain" style={{ filter: filterStyle }} />
+                ))}
+              </div>
+              {imgIdx > 0 && <button type="button" onClick={(e) => { e.stopPropagation(); setImgIdx((i) => i - 1); }} className="absolute left-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/25">‹</button>}
+              {imgIdx < images.length - 1 && <button type="button" onClick={(e) => { e.stopPropagation(); setImgIdx((i) => i + 1); }} className="absolute right-3 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-2xl text-white hover:bg-white/25">›</button>}
+              <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 gap-1">
+                {images.map((_, i) => (
+                  <button key={i} type="button" onClick={(e) => { e.stopPropagation(); setImgIdx(i); }} className={`h-1.5 rounded-full ${i === imgIdx ? "w-4 bg-white" : "w-1.5 bg-white/50"}`} />
+                ))}
+              </div>
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
