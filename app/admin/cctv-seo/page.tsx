@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCctvs } from "@/hooks/useCctvs";
-import { CCTV_GROUPS } from "@/types/cctv-location";
-import type { CctvLocation, CctvFaq } from "@/types/cctv-location";
+import { CCTV_GROUPS, VIEW_TYPE_META } from "@/types/cctv-location";
+import type { CctvLocation, CctvFaq, CctvViewType, CctvNearbySpot } from "@/types/cctv-location";
 
 type Editable = CctvLocation;
 
+const VIEW_TYPES = Object.keys(VIEW_TYPE_META) as CctvViewType[];
+
 const EMPTY = (id: string, formal: string): Editable => ({
-  id, formal, short: "", facility: [], group: "", weatherNote: "", checkPoints: [], faq: [], nearby: [], needsReview: true,
+  id, formal, short: "", facility: [], viewType: "beach", group: "", region: "", about: "", nearbySpots: [], weatherNote: "", checkPoints: [], faq: [], access: "", nearby: [], source: "", needsReview: true,
 });
 
 export default function AdminCctvSeoPage() {
@@ -91,6 +93,34 @@ export default function AdminCctvSeoPage() {
               </div>
               <Field label="시설명/별칭 (줄당 1개)"><textarea value={form.facility.join("\n")} onChange={(e) => set("facility", lines(e.target.value))} rows={2} className="inp" /></Field>
               <div className="grid grid-cols-2 gap-2">
+                <Field label="CCTV 유형 view_type (글 틀 결정)">
+                  <select value={form.viewType} onChange={(e) => set("viewType", e.target.value as CctvViewType)} className="inp">
+                    {VIEW_TYPES.map((v) => <option key={v} value={v}>{VIEW_TYPE_META[v].emoji} {VIEW_TYPE_META[v].label}</option>)}
+                  </select>
+                </Field>
+                <Field label="행정구역 region (예: 제주시 애월읍 곽지리)"><input value={form.region ?? ""} onChange={(e) => set("region", e.target.value)} className="inp" /></Field>
+              </div>
+
+              {/* [B] 관광 — 지역 소개 + 주변 명소 */}
+              <Field label="🏝️ 여기가 어떤 곳인가 (about · visitjeju 사실 기반·재작성, 복붙 금지)">
+                <textarea value={form.about ?? ""} onChange={(e) => set("about", e.target.value)} rows={5} className="inp" placeholder="위치·유래·명물·특징·여행 거점성…" />
+              </Field>
+              <div>
+                <p className="mb-1 text-[11px] font-bold text-text-secondary">주변 가볼만한 곳 (nearby_spots)</p>
+                <div className="space-y-1">
+                  {(form.nearbySpots ?? []).map((s, i) => (
+                    <div key={i} className="flex gap-1">
+                      <input value={s.name} onChange={(e) => set("nearbySpots", (form.nearbySpots ?? []).map((x, j) => j === i ? { ...x, name: e.target.value } : x))} placeholder="이름" className="inp flex-[2]" />
+                      <input value={s.distance} onChange={(e) => set("nearbySpots", (form.nearbySpots ?? []).map((x, j) => j === i ? { ...x, distance: e.target.value } : x))} placeholder="차로 10분" className="inp flex-1" />
+                      <input value={s.type} onChange={(e) => set("nearbySpots", (form.nearbySpots ?? []).map((x, j) => j === i ? { ...x, type: e.target.value } : x))} placeholder="카페" className="inp flex-1" />
+                      <button type="button" onClick={() => set("nearbySpots", (form.nearbySpots ?? []).filter((_, j) => j !== i))} className="text-[11px] text-red-500">✕</button>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => set("nearbySpots", [...(form.nearbySpots ?? []), { name: "", distance: "", type: "" } as CctvNearbySpot])} className="rounded-full bg-bg-secondary px-3 py-1 text-[11px] font-bold text-text-primary">+ 명소 추가</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <Field label="지역군 group">
                   <select value={form.group} onChange={(e) => set("group", e.target.value)} className="inp">
                     <option value="">선택…</option>
@@ -132,6 +162,9 @@ export default function AdminCctvSeoPage() {
                   })}
                 </div>
               </Field>
+
+              <Field label="🚗 가는 길·주차 (access)"><textarea value={form.access ?? ""} onChange={(e) => set("access", e.target.value)} rows={2} className="inp" placeholder="제주공항에서 차로 약 30분…" /></Field>
+              <Field label="관광 사실 출처 메모 (source)"><input value={form.source ?? ""} onChange={(e) => set("source", e.target.value)} className="inp" placeholder="visitjeju.net + funjeju intro" /></Field>
 
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={!!form.needsReview} onChange={(e) => set("needsReview", e.target.checked)} />

@@ -18,9 +18,21 @@ db.settings({ ignoreUndefinedProperties: true });
 
 const locs = JSON.parse(readFileSync(new URL("../locations.json", import.meta.url), "utf8"));
 
-// 실제 cctv id 집합 (G5 검증용)
+// 실제 cctv id 집합 (G5 검증용) + 메타(category·region — viewType 추론용)
 const cctvSnap = await db.collection("cctvs").get();
 const realIds = new Set(cctvSnap.docs.map((d) => d.id));
+const cctvMeta = new Map(cctvSnap.docs.map((d) => [d.id, d.data()]));
+
+// category·id → viewType 추론 (json에 명시 없으면)
+function inferViewType(id, cat) {
+  if (id.startsWith("udo_") || id.startsWith("chuja_")) return "island";
+  if (id.startsWith("halla") || cat === "한라산") return "mountain";
+  if (cat === "공항") return "airport";
+  if (cat === "해변") return "beach";
+  if (cat === "항구" || cat === "포구") return "port";
+  if (cat === "관광지") return "landmark";
+  return "city";
+}
 
 const now = new Date().toISOString();
 let ok = 0;
@@ -37,7 +49,10 @@ for (const l of locs) {
   const bodyLen = (l.weatherNote || "").length + (l.faq || []).reduce((s, f) => s + (f.a || "").length, 0);
   if (bodyLen < 400) warnings.push(`⚠️ ${l.id}: 본문 ${bodyLen}자 (<400, 보완 권장)`);
 
-  const doc = { ...l, nearby: validNearby, updatedAt: now };
+  const meta = cctvMeta.get(l.id) || {};
+  const viewType = l.viewType || inferViewType(l.id, meta.category);
+  const region = l.region || meta.region || "";
+  const doc = { ...l, viewType, region, nearby: validNearby, updatedAt: now };
   batch.set(db.collection("cctv_locations").doc(l.id), doc, { merge: true });
   ok++;
 }

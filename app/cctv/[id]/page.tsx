@@ -63,10 +63,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let title: string;
   let description: string;
   if (loc) {
-    const lead = loc.titleLead || loc.formal;
-    const alt = loc.short || loc.facility?.[0] || loc.formal;
-    title = `${lead}날씨 실시간 | ${alt} CCTV로 보는 지금 제주 날씨 - 펀제주`;
-    description = `지금 ${loc.formal}(${loc.short}) 날씨가 궁금하다면? ${loc.facility?.[0] ?? loc.formal} 실시간 CCTV로 파도·바람·하늘을 직접 확인하세요. 펀제주가 24시간 송출하는 제주 ${loc.formal} 라이브 화면.`;
+    const fac = loc.facility?.[0] ?? loc.short;
+    const regionShort = loc.region ? loc.region.split(" ").slice(1).join(" ") : "";
+    title = `${loc.formal}날씨·실시간 CCTV·가볼만한곳 | ${fac} - 펀제주`;
+    description = `${loc.region ? loc.region + " " : ""}${loc.formal}(${loc.short}) 실시간 CCTV로 지금 날씨·파도·바람을 확인하고, ${loc.formal} 가볼만한 곳·주변 여행 코스·가는 길까지 한눈에. 펀제주가 24시간 송출하는 ${fac} 라이브 화면.`;
+    // 관광 + 날씨 키워드
+    void regionShort;
   } else {
     const cleanName = cctv.name.replace(/\s+/g, "");
     title = `${cctv.name} 실시간 CCTV - ${cctv.region} ${cctv.category} 라이브캠`;
@@ -82,7 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     twitter: { card: "summary_large_image", title, description },
     keywords: loc
-      ? [`${loc.formal}날씨`, `${loc.formal} cctv`, `${loc.short}날씨`, `${loc.short} cctv`, ...(loc.facility ?? []).map((f) => `${f} 실시간`), ...seo.keywords]
+      ? [`${loc.formal}날씨`, `${loc.formal} cctv`, `${loc.short}날씨`, `${loc.short} cctv`, `${loc.formal} 가볼만한곳`, `${loc.formal} 여행`, `${loc.formal} 주차`, ...(loc.region ? [loc.region] : []), ...(loc.facility ?? []).map((f) => `${f} 실시간`), ...seo.keywords]
       : [...seo.keywords, ...seo.longTailKeywords],
   };
 }
@@ -296,28 +298,56 @@ export default async function CctvDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* 지역 SEO 콘텐츠 (cctv_locations 있을 때 — 출력 계약 본문) */}
+          {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (
             <article className="mx-4 space-y-5 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
-              <h1 className="text-lg font-black text-text-primary">{loc.formal} 실시간 CCTV — 지금 {loc.formal} 날씨 바로 확인</h1>
-              <p className="text-sm leading-7 text-text-primary">
-                {loc.formal}({loc.short}) 날씨가 궁금하다면 영상으로 즉시 확인하세요. {loc.facility?.[0] ?? loc.formal}의 파도·바람·하늘을 펀제주가 24시간 실시간 송출합니다.
-              </p>
+              {/* [A] 도입 — 영상으로 지금 확인 */}
+              <header>
+                <h1 className="text-lg font-black text-text-primary">
+                  {loc.region ? `${loc.region} ` : ""}실시간 {loc.formal} CCTV — {loc.facility?.[0] ?? loc.formal} 날씨·여행정보
+                </h1>
+                <p className="mt-2 text-sm leading-7 text-text-primary">
+                  {loc.formal}({loc.short}) 날씨와 지금 현장 상태가 궁금하다면 위 실시간 영상으로 바로 확인하세요. {loc.region ? `${loc.region} ` : ""}{loc.facility?.[0] ?? loc.formal}를 펀제주 CCTV가 24시간 송출합니다.
+                </p>
+              </header>
 
+              {/* [B] 지역 기본정보 (관광) */}
+              {loc.about && (
+                <div>
+                  <h2 className="mb-1.5 text-base font-black text-text-primary">{loc.formal}은(는) 어떤 곳인가요</h2>
+                  <p className="text-sm leading-7 text-text-primary">{loc.about}</p>
+                </div>
+              )}
+              {loc.nearbySpots && loc.nearbySpots.length > 0 && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">주변 가볼만한 곳</h2>
+                  <ul className="space-y-1">
+                    {loc.nearbySpots.map((s, i) => (
+                      <li key={i} className="text-sm leading-6 text-text-primary">
+                        • <span className="font-semibold">{s.name}</span> <span className="text-text-secondary">— {s.distance} · {s.type}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* [C] 날씨·기후 특성 */}
               <div>
-                <h2 className="mb-1.5 text-sm font-bold text-text-primary">이 지역 날씨, 이런 특징이 있어요</h2>
+                <h2 className="mb-1.5 text-sm font-bold text-text-primary">{loc.formal} 날씨, 이런 특징이 있어요</h2>
                 <p className="text-sm leading-7 text-text-primary">{loc.weatherNote}</p>
               </div>
 
+              {/* [D] CCTV로 확인할 수 있는 것 (view_type별) */}
               {loc.checkPoints.length > 0 && (
                 <div>
-                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">이 CCTV로 확인할 수 있는 것</h2>
+                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">{loc.formal} CCTV로 지금 확인할 수 있는 것</h2>
                   <ul className="space-y-1">
                     {loc.checkPoints.map((cp, i) => <li key={i} className="text-sm leading-6 text-text-primary">• {cp}</li>)}
                   </ul>
                 </div>
               )}
 
+              {/* [E] FAQ — 날씨 + 관광 */}
               {loc.faq.length > 0 && (
                 <div className="space-y-3">
                   {loc.faq.map((f, i) => (
@@ -329,6 +359,15 @@ export default async function CctvDetailPage({ params }: Props) {
                 </div>
               )}
 
+              {/* [F] 가는 길·주차 */}
+              {loc.access && (
+                <div>
+                  <h2 className="mb-1.5 text-sm font-bold text-text-primary">가는 길·주차</h2>
+                  <p className="text-sm leading-7 text-text-primary">{loc.access}</p>
+                </div>
+              )}
+
+              {/* [G] 주변 실시간 CCTV + 허브 */}
               {nearbyLinks.length > 0 && (
                 <div>
                   <h2 className="mb-1.5 text-sm font-bold text-text-primary">주변 실시간 CCTV</h2>
@@ -340,11 +379,18 @@ export default async function CctvDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {loc.group && GROUP_HUB[loc.group] && (
-                <Link href={`/cctv/theme/${GROUP_HUB[loc.group].slug}`} className="inline-block rounded-full border border-brand-navy px-3 py-1 text-xs font-bold text-brand-navy hover:bg-brand-navy hover:text-white">
-                  {GROUP_HUB[loc.group].emoji} {GROUP_HUB[loc.group].title} 모아보기 →
-                </Link>
-              )}
+              <div className="flex flex-wrap gap-1.5">
+                {loc.group && GROUP_HUB[loc.group] && (
+                  <Link href={`/cctv/theme/${GROUP_HUB[loc.group].slug}`} className="inline-block rounded-full border border-brand-navy px-3 py-1 text-xs font-bold text-brand-navy hover:bg-brand-navy hover:text-white">
+                    {GROUP_HUB[loc.group].emoji} {GROUP_HUB[loc.group].title} →
+                  </Link>
+                )}
+                {loc.region && (
+                  <Link href={`/cctv/region/${encodeURIComponent(loc.region.split(" ").slice(0, 2).join(" "))}`} className="inline-block rounded-full border border-border-soft px-3 py-1 text-xs font-bold text-text-secondary hover:bg-bg-secondary">
+                    📍 {loc.region.split(" ").slice(0, 2).join(" ")} CCTV →
+                  </Link>
+                )}
+              </div>
             </article>
           )}
 
