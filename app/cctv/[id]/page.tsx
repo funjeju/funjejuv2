@@ -348,7 +348,8 @@ export default async function CctvDetailPage({ params }: Props) {
             </article>
           )}
 
-          {/* SEO 콘텐츠 (기존 — loc 없는 카메라 폴백) */}
+          {/* SEO 콘텐츠 (기존) — loc 데이터 없는 카메라에서만 폴백 렌더 (중복 방지 · G1) */}
+          {!loc && (
           <article className="mx-4 space-y-4 rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card md:mx-0">
             <h2 className="text-base font-black text-text-primary">{cctv.name} 실시간 라이브캠 안내</h2>
             <p className="text-sm leading-7 text-text-primary">{seo.intro}</p>
@@ -395,6 +396,7 @@ export default async function CctvDetailPage({ params }: Props) {
               </p>
             </div>
           </article>
+          )}
 
           <div className="mx-4 md:mx-0">
             <LiveChat cctvId={cctv.id} cctvName={cctv.name} />
