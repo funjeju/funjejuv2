@@ -9,6 +9,7 @@ import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
+import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
 
@@ -655,6 +656,7 @@ export default function MultiviewPage() {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
+      <BgmPlayer />
       <PageHeader
         title="멀티뷰"
         subtitle="여러 CCTV를 동시에 시청하세요"
