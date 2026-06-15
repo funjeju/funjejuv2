@@ -427,6 +427,8 @@ export default function MultiviewPage() {
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
   const [presets, setPresets] = useState<{ name: string; slots: (string | null)[] }[]>([]);
+  const [rotating, setRotating] = useState(false);   // 프리셋 자동 순환(디스플레이 모드)
+  const [rotateSec, setRotateSec] = useState(30);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [pickerIdx, setPickerIdx] = useState<number | null>(null); // + 버튼으로 연 슬롯
   const [playing, setPlaying] = useState(false); // 일괄 재생 토글
@@ -574,6 +576,25 @@ export default function MultiviewPage() {
     persistPresets(presets.filter((p) => p.name !== name));
   }
 
+  // 프리셋 자동 순환 — rotating ON이면 일정 간격으로 다음 프리셋 로드 (매장 디스플레이용)
+  useEffect(() => {
+    if (!rotating || presets.length < 2) return;
+    let i = 0;
+    const apply = (idx: number) => {
+      const p = presets[idx];
+      if (!p) return;
+      setSlotCount(4);
+      setSlots([...p.slots.slice(0, 4), ...Array(5).fill(null)]);
+    };
+    setPlaying(true);
+    apply(0);
+    const t = setInterval(() => {
+      i = (i + 1) % presets.length;
+      apply(i);
+    }, Math.max(5, rotateSec) * 1000);
+    return () => clearInterval(t);
+  }, [rotating, rotateSec, presets]);
+
   function handleDrop(idx: number, cctvId: string) {
     setSlots((prev) => {
       const next = [...prev];
@@ -703,6 +724,33 @@ export default function MultiviewPage() {
               <button type="button" onClick={() => deletePreset(p.name)} className="px-1.5 py-1 text-text-secondary/50 hover:text-live-red" title="삭제">✕</button>
             </span>
           ))}
+          {/* 자동 순환 (프리셋 2개 이상) */}
+          {presets.length >= 2 && (
+            <span className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRotating((r) => !r)}
+                className={[
+                  "rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors",
+                  rotating ? "bg-brand-navy text-white" : "bg-bg-secondary text-text-secondary hover:text-brand-navy",
+                ].join(" ")}
+                title="저장한 프리셋을 일정 간격으로 자동 전환"
+              >
+                {rotating ? "⏸ 순환중" : "🔄 자동순환"}
+              </button>
+              <select
+                value={rotateSec}
+                onChange={(e) => setRotateSec(Number(e.target.value))}
+                className="rounded-full border border-border-soft bg-bg-card px-1.5 py-1 text-[11px] font-semibold text-text-secondary"
+              >
+                <option value={10}>10초</option>
+                <option value={30}>30초</option>
+                <option value={60}>1분</option>
+                <option value={180}>3분</option>
+                <option value={600}>10분</option>
+              </select>
+            </span>
+          )}
         </div>
 
         {/* 액션 4칸 — 모바일은 아이콘 없이 글자만 7px */}
