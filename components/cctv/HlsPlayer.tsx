@@ -25,6 +25,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
   const [retryKey, setRetryKey] = useState(0); // 재연결 버튼 → effect 재실행
+  const [failCause, setFailCause] = useState<"external" | "network" | null>(null); // 실패 원인 판정
 
   // 시청 세션 추적 + 서버 시청예산: 비디오가 실제 재생 중일 때만 (단일 스트림)
   useCctvSession({
@@ -209,6 +210,18 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     return () => clearTimeout(id);
   }, [status, budget.exhausted]);
 
+  // ★ 실패 원인 판정 — error 진입 시 서버 헬스체크로 외부/네트워크 구분
+  useEffect(() => {
+    if (status !== "error") { setFailCause(null); return; }
+    if (!cctvId) { setFailCause("external"); return; } // id 없으면 외부로 간주
+    let alive = true;
+    fetch(`/api/cctv/health?id=${encodeURIComponent(cctvId)}`)
+      .then((r) => r.json())
+      .then((d: { cause?: "external" | "network" }) => { if (alive) setFailCause(d.cause === "network" ? "network" : "external"); })
+      .catch(() => { if (alive) setFailCause("external"); });
+    return () => { alive = false; };
+  }, [status, cctvId, retryKey]);
+
   function togglePlay() {
     const v = videoRef.current;
     if (!v) return;
@@ -296,15 +309,25 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         </div>
       )}
 
-      {/* 에러 오버레이 */}
+      {/* 에러 오버레이 — 원인(외부 신호 중단 / 내 네트워크)에 따라 다른 메시지 */}
       {status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 gap-3">
-          <span className="text-4xl">📡</span>
-          <p className="text-sm font-bold text-white">스트림 연결 실패</p>
-          <p className="flex items-center gap-1.5 text-xs text-white/50">
-            <span className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/70" />
-            자동 재시도 중…
-          </p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-950 px-6 text-center">
+          {failCause === "network" ? (
+            <>
+              <span className="text-4xl">📶</span>
+              <p className="text-sm font-bold text-white">연결이 불안정해요</p>
+              <p className="text-xs leading-relaxed text-white/60">네트워크 상태를 확인하고<br />다시 시도해 주세요.</p>
+            </>
+          ) : (
+            <>
+              <span className="text-4xl">📡</span>
+              <p className="text-sm font-bold text-white">외부 영상 신호가 일시적으로 중단되었어요</p>
+              <p className="flex items-center gap-1.5 text-xs text-white/60">
+                <span className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/70" />
+                신호가 복구되면 자동으로 다시 연결됩니다.
+              </p>
+            </>
+          )}
           <button
             type="button"
             onClick={() => { setStatus("loading"); setRetryKey((k) => k + 1); }}

@@ -173,9 +173,9 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
       {/* 에러 */}
       {activated && status === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/60">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 px-2 text-center text-white/60">
           <span className="text-2xl">📡</span>
-          <span className="text-[10px]">연결 실패</span>
+          <span className="text-[10px] leading-tight">외부 신호 일시 중단<br />자동 복구 중…</span>
         </div>
       )}
 
