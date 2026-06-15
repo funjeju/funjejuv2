@@ -23,6 +23,22 @@ async function isAdmin(): Promise<boolean> {
   return c.get("admin_auth")?.value === process.env.ADMIN_SECRET;
 }
 
+/**
+ * 카드뉴스 og 이미지를 전체 미리 렌더해 CDN 엣지 캐시를 데움.
+ * 발행 직후 1회 실행 → 첫 방문자도 재렌더 없이 캐시 히트.
+ * 베스트에포트: 실패해도 발행에는 영향 없음.
+ */
+async function warmCardOg(origin: string, slug: string, total: number): Promise<void> {
+  await Promise.allSettled(
+    Array.from({ length: total }, (_, i) =>
+      fetch(`${origin}/api/og/cardnews?slug=${encodeURIComponent(slug)}&i=${i}`, {
+        // 엣지를 거쳐 캐시에 적재되도록 캐시 우회 없이 GET
+        signal: AbortSignal.timeout(15000),
+      }).catch(() => undefined)
+    )
+  );
+}
+
 export async function GET(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const status = req.nextUrl.searchParams.get("status") as ContentStatus | null;
@@ -38,10 +54,20 @@ export async function PATCH(req: NextRequest) {
   const content = await getContentById(id);
   // 즉시 ISR 캐시 무효화 (revalidate 대기 없이 바로 반영) — 타입에 맞는 경로
   revalidatePath("/");
+  revalidatePath("/magazine");
   if (content?.type === "briefing") {
     revalidatePath("/daily");
     revalidatePath("/daily/[slug]", "page");
     if (content.slug) revalidatePath(`/daily/${content.slug}`);
+  } else if (content?.type === "card_news") {
+    revalidatePath("/card");
+    revalidatePath("/card/[slug]", "page");
+    if (content.slug) revalidatePath(`/card/${content.slug}`);
+    // CDN 워밍업: og 카드 전체를 미리 렌더 → 첫 유저도 캐시 히트 (느린 1회 제거)
+    if (content.slug) {
+      const total = (content.sections?.length ?? 0) + 2; // 표지 + 섹션 + CTA
+      await warmCardOg(req.nextUrl.origin, content.slug, total);
+    }
   } else {
     revalidatePath("/webzine");
     revalidatePath("/webzine/[slug]", "page");
