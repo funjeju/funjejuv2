@@ -41,10 +41,13 @@ export async function setPublished(id: string, published: boolean): Promise<void
 export async function listGames(opts?: { publishedOnly?: boolean; limit?: number }): Promise<SpotGame[]> {
   let q = getAdminDb().collection(GAMES) as FirebaseFirestore.Query;
   if (opts?.publishedOnly) q = q.where("status", "==", "published");
-  const snap = await q.limit(opts?.limit ?? 200).get();
-  return snap.docs
+  // orderBy 없이 limit를 걸면 Firestore가 임의 순서로 잘라오므로 최신 글이 누락된다.
+  // 복합 인덱스 회피를 위해 후보를 넉넉히(최대 200) 가져와 메모리에서 최신순 정렬 후 자른다.
+  const snap = await q.limit(200).get();
+  const sorted = snap.docs
     .map((d) => d.data() as SpotGame)
     .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  return opts?.limit ? sorted.slice(0, opts.limit) : sorted;
 }
 
 export async function incrementPlay(id: string): Promise<void> {
