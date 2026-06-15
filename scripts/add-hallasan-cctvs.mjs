@@ -28,5 +28,24 @@ for (const r of ROWS) {
   batch.set(db.collection("cctvs").doc(id), { ...rest, active: true, addedAt: now, updatedAt: now }, { merge: true });
 }
 await batch.commit();
-console.log(`✅ 한라산 CCTV upsert: ${ROWS.map(r => r.id).join(", ")}`);
+console.log(`✅ Firestore upsert: ${ROWS.map(r => r.id).join(", ")}`);
+
+// ── 중요: Worker는 Cloudflare KV(CCTV_ORIGINS)에서 origin을 읽는다.
+//    Firestore에만 쓰면 Worker가 404 → 영상이 안 나온다. KV에도 반드시 동기화.
+const get = (k) => { const mm = env.match(new RegExp("^" + k + "=(.*)$", "m")); return mm ? mm[1].replace(/\r$/, "").replace(/^"|"$/g, "") : ""; };
+const ACCOUNT_ID = get("CLOUDFLARE_ACCOUNT_ID"), KV_NS_ID = get("CLOUDFLARE_KV_NAMESPACE_ID"), API_TOKEN = get("CLOUDFLARE_API_TOKEN");
+if (ACCOUNT_ID && KV_NS_ID && API_TOKEN) {
+  const KV = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces/${KV_NS_ID}/values`;
+  for (const r of ROWS) {
+    const { id, name, region, category, originUrl } = r;
+    const res = await fetch(`${KV}/${id}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${API_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, region, category, originUrl, active: true, addedAt: now }),
+    });
+    console.log(res.ok ? `✅ KV ${id}` : `❌ KV ${id} ${res.status}`);
+  }
+} else {
+  console.warn("⚠️ Cloudflare KV 환경변수 누락 — KV 동기화 스킵 (Worker가 404 날 수 있음)");
+}
 process.exit(0);
