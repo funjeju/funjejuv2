@@ -140,16 +140,15 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setStatus("analyzing");
 
     try {
-      // EXIF 추출
+      // EXIF 추출 — 카메라 태그는 parse, GPS는 전용 추출기(Ref 태그 자동 처리로 신뢰성↑)
       const exifr = await import("exifr");
       const data = await exifr.default.parse(selected, {
-        pick: ["Make","Model","LensModel","FocalLength","FNumber","ISO",
-               "ExposureTime","DateTimeOriginal","latitude","longitude",
-               "GPSLatitude","GPSLongitude"],
+        pick: ["Make","Model","LensModel","FocalLength","FNumber","ISO","ExposureTime","DateTimeOriginal"],
       }).catch(() => null);
+      const gpsData = await exifr.default.gps(selected).catch(() => null);
 
-      const lat = data?.latitude ?? data?.GPSLatitude;
-      const lng = data?.longitude ?? data?.GPSLongitude;
+      const lat = gpsData?.latitude;
+      const lng = gpsData?.longitude;
       const hasGps = typeof lat === "number" && typeof lng === "number";
 
       // 카메라 EXIF 정보 확인 (1개라도 있는지)
