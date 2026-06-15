@@ -66,6 +66,12 @@ service cloud.firestore {
         && resource.data.authorId == request.auth.uid;
     }
 
+    // CCTV 목록 — 누구나 읽기(공개 목록 subscribeCctvs), 쓰기는 Admin SDK(어드민 API)만
+    match /cctvs/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // 신규 맛집(비짓제주 적재·어드민 추가) — 누구나 읽기, 쓰기는 Admin SDK만
     match /restaurants/{id} {
       allow read: if true;
