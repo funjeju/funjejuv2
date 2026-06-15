@@ -25,6 +25,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
 
   // 추가 사진(대표 1장 외, 최대 4장 더 = 총 5장). 각 장도 EXIF 검증.
   const [extras, setExtras] = useState<{ file: File; url: string }[]>([]);
+  const [coverIdx, setCoverIdx] = useState(0); // 대표 사진 인덱스 (0=원본, 1..=추가)
   const [extraErr, setExtraErr] = useState("");
 
   const [file,        setFile]        = useState<File | null>(null);
@@ -60,7 +61,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       setPlaceName(""); setPlaceCands([]); setEditingPlace(false);
       setIsLandscape(false); setCropX(50);
       setHomepageUrl("");
-      setExtras([]); setExtraErr("");
+      setExtras([]); setExtraErr(""); setCoverIdx(0);
       setStatus("idle"); setError("");
     }
   }, [open]);
@@ -121,6 +122,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     }
 
     setError("");
+    setCoverIdx(0); // 새 원본 선택 시 대표 초기화
     setFile(selected);
     const objectUrl = URL.createObjectURL(selected);
     setPreviewUrl(objectUrl);
@@ -262,13 +264,13 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
     setStatus("uploading");
     setError("");
     try {
-      // 대표 + 추가 사진 모두 리사이즈(≤1MB) 후 업로드
-      const primaryUrl = await uploadFeedImage(user.uid, await resizeImageForUpload(file));
-      const extraUrls: string[] = [];
-      for (const ex of extras) {
-        extraUrls.push(await uploadFeedImage(user.uid, await resizeImageForUpload(ex.file)));
-      }
-      const images = [primaryUrl, ...extraUrls];
+      // 모든 사진(원본+추가) 리사이즈 후 업로드 → 대표(coverIdx) 먼저 오게 정렬
+      const allFiles = [file, ...extras.map((e) => e.file)];
+      const allUrls: string[] = [];
+      for (const f of allFiles) allUrls.push(await uploadFeedImage(user.uid, await resizeImageForUpload(f)));
+      const ci = Math.min(coverIdx, allUrls.length - 1);
+      const images = [allUrls[ci], ...allUrls.filter((_, i) => i !== ci)];
+      const primaryUrl = images[0]; // 대표(커버)
       await createFeed({
         authorId: user.uid,
         authorName: user.displayName ?? user.email?.split("@")[0] ?? "여행자",
@@ -629,24 +631,26 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
               <div>
                 <p className="mb-2 text-xs font-bold text-text-secondary">
                   🖼️ 사진 추가 <span className="font-normal">({1 + extras.length}/5)</span>
-                  <span className="ml-1 font-normal text-text-secondary">· EXIF 있는 원본만</span>
+                  {extras.length > 0 && <span className="ml-1 font-normal text-brand-orange">· 사진 탭 = 대표 지정</span>}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {/* 대표 사진 썸네일 */}
+                  {/* 대표(원본) 썸네일 — 탭하면 대표 */}
                   {previewUrl && (
-                    <div className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-brand-orange">
+                    <button type="button" onClick={() => setCoverIdx(0)}
+                      className={`relative h-16 w-16 overflow-hidden rounded-lg ${coverIdx === 0 ? "border-2 border-brand-orange" : "border border-border-soft"}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={previewUrl} alt="대표" className="h-full w-full object-cover" />
-                      <span className="absolute bottom-0 inset-x-0 bg-brand-orange/90 text-center text-[8px] font-bold text-white">대표</span>
-                    </div>
+                      <img src={previewUrl} alt="원본" className="h-full w-full object-cover" />
+                      {coverIdx === 0 && <span className="absolute bottom-0 inset-x-0 bg-brand-orange/90 text-center text-[8px] font-bold text-white">⭐ 대표</span>}
+                    </button>
                   )}
                   {extras.map((ex, i) => (
-                    <div key={ex.url} className="relative h-16 w-16 overflow-hidden rounded-lg border border-border-soft">
+                    <div key={ex.url} className={`relative h-16 w-16 overflow-hidden rounded-lg ${coverIdx === i + 1 ? "border-2 border-brand-orange" : "border border-border-soft"}`}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={ex.url} alt={`사진${i + 2}`} className="h-full w-full object-cover" />
+                      <img src={ex.url} alt={`사진${i + 2}`} onClick={() => setCoverIdx(i + 1)} className="h-full w-full cursor-pointer object-cover" />
+                      {coverIdx === i + 1 && <span className="pointer-events-none absolute bottom-0 inset-x-0 bg-brand-orange/90 text-center text-[8px] font-bold text-white">⭐ 대표</span>}
                       <button
                         type="button"
-                        onClick={() => setExtras((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => { setExtras((prev) => prev.filter((_, idx) => idx !== i)); setCoverIdx((c) => (c === i + 1 ? 0 : c > i + 1 ? c - 1 : c)); }}
                         className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[9px] text-white"
                       >✕</button>
                     </div>
