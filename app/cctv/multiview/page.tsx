@@ -10,6 +10,8 @@ import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/use
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { BgmPlayer } from "@/components/cctv/BgmPlayer";
+import { useAuth } from "@/hooks/useAuth";
+import { loadPresets, savePresets, type MvPreset } from "@/lib/multiview-presets";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
 
@@ -427,7 +429,8 @@ export default function MultiviewPage() {
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
-  const [presets, setPresets] = useState<{ name: string; slots: (string | null)[] }[]>([]);
+  const { user } = useAuth();
+  const [presets, setPresets] = useState<MvPreset[]>([]);
   const [rotating, setRotating] = useState(false);   // 프리셋 자동 순환(디스플레이 모드)
   const [rotateSec, setRotateSec] = useState(60);    // 전환 간격(초) — 짧을수록 재초기화 부담↑이라 30초 이상만
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -552,14 +555,15 @@ export default function MultiviewPage() {
     localStorage.setItem("multiview_slot_count", String(slotCount));
   }, [slotCount]);
 
-  // ── 프리셋: 현재 4분할 조합을 이름 붙여 저장·불러오기 (localStorage) ──
+  // ── 프리셋: 현재 4분할 조합을 이름 붙여 저장·불러오기 (로그인=Firestore DB, 비로그인=localStorage) ──
   useEffect(() => {
-    const p = localStorage.getItem("multiview_presets");
-    if (p) { try { setPresets(JSON.parse(p)); } catch { /* ignore */ } }
-  }, []);
-  function persistPresets(next: { name: string; slots: (string | null)[] }[]) {
+    let alive = true;
+    loadPresets(user?.uid ?? null).then((p) => { if (alive) setPresets(p); });
+    return () => { alive = false; };
+  }, [user]);
+  function persistPresets(next: MvPreset[]) {
     setPresets(next);
-    localStorage.setItem("multiview_presets", JSON.stringify(next));
+    void savePresets(user?.uid ?? null, next); // Firestore + 로컬 캐시 동시 저장
   }
   function savePreset() {
     const chosen = slots.slice(0, 4).filter(Boolean);
@@ -569,7 +573,7 @@ export default function MultiviewPage() {
     const slots4 = slots.slice(0, 4);
     persistPresets([...presets.filter((p) => p.name !== name), { name, slots: slots4 }].slice(-12));
   }
-  function loadPreset(p: { name: string; slots: (string | null)[] }) {
+  function loadPreset(p: MvPreset) {
     setSlotCount(4);
     setSlots([...p.slots.slice(0, 4), ...Array(5).fill(null)]);
   }

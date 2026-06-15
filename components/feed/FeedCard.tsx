@@ -46,6 +46,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
   const [deleting,  setDeleting]  = useState(false);
   const [zoomed,    setZoomed]    = useState(false);
   const [imgIdx,    setImgIdx]    = useState(0); // 다중 이미지 현재 인덱스
+  const [mapOpen,   setMapOpen]   = useState(false); // 위치 지도 모달
 
   const { isSpot, toggle: toggleSpot } = useMySpot();
   const isOwner = !!user && user.uid === feed.authorId;
@@ -206,10 +207,42 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
             <span className="min-w-0 flex-1 truncate text-[10px] text-text-secondary md:text-[11px]">
               📍 {addr || mapName}{feed.placeName && addr ? ` · ${feed.placeName}` : ""}
             </span>
-            <a href={`https://map.kakao.com/link/map/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors">🗺️ 지도</a>
-            <a href={`https://map.kakao.com/link/to/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
-              className="shrink-0 rounded-full bg-brand-yellow/30 px-2 py-0.5 text-[10px] font-bold text-brand-navy hover:bg-brand-yellow transition-colors">🧭 길찾기</a>
+            {/* 이탈 없이 인앱 모달로 지도 표시 (길찾기는 모달 안에서) */}
+            <button type="button" onClick={() => setMapOpen(true)}
+              className="shrink-0 rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-bold text-text-secondary hover:bg-brand-navy hover:text-white transition-colors">🗺️ 지도보기</button>
+          </div>
+        );
+      })()}
+
+      {/* 위치 지도 모달 — 임베드 지도(이탈 없음) + 길찾기 버튼 */}
+      {mapOpen && feed.gps && (() => {
+        const addr = [feed.regionName, feed.subRegion].filter(Boolean).join(" ");
+        const mapName = feed.placeName || addr || "촬영 위치";
+        const { lat, lng } = feed.gps;
+        return (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setMapOpen(false)}>
+            <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between gap-2 px-4 py-3">
+                <p className="min-w-0 truncate text-sm font-bold text-brand-navy">📍 {mapName}</p>
+                <button type="button" onClick={() => setMapOpen(false)}
+                  className="shrink-0 rounded-full bg-bg-secondary px-2 py-1 text-xs text-text-secondary hover:bg-border-soft">닫기 ✕</button>
+              </div>
+              {addr && <p className="px-4 pb-2 text-xs text-text-secondary">{addr}</p>}
+              <iframe
+                title="촬영 위치 지도"
+                className="h-64 w-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://maps.google.com/maps?q=${lat},${lng}&z=15&hl=ko&output=embed`}
+              />
+              <div className="flex gap-2 p-3">
+                <a href={`https://map.kakao.com/link/to/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 rounded-xl bg-brand-yellow py-2 text-center text-sm font-bold text-brand-navy hover:brightness-95">🧭 카카오 길찾기</a>
+                <a href={`https://map.kakao.com/link/map/${encodeURIComponent(mapName)},${lat},${lng}`} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 rounded-xl bg-bg-secondary py-2 text-center text-sm font-bold text-text-secondary hover:bg-border-soft">🗺️ 카카오맵 열기</a>
+              </div>
+            </div>
           </div>
         );
       })()}
