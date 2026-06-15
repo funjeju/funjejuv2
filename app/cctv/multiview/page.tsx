@@ -578,6 +578,7 @@ export default function MultiviewPage() {
     setSlots([...p.slots.slice(0, 4), ...Array(5).fill(null)]);
   }
   function deletePreset(name: string) {
+    if (!confirm(`저장한 조합 '${name}'을(를) 삭제할까요?`)) return; // 실수 클릭 방지
     persistPresets(presets.filter((p) => p.name !== name));
   }
 
