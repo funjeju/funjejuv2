@@ -7,6 +7,7 @@ export const sidebarItems = [
   { href: "/chat",    label: "AI 도슨트 챗봇", icon: "🤖" },
   { href: "/youtube", label: "제주tube",    icon: "▶️" },
   { href: "/webzine", label: "여행 웹진",   icon: "📖" },
+  { href: "/card",    label: "카드뉴스",    icon: "🃏" },
   { href: "/daily",   label: "AI데일리제주", icon: "🌅" },
   { href: "/trip-ai", label: "AI 여행 일정", icon: "🗓️" },
   { href: "/game/spot", label: "틀린그림찾기", icon: "🔍" },

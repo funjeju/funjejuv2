@@ -25,8 +25,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/search`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE}/guide`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/webzine`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/card`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/daily`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
   ];
+
+  // 카드뉴스 (발행된 것만)
+  let cardPages: MetadataRoute.Sitemap = [];
+  try {
+    const cards = await listPublished("card_news", 200);
+    cardPages = cards.map((c) => ({
+      url: `${BASE}/card/${c.slug}`,
+      lastModified: c.publishedAt ? new Date(c.publishedAt) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    }));
+  } catch { /* Firestore 미설정 시 스킵 */ }
 
   // AI데일리제주 모닝브리핑 (발행된 것만)
   let dailyPages: MetadataRoute.Sitemap = [];
@@ -135,5 +148,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.85,
     }));
 
-  return [...staticPages, ...guidePages, ...webzinePages, ...dailyPages, ...bizPages, ...cctvPages, ...extraCctvPages, ...themeHubPages, ...regionPages, ...foodPages];
+  return [...staticPages, ...guidePages, ...webzinePages, ...dailyPages, ...cardPages, ...bizPages, ...cctvPages, ...extraCctvPages, ...themeHubPages, ...regionPages, ...foodPages];
 }
