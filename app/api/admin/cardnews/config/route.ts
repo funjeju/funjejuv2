@@ -15,13 +15,14 @@ export async function GET() {
   return NextResponse.json(await getCardNewsConfig());
 }
 
-/** 실시간 날씨 카메라 저장 — { weatherCameraIds: string[] } */
+/** 실시간 날씨 카메라 저장 — { weatherAm: string[], weatherPm: string[] } */
 export async function POST(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const body = (await req.json().catch(() => ({}))) as { weatherCameraIds?: unknown };
-  const ids = Array.isArray(body.weatherCameraIds)
-    ? body.weatherCameraIds.filter((x): x is string => typeof x === "string").slice(0, 12)
-    : [];
-  await setWeatherCameras(ids);
-  return NextResponse.json({ ok: true, weatherCameraIds: ids });
+  const body = (await req.json().catch(() => ({}))) as { weatherAm?: unknown; weatherPm?: unknown };
+  const clean = (v: unknown) =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 12) : [];
+  const am = clean(body.weatherAm);
+  const pm = clean(body.weatherPm);
+  await setWeatherCameras(am, pm);
+  return NextResponse.json({ ok: true, weatherAm: am, weatherPm: pm });
 }

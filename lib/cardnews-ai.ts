@@ -3,7 +3,7 @@ import { generateJSON, analyzeImageJSON } from "@/lib/biz/gemini";
 import { stripHtml, restaurantImageUrl } from "@/lib/restaurants";
 import { listRecentFeedsRich } from "@/lib/feed-server";
 import { pickWebzineTopic } from "@/lib/webzine-ai";
-import { getCardNewsConfig } from "@/lib/cardnews-config";
+import { getWeatherCamerasForNow } from "@/lib/cardnews-config";
 import { getAdminDb, uploadPublicImage } from "@/lib/firebase-admin";
 import type { Content, ContentSection } from "@/types/content";
 
@@ -221,7 +221,7 @@ const WEATHER_SYS = `너는 제주 CCTV 화면을 보고 현장 날씨를 읽는
 반환(JSON): { "weather": "맑음|구름조금|흐림|비|눈|안개|야간 중 하나", "scene": "현장 모습 한 줄(파도·하늘·혼잡 등, 18자 이내)" }`;
 
 async function fromWeather(): Promise<Content | null> {
-  const { weatherCameraIds } = await getCardNewsConfig();
+  const weatherCameraIds = await getWeatherCamerasForNow(); // KST 기준 오전/오후 세트 자동 선택
   if (weatherCameraIds.length === 0) return null;
 
   const db = getAdminDb();

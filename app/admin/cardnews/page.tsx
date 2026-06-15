@@ -25,8 +25,12 @@ export default function AdminCardNewsPage() {
   const [items, setItems] = useState<Content[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
-  const [camIds, setCamIds] = useState<string[]>([]);
+  const [camAm, setCamAm] = useState<string[]>([]);
+  const [camPm, setCamPm] = useState<string[]>([]);
+  const [slot, setSlot] = useState<"am" | "pm">("am"); // 편집 중인 시간대
   const [savingCams, setSavingCams] = useState(false);
+  const camIds = slot === "am" ? camAm : camPm;
+  const setCamIds = slot === "am" ? setCamAm : setCamPm;
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/contents");
@@ -36,7 +40,7 @@ export default function AdminCardNewsPage() {
 
   useEffect(() => {
     load();
-    fetch("/api/admin/cardnews/config").then((r) => r.json()).then((d) => setCamIds(d.weatherCameraIds ?? [])).catch(() => {});
+    fetch("/api/admin/cardnews/config").then((r) => r.json()).then((d) => { setCamAm(d.weatherAm ?? []); setCamPm(d.weatherPm ?? []); }).catch(() => {});
   }, [load]);
 
   async function generate(source: string) {
@@ -68,8 +72,8 @@ export default function AdminCardNewsPage() {
   async function saveCams() {
     setSavingCams(true);
     try {
-      await fetch("/api/admin/cardnews/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weatherCameraIds: camIds }) });
-      setMsg(`✅ 날씨 카메라 ${camIds.length}개 저장됨`);
+      await fetch("/api/admin/cardnews/config", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ weatherAm: camAm, weatherPm: camPm }) });
+      setMsg(`✅ 저장됨 — 오전 ${camAm.length}개 · 오후 ${camPm.length}개`);
     } finally { setSavingCams(false); }
   }
 
@@ -97,9 +101,19 @@ export default function AdminCardNewsPage() {
       {/* 실시간 날씨 카메라 설정 */}
       <div className="mt-6 rounded-2xl border border-border-soft bg-bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-text-primary">🌤️ 실시간 날씨 카메라 <span className="font-normal text-text-secondary">(방위별 2개씩 · 총 {camIds.length}개)</span></h2>
+          <h2 className="text-sm font-bold text-text-primary">🌤️ 실시간 날씨 카메라 <span className="font-normal text-text-secondary">(시간대별 구성 · 카드뉴스 생성 시 KST 기준 자동 선택)</span></h2>
           <button type="button" onClick={saveCams} disabled={savingCams}
             className="rounded-full bg-jeju-green px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">{savingCams ? "저장 중…" : "저장"}</button>
+        </div>
+        {/* 오전/오후 탭 */}
+        <div className="mb-3 flex gap-2">
+          {([["am", "🌅 오전", camAm.length], ["pm", "🌇 오후", camPm.length]] as const).map(([s, label, cnt]) => (
+            <button key={s} type="button" onClick={() => setSlot(s)}
+              className={`rounded-full px-3 py-1 text-xs font-bold ${slot === s ? "bg-brand-navy text-white" : "border border-border-soft bg-bg-card text-text-secondary"}`}>
+              {label} ({cnt}개)
+            </button>
+          ))}
+          <span className="self-center text-[11px] text-text-secondary">← {slot === "am" ? "오전" : "오후"} 세트 편집 중</span>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {DIRS.map((d) => {
