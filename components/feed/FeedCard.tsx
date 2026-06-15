@@ -305,22 +305,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
         );
       })()}
 
-      {/* 비즈니스 CTA */}
-      {author?.isBusiness && author.ctaData?.text && author.ctaData.url && (
-        <a
-          href={author.ctaData.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={[
-            "mx-2.5 mb-2 block rounded-lg py-1.5 text-center text-[11px] font-bold transition-colors md:mx-4 md:mb-3 md:rounded-xl md:py-2.5 md:text-xs",
-            author.ctaData.variant === "outline"
-              ? "border-2 border-brand-orange text-brand-orange hover:bg-brand-orange/10"
-              : "bg-brand-orange text-white hover:bg-brand-orange/90 shadow-soft",
-          ].join(" ")}
-        >
-          {author.ctaData.text} →
-        </a>
-      )}
+      {/* 비즈니스 CTA는 피드별 '연결할 홈페이지' 선택으로 일원화 — 항상 뜨던 author CTA 제거('없음' 선택 존중) */}
 
       {/* 전체화면 뷰어 */}
       {zoomed && (
