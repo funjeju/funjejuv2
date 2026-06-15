@@ -36,8 +36,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </span>
           </Link>
 
-          {/* 네비 */}
-          <nav className="flex flex-1 gap-0.5 overflow-x-auto">
+          {/* 네비 — 항목이 많아 줄바꿈(2줄) 허용 */}
+          <nav className="flex flex-1 flex-wrap gap-1">
             {NAV.map((item) => {
               const active = pathname.startsWith(item.href);
               return (
