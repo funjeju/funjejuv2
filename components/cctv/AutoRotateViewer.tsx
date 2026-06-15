@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useCctvs } from "@/hooks/useCctvs";
-import { isMultiviewExcluded } from "@/constants/vurix";
+import type { CctvEntry } from "@/types/cctv";
+
+// 홈 회전뷰 고정 목록 — 안정적으로 재생되는 CCTV만 (유튜브 소스 제외, 접속불가 방지)
+// 순서대로 순환: 김녕·월정·함덕·협재·성산일출봉·평대·논짓물·신산·세천
+const HOME_ROTATE_IDS = [
+  "gimnyeong", "woljeong", "hamdeok", "hyeopjae", "seongsan",
+  "pyeongdae", "nonjitmul", "sinsan", "sechon",
+];
 
 // CCTV 스트림 프록시 URL (mock-cctvs와 동일 규칙) — id만 있으면 자동 생성
 const _WORKER_URL = process.env.NEXT_PUBLIC_WORKER_URL ?? "";
@@ -270,14 +277,19 @@ export function AutoRotateViewer() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // 실시간 Firestore 구독 — CCTV가 늘어나면 자동 반영 (mock은 초기값/폴백)
+  // 실시간 Firestore 구독 (스트림 주소·active 상태 최신값 확보, mock은 폴백)
   const { cctvs: liveCctvs } = useCctvs();
 
-  // vurix + 간헐적 rtmp는 자동회전에서 제외(끊김 방지) · active한 것만
-  const rotatable = liveCctvs
-    .filter((c) => c.active !== false && !isMultiviewExcluded(c.id))
+  // 홈 회전뷰는 고정 화이트리스트만 — 지정 순서대로, active한 것만
+  const byId = new Map(liveCctvs.map((c) => [c.id, c]));
+  const rotatable = HOME_ROTATE_IDS
+    .map((id) => byId.get(id))
+    .filter((c): c is CctvEntry => !!c && c.active !== false)
     .map((c) => ({ ...c, streamProxyUrl: streamProxyUrlFor(c.id) }));
-  const savedCctvs = rotatable.filter((c) => savedIds.has(c.id));
+  // 로그인 사용자가 직접 찜한 CCTV는 전체 목록에서 (본인 선택이므로 화이트리스트 무관)
+  const savedCctvs = liveCctvs
+    .filter((c) => savedIds.has(c.id) && c.active !== false)
+    .map((c) => ({ ...c, streamProxyUrl: streamProxyUrlFor(c.id) }));
   const cctvs = savedCctvs.length > 0 ? savedCctvs : rotatable;
   const isPersonalized = savedCctvs.length > 0;
   const current = cctvs[index % cctvs.length];
