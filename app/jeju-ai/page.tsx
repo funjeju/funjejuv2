@@ -27,7 +27,7 @@ export default function JejuAiPage() {
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
           {CHAT_SAMPLES.map((s) => (
-            <Link key={s} href={`/chat?q=${encodeURIComponent(s)}`} className="rounded-full bg-bg-secondary px-2.5 py-1 text-xs font-semibold text-text-secondary hover:bg-brand-navy hover:text-white">{s}</Link>
+            <Link key={s} href={`/chat?q=${encodeURIComponent(s)}`} className="rounded-full border border-brand-navy/30 bg-white px-3 py-1 text-xs font-bold text-brand-navy hover:bg-brand-navy hover:text-white hover:border-brand-navy transition-colors">{s}</Link>
           ))}
         </div>
         <Link href="/chat" className="mt-4 inline-block rounded-full bg-brand-navy px-5 py-2.5 text-sm font-bold text-white hover:brightness-110">💬 챗봇 시작하기 →</Link>

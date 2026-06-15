@@ -82,9 +82,9 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
         )}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.82) 100%)", display: "flex" }} />
         <div style={{ position: "absolute", top: 56, left: 56, display: "flex", alignItems: "center", background: ORANGE, borderRadius: 999, padding: "10px 26px", color: "#fff", fontSize: 30, fontWeight: 800 }}>🍊 제주 큐레이션</div>
-        <div style={{ position: "absolute", left: 56, right: 56, bottom: 150, display: "flex", flexDirection: "column" }}>
+        <div style={{ position: "absolute", left: 48, right: 48, bottom: 132, display: "flex", flexDirection: "column", background: "rgba(0,0,0,0.5)", borderRadius: 28, padding: "30px 38px" }}>
           <div style={{ color: "#fff", fontSize: 78, fontWeight: 800, lineHeight: 1.15, letterSpacing: -1, whiteSpace: "pre-wrap", display: "flex" }}>{card.title}</div>
-          {card.subtitle && <div style={{ color: YELLOW, fontSize: 38, fontWeight: 700, marginTop: 24 }}>{card.subtitle}</div>}
+          {card.subtitle && <div style={{ color: YELLOW, fontSize: 38, fontWeight: 700, marginTop: 20 }}>{card.subtitle}</div>}
         </div>
         <div style={{ position: "absolute", right: 56, bottom: 112, color: "#fff", fontSize: 30, fontWeight: 700, opacity: 0.9, display: "flex" }}>밀어서 보기 →</div>
         <Footer idx={idx} total={total} mascot={mascot} />
