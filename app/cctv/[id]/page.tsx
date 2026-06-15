@@ -11,6 +11,7 @@ import { LiveChat } from "@/components/cctv/LiveChat";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
 import { getLocation } from "@/lib/cctv-location";
+import { GROUP_HUB } from "@/types/cctv-location";
 import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
@@ -337,6 +338,12 @@ export default async function CctvDetailPage({ params }: Props) {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {loc.group && GROUP_HUB[loc.group] && (
+                <Link href={`/cctv/theme/${GROUP_HUB[loc.group].slug}`} className="inline-block rounded-full border border-brand-navy px-3 py-1 text-xs font-bold text-brand-navy hover:bg-brand-navy hover:text-white">
+                  {GROUP_HUB[loc.group].emoji} {GROUP_HUB[loc.group].title} 모아보기 →
+                </Link>
               )}
             </article>
           )}

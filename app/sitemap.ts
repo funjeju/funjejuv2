@@ -4,6 +4,8 @@ import { mockCctvs } from "@/constants/mock-cctvs";
 import { GUIDE_SLUGS } from "@/lib/guides";
 import { listPublished } from "@/lib/contents";
 import { listPublishedSites } from "@/lib/biz/store";
+import { listLocations } from "@/lib/cctv-location";
+import { GROUP_HUB } from "@/types/cctv-location";
 
 const BASE = "https://funjeju.com";
 
@@ -58,13 +60,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // CCTV 상세 페이지 (40개)
-  const cctvPages: MetadataRoute.Sitemap = mockCctvs.map((c) => ({
-    url: `${BASE}/cctv/${c.id}`,
-    lastModified: now,
-    changeFrequency: "always" as const, // 실시간 영상이라 변동 큼
-    priority: 0.8,
-  }));
+  // CCTV 지역 SEO 데이터 (lastmod = 실제 콘텐츠 변경일 · 가짜 신선도 금지)
+  let locMap = new Map<string, string>();
+  let themeHubPages: MetadataRoute.Sitemap = [];
+  try {
+    const locs = await listLocations();
+    locMap = new Map(locs.map((l) => [l.id, l.updatedAt || ""]));
+    // 테마 허브 — 그룹 내 최신 updatedAt을 lastmod로
+    const groupLatest = new Map<string, string>();
+    for (const l of locs) {
+      if (!l.group) continue;
+      const cur = groupLatest.get(l.group) || "";
+      if ((l.updatedAt || "") > cur) groupLatest.set(l.group, l.updatedAt || "");
+    }
+    themeHubPages = Object.entries(GROUP_HUB)
+      .filter(([g]) => groupLatest.has(g))
+      .map(([g, hub]) => ({
+        url: `${BASE}/cctv/theme/${hub.slug}`,
+        lastModified: groupLatest.get(g) ? new Date(groupLatest.get(g)!) : now,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      }));
+  } catch { /* Firestore 미설정 시 스킵 */ }
+
+  // CCTV 상세 페이지 — 본문은 evergreen이므로 monthly + 실제 updatedAt 기준
+  const cctvPages: MetadataRoute.Sitemap = mockCctvs.map((c) => {
+    const upd = locMap.get(c.id);
+    return {
+      url: `${BASE}/cctv/${c.id}`,
+      lastModified: upd ? new Date(upd) : now,
+      changeFrequency: "monthly" as const,
+      priority: upd ? 0.85 : 0.7, // SEO 데이터 있는 페이지 우선
+    };
+  });
 
   // 지역별 허브 페이지
   const regions = [...new Set(mockCctvs.map((c) => c.region))];
@@ -96,5 +124,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   } catch { /* Firestore 미설정 시 스킵 */ }
 
-  return [...staticPages, ...guidePages, ...webzinePages, ...dailyPages, ...bizPages, ...cctvPages, ...regionPages, ...foodPages];
+  // mockCctvs에 없는 located 카메라(예: halla_1100) 보강
+  const mockIds = new Set(mockCctvs.map((c) => c.id));
+  const extraCctvPages: MetadataRoute.Sitemap = [...locMap.entries()]
+    .filter(([id]) => !mockIds.has(id))
+    .map(([id, upd]) => ({
+      url: `${BASE}/cctv/${id}`,
+      lastModified: upd ? new Date(upd) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.85,
+    }));
+
+  return [...staticPages, ...guidePages, ...webzinePages, ...dailyPages, ...bizPages, ...cctvPages, ...extraCctvPages, ...themeHubPages, ...regionPages, ...foodPages];
 }
