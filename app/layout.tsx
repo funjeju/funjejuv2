@@ -3,7 +3,8 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { AppShell } from "@/components/common/AppShell";
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+// GA4: 별도 GA_ID가 없으면 이미 설정된 Firebase 측정 ID(G-...)를 재사용 → 추가 env 불필요
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.funjeju.com"), // bare funjeju.com은 미작동 → www로 통일
