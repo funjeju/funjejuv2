@@ -51,6 +51,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
   const [cropX,       setCropX]       = useState(50); // 0~100, 좌우 크롭 위치
   // 홈페이지 연결 — 생성 홈페이지(/biz/..) + 외부 URL을 한 목록으로
   const [homeOptions, setHomeOptions] = useState<{ name: string; url: string }[]>([]);
+  const [nickname, setNickname] = useState("");
   const [homepageUrl, setHomepageUrl] = useState("");
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       } catch { /* ignore */ }
       try {
         const author = await getAuthor(user.uid);
+        if (author?.nickname) setNickname(author.nickname);
         // 외부 홈페이지 링크들(여러 개)
         for (const l of author?.externalHomepages ?? []) {
           if (l.url) opts.push({ name: l.name || "외부 홈페이지", url: l.url });
@@ -273,7 +275,7 @@ export function FeedWriteModal({ open, onClose, onPosted }: Props) {
       const primaryUrl = images[0]; // 대표(커버)
       await createFeed({
         authorId: user.uid,
-        authorName: user.displayName ?? user.email?.split("@")[0] ?? "여행자",
+        authorName: nickname.trim() || user.displayName || user.email?.split("@")[0] || "여행자",
         authorPhoto: user.photoURL ?? null,
         imageUrl: primaryUrl,
         ...(images.length > 1 ? { images } : {}),

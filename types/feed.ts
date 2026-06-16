@@ -41,6 +41,8 @@ export type Feed = {
 export type FeedAuthor = {
   uid: string;
   displayName: string;
+  /** 사용자가 직접 설정한 표시 이름. 있으면 구글 이름 대신 우선 노출 */
+  nickname?: string;
   photoURL: string | null;
   isBusiness: boolean;
   ctaData?: {

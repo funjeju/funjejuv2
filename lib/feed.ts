@@ -165,6 +165,7 @@ export async function getAuthor(uid: string): Promise<FeedAuthor | null> {
   return {
     uid,
     displayName: data.displayName ?? "",
+    nickname: data.nickname ?? "",
     photoURL: data.photoURL ?? null,
     isBusiness: !!data.isBusiness,
     ctaData: data.ctaData,
@@ -175,7 +176,7 @@ export async function getAuthor(uid: string): Promise<FeedAuthor | null> {
 /** 사용자 프로필 저장 (마이페이지에서 호출) */
 export async function updateUserProfile(
   uid: string,
-  data: { displayName?: string; photoURL?: string | null; ctaData?: FeedAuthor["ctaData"]; externalHomepages?: FeedAuthor["externalHomepages"] }
+  data: { displayName?: string; nickname?: string; photoURL?: string | null; ctaData?: FeedAuthor["ctaData"]; externalHomepages?: FeedAuthor["externalHomepages"] }
 ): Promise<void> {
   const db = getFirebaseDb();
   const ref = doc(db, "users", uid);

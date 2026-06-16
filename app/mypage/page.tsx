@@ -7,7 +7,7 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useMySpot } from "@/hooks/useMySpot";
-import { getAuthor, countMyFeeds } from "@/lib/feed";
+import { getAuthor, countMyFeeds, updateUserProfile } from "@/lib/feed";
 import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { getEntitlements } from "@/lib/entitlements";
 import { mockCctvs } from "@/constants/mock-cctvs";
@@ -37,6 +37,28 @@ export default function MyPage() {
   const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
   const [tripPlans, setTripPlans] = useState<SavedTripPlan[]>([]);
   const [feedCount, setFeedCount] = useState<number | null>(null);
+  const [editingNick, setEditingNick] = useState(false);
+  const [nickInput, setNickInput] = useState("");
+  const [savingNick, setSavingNick] = useState(false);
+
+  async function saveNickname() {
+    if (!user || savingNick) return;
+    const nickname = nickInput.trim().slice(0, 20);
+    setSavingNick(true);
+    try {
+      await updateUserProfile(user.uid, { nickname });
+      setAuthor((prev) =>
+        prev
+          ? { ...prev, nickname }
+          : { uid: user.uid, displayName: user.displayName ?? "", nickname, photoURL: user.photoURL ?? null, isBusiness: false }
+      );
+      setEditingNick(false);
+    } catch {
+      alert("닉네임 저장에 실패했어요. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setSavingNick(false);
+    }
+  }
 
   const isAdmin = user?.email === ADMIN_EMAIL;
   // 멤버십 — 정식 모드 전이라 users.plan은 아직 미사용(베타는 로그인 여부만 봄)
@@ -97,8 +119,37 @@ export default function MyPage() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-black">{user?.displayName ?? "제주 여행자"}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-black">{author?.nickname || user?.displayName || "제주 여행자"}</p>
+              <button
+                type="button"
+                onClick={() => { setNickInput(author?.nickname || ""); setEditingNick(true); }}
+                className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-white/30"
+              >
+                ✏️ 닉네임
+              </button>
+            </div>
             <p className="truncate text-sm text-white/70">{user?.email}</p>
+            {editingNick && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={nickInput}
+                  onChange={(e) => setNickInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && saveNickname()}
+                  maxLength={20}
+                  autoFocus
+                  placeholder="표시할 닉네임 (최대 20자)"
+                  className="min-w-0 flex-1 rounded-lg bg-white px-2.5 py-1.5 text-sm font-bold text-text-primary outline-none"
+                />
+                <button type="button" onClick={saveNickname} disabled={savingNick}
+                  className="shrink-0 rounded-lg bg-brand-yellow px-3 py-1.5 text-xs font-black text-brand-navy disabled:opacity-50">
+                  {savingNick ? "…" : "저장"}
+                </button>
+                <button type="button" onClick={() => setEditingNick(false)}
+                  className="shrink-0 rounded-lg bg-white/20 px-2.5 py-1.5 text-xs font-bold text-white">취소</button>
+              </div>
+            )}
             <div className="mt-1 flex flex-wrap gap-1">
               {author?.isBusiness && (
                 <span className="rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">
