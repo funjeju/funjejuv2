@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
-import { useCctvs } from "@/hooks/useCctvs";
+import { fetchCctvsByIds } from "@/lib/firestore-cctv";
+import { mockCctvs } from "@/constants/mock-cctvs";
 import type { CctvEntry } from "@/types/cctv";
 
 // 홈 회전뷰 고정 목록 — 안정적으로 재생되는 CCTV만 (유튜브 소스 제외, 접속불가 방지)
@@ -21,6 +22,15 @@ function streamProxyUrlFor(id: string): string | null {
   if (_PROXY_BASE) return `${_PROXY_BASE}/cctv/${id}`;
   return null;
 }
+
+// 초기값(즉시 렌더·블링크 방지): mock에서 화이트리스트 항목을 CctvEntry로 변환
+const MOCK_INITIAL: CctvEntry[] = mockCctvs
+  .filter((c) => HOME_ROTATE_IDS.includes(c.id))
+  .map((c) => ({
+    id: c.id, name: c.name, region: c.region, direction: c.direction,
+    category: c.category, originUrl: "", active: true, description: c.description ?? "",
+    lat: c.latitude, lng: c.longitude,
+  }));
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { useCctvSession } from "@/hooks/useCctvSession";
 
@@ -277,8 +287,15 @@ export function AutoRotateViewer() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // 실시간 Firestore 구독 (스트림 주소·active 상태 최신값 확보, mock은 폴백)
-  const { cctvs: liveCctvs } = useCctvs();
+  // 홈 회전뷰는 실시간 구독이 불필요 → 마운트 시 1회만 조회 (읽기 증폭 제거).
+  // 영상은 워커에서 라이브 HLS로 받으므로 목록 캐시가 영상 신선도에 영향 없음.
+  const [liveCctvs, setLiveCctvs] = useState<CctvEntry[]>(MOCK_INITIAL);
+  useEffect(() => {
+    const ids = [...HOME_ROTATE_IDS, ...savedIds]; // 화이트리스트 + 본인 찜
+    fetchCctvsByIds(ids)
+      .then((entries) => { if (entries.length > 0) setLiveCctvs(entries); })
+      .catch(() => { /* 실패 시 mock 유지 */ });
+  }, [savedIds]);
 
   // 홈 회전뷰는 고정 화이트리스트만 — 지정 순서대로, active한 것만
   const byId = new Map(liveCctvs.map((c) => [c.id, c]));

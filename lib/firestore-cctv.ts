@@ -6,6 +6,8 @@ import {
   query,
   where,
   orderBy,
+  documentId,
+  getDocs,
   type DocumentData,
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -51,6 +53,26 @@ export function subscribeCctvs(callback: (entries: CctvEntry[]) => void) {
     });
     callback(entries);
   });
+}
+
+/**
+ * 지정한 id들의 CCTV만 1회 조회 (onSnapshot 미사용 → 읽기 증폭 없음).
+ * 홈 회전뷰처럼 실시간 구독이 불필요한 곳에서 사용.
+ */
+export async function fetchCctvsByIds(ids: string[]): Promise<CctvEntry[]> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return [];
+  const db = getFirebaseDb();
+  const entries: CctvEntry[] = [];
+  // documentId() in 은 한 번에 최대 30개 → 청크 분할
+  for (let i = 0; i < unique.length; i += 30) {
+    const chunk = unique.slice(i, i + 30);
+    const snap = await getDocs(
+      query(collection(db, "cctvs"), where(documentId(), "in", chunk))
+    );
+    for (const d of snap.docs) entries.push(toEntry(d.id, d.data()));
+  }
+  return entries;
 }
 
 // ── 어드민 작업은 서버 API(/api/admin/cctv) 호출 → Admin SDK가 Firestore 쓰기
