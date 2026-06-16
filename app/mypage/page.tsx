@@ -119,12 +119,12 @@ export default function MyPage() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-lg font-black">{author?.nickname || user?.displayName || "제주 여행자"}</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="min-w-0 truncate text-lg font-black">{author?.nickname || user?.displayName || "제주 여행자"}</p>
               <button
                 type="button"
                 onClick={() => { setNickInput(author?.nickname || ""); setEditingNick(true); }}
-                className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-white/30"
+                className="shrink-0 whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-white/30"
               >
                 ✏️ 닉네임
               </button>
@@ -152,17 +152,17 @@ export default function MyPage() {
             )}
             <div className="mt-1 flex flex-wrap gap-1">
               {author?.isBusiness && (
-                <span className="rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">
+                <span className="whitespace-nowrap rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">
                   💼 비즈니스
                 </span>
               )}
               {isAdmin && (
-                <span className="rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-black text-brand-navy">
+                <span className="whitespace-nowrap rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-black text-brand-navy">
                   👑 관리자
                 </span>
               )}
               {!author?.isBusiness && !isAdmin && (
-                <span className="rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">
+                <span className="whitespace-nowrap rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">
                   🏝️ 제주 탐험가
                 </span>
               )}
@@ -171,7 +171,7 @@ export default function MyPage() {
           <button
             type="button"
             onClick={logout}
-            className="shrink-0 rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
+            className="z-10 shrink-0 whitespace-nowrap rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
           >
             로그아웃
           </button>
