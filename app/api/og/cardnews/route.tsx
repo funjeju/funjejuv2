@@ -1,7 +1,10 @@
 import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { getContentBySlug } from "@/lib/contents";
+import { getRestaurant, formatHours } from "@/lib/restaurants";
 import type { Content } from "@/types/content";
+
+type SpotInfo = { address?: string; menu?: string; hours?: string; prices?: string };
 
 export const runtime = "nodejs";
 
@@ -25,7 +28,7 @@ async function loadFont(origin: string, file: string): Promise<ArrayBuffer> {
 // 카드 1장 데이터
 type Card =
   | { kind: "cover"; title: string; subtitle?: string; image?: string }
-  | { kind: "card"; n: number; heading: string; body: string; image?: string; chip?: string }
+  | { kind: "card"; n: number; heading: string; body: string; image?: string; chip?: string; info?: SpotInfo }
   | { kind: "cta"; title: string; sub?: string };
 
 function absUrl(origin: string, src?: string): string | undefined {
@@ -34,11 +37,32 @@ function absUrl(origin: string, src?: string): string | undefined {
   return `${origin}${src.startsWith("/") ? "" : "/"}${src}`;
 }
 
-/** Content → 카드 배열 (0=표지, 1..n=본문, 마지막=CTA) */
-function buildCards(c: Content, origin: string): Card[] {
+/** Content → 카드 배열 (0=표지, 1..n=본문, 마지막=CTA) — 맛집/스팟이면 기본정보 동봉 */
+async function buildCards(c: Content, origin: string): Promise<Card[]> {
+  // 맛집 섹션의 기본정보(주소·업종·영업시간·가격)를 id로 1회씩 조회 (중복 제거)
+  const ids = [...new Set(c.sections.map((s) => s.restaurantId).filter(Boolean) as string[])];
+  const infoMap = new Map<string, SpotInfo>();
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const r = await getRestaurant(id);
+        if (!r) return;
+        const hours = r.hours ? formatHours(r.hours) : "";
+        infoMap.set(id, {
+          address: r.address || undefined,
+          menu: r.menu || undefined,
+          hours: hours && hours !== "정보 없음" ? hours : undefined,
+          prices: r.prices || undefined,
+        });
+      } catch { /* 정보 없으면 패널 생략 */ }
+    })
+  );
+
   const cards: Card[] = [];
   cards.push({ kind: "cover", title: c.title, subtitle: c.subtitle, image: absUrl(origin, c.coverImage) });
   c.sections.forEach((s, i) => {
+    const info = s.restaurantId ? infoMap.get(s.restaurantId) : undefined;
+    const hasInfo = info && (info.address || info.menu || info.hours || info.prices);
     cards.push({
       kind: "card",
       n: i + 1,
@@ -46,6 +70,7 @@ function buildCards(c: Content, origin: string): Card[] {
       body: s.body,
       image: absUrl(origin, s.image),
       chip: s.category || c.region || undefined,
+      ...(hasInfo ? { info } : {}),
     });
   });
   cards.push({ kind: "cta", title: "실시간 영상·전체 위치는\n펀제주에서", sub: "funjeju.com" });
@@ -105,33 +130,62 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
     );
   }
 
-  // body card — 상단 사진 + 하단(제목 + 말풍선 소개 + 우하단 마스코트)
+  // body card — 상단 사진 + 하단(제목 + [기본정보 패널] + 말풍선 소개 + 우하단 마스코트)
+  const hasInfo = !!card.info && (card.info.address || card.info.menu || card.info.hours || card.info.prices);
+  const imgH = hasInfo ? 600 : 660;        // 정보 있으면 사진 약간 줄여 공간 확보
+  const mascotSize = hasInfo ? 220 : 300;  // 정보 있으면 마스코트 축소
   return (
     <div style={{ ...base, flexDirection: "column", background: "#fff" }}>
-      <div style={{ width: W, height: 660, display: "flex", position: "relative", background: "#e9eef5" }}>
+      <div style={{ width: W, height: imgH, display: "flex", position: "relative", background: "#e9eef5" }}>
         {card.image && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.image} width={W} height={660} style={{ objectFit: "cover" }} alt="" />
+          <img src={card.image} width={W} height={imgH} style={{ objectFit: "cover" }} alt="" />
         )}
         <div style={{ position: "absolute", top: 36, left: 36, display: "flex", alignItems: "center", justifyContent: "center", width: 72, height: 72, borderRadius: 999, background: ORANGE, color: "#fff", fontSize: 40, fontWeight: 800 }}>{card.n}</div>
         {card.chip && (
           <div style={{ position: "absolute", bottom: 28, left: 36, display: "flex", alignItems: "center", background: "rgba(0,0,0,0.6)", borderRadius: 999, padding: "10px 24px", color: "#fff", fontSize: 28, fontWeight: 700 }}>📍 {card.chip}</div>
         )}
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "44px 52px 112px" }}>
-        <div style={{ color: NAVY, fontSize: 58, fontWeight: 800, lineHeight: 1.18, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "40px 52px 104px" }}>
+        <div style={{ color: NAVY, fontSize: 56, fontWeight: 800, lineHeight: 1.18, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
+
+        {/* 맛집/스팟 기본정보 패널 — 확보된 정보만 (빈 가운데를 채움) */}
+        {hasInfo && <InfoPanel info={card.info!} />}
+
+        <div style={{ flex: 1, minHeight: 12, display: "flex" }} />
+
         {/* 말풍선(소개글) + 우하단 마스코트 */}
-        <div style={{ display: "flex", alignItems: "flex-end", marginTop: 28, flex: 1 }}>
-          <div style={{ position: "relative", flex: 1, display: "flex", background: "#f1f5fb", border: "3px solid #e1e8f3", borderRadius: 32, padding: "30px 36px", marginRight: 18 }}>
-            <div style={{ color: "#33405a", fontSize: 34, fontWeight: 500, lineHeight: 1.5, display: "flex" }}>{card.body}</div>
+        <div style={{ display: "flex", alignItems: "flex-end" }}>
+          <div style={{ position: "relative", flex: 1, display: "flex", background: "#f1f5fb", border: "3px solid #e1e8f3", borderRadius: 32, padding: "26px 32px", marginRight: 18 }}>
+            <div style={{ color: "#33405a", fontSize: hasInfo ? 30 : 34, fontWeight: 500, lineHeight: 1.45, display: "flex" }}>{card.body}</div>
             {/* 말풍선 꼬리 (마스코트 쪽) */}
-            <div style={{ position: "absolute", right: -17, bottom: 64, width: 28, height: 28, background: "#f1f5fb", borderRight: "3px solid #e1e8f3", borderTop: "3px solid #e1e8f3", transform: "rotate(45deg)" }} />
+            <div style={{ position: "absolute", right: -17, bottom: 56, width: 28, height: 28, background: "#f1f5fb", borderRight: "3px solid #e1e8f3", borderTop: "3px solid #e1e8f3", transform: "rotate(45deg)" }} />
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mascot} width={300} height={300} style={{ objectFit: "contain", flexShrink: 0 }} alt="" />
+          <img src={mascot} width={mascotSize} height={mascotSize} style={{ objectFit: "contain", flexShrink: 0 }} alt="" />
         </div>
       </div>
       <Footer idx={idx} total={total} mascot={mascot} />
+    </div>
+  );
+}
+
+/** 맛집/스팟 기본정보 패널 (확보된 항목만 행으로) */
+function InfoPanel({ info }: { info: SpotInfo }) {
+  const rows: { icon: string; label: string; value: string }[] = [];
+  if (info.address) rows.push({ icon: "📍", label: "주소", value: info.address });
+  if (info.menu)    rows.push({ icon: "🍽️", label: "메뉴", value: info.menu });
+  if (info.hours)   rows.push({ icon: "🕐", label: "영업", value: info.hours });
+  if (info.prices)  rows.push({ icon: "💰", label: "가격", value: info.prices });
+  return (
+    <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 12, background: "#f7f9fc", border: "2px solid #e6ebf4", borderRadius: 24, padding: "22px 28px" }}>
+      {rows.map((r, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "flex-start", fontSize: 28 }}>
+          <span style={{ width: 42, display: "flex" }}>{r.icon}</span>
+          <span style={{ width: 96, color: "#8a93a6", fontWeight: 700, display: "flex", flexShrink: 0 }}>{r.label}</span>
+          <span style={{ flex: 1, color: "#2b3550", fontWeight: 600, lineHeight: 1.35, display: "flex" }}>{r.value}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -140,7 +194,8 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
 function demoCards(img?: string): Card[] {
   return [
     { kind: "cover", title: "제주 별미,\n빈대떡과 사름덜", subtitle: "현지인 단골 한 상", image: img },
-    { kind: "card", n: 1, heading: "사름덜", body: "돌판에 갓 부친 빈대떡과 제철 나물 한 상. 막걸리 한 사발이 절로 생각나는 집.", image: img, chip: "제주 한림" },
+    { kind: "card", n: 1, heading: "사름덜", body: "돌판에 갓 부친 빈대떡과 제철 나물 한 상. 막걸리 한 사발이 절로 생각나는 집.", image: img, chip: "제주 한림",
+      info: { address: "제주시 한림읍 한림로 100", menu: "빈대떡·제철나물", hours: "10:00 - 21:00", prices: "1~2만원대" } },
     { kind: "cta", title: "실시간 영상·전체 위치는\n펀제주에서", sub: "funjeju.com" },
   ];
 }
@@ -158,7 +213,7 @@ export async function GET(req: NextRequest) {
   } else if (slug) {
     const content = await getContentBySlug(slug);
     if (!content) return new Response("not found", { status: 404 });
-    cards = buildCards(content, origin);
+    cards = await buildCards(content, origin);
   } else {
     return new Response("slug required", { status: 400 });
   }
