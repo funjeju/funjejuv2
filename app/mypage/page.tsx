@@ -109,73 +109,71 @@ export default function MyPage() {
 
       {/* Profile Card */}
       <div className="mx-4 mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-navy to-blue-700 p-5 text-white md:mx-0">
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-white/20">
+        <div className="flex items-start gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/20">
             {user?.photoURL ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
             ) : (
-              <DolmangyiIcon size={40} className="shrink-0" />
+              <DolmangyiIcon size={36} className="shrink-0" />
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <p className="min-w-0 truncate text-lg font-black">{author?.nickname || user?.displayName || "제주 여행자"}</p>
-              <button
-                type="button"
-                onClick={() => { setNickInput(author?.nickname || ""); setEditingNick(true); }}
-                className="shrink-0 whitespace-nowrap rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white hover:bg-white/30"
-              >
-                ✏️ 닉네임
-              </button>
-            </div>
-            <p className="truncate text-sm text-white/70">{user?.email}</p>
-            {editingNick && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <input
-                  type="text"
-                  value={nickInput}
-                  onChange={(e) => setNickInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveNickname()}
-                  maxLength={20}
-                  autoFocus
-                  placeholder="표시할 닉네임 (최대 20자)"
-                  className="min-w-0 flex-1 rounded-lg bg-white px-2.5 py-1.5 text-sm font-bold text-text-primary outline-none"
-                />
-                <button type="button" onClick={saveNickname} disabled={savingNick}
-                  className="shrink-0 rounded-lg bg-brand-yellow px-3 py-1.5 text-xs font-black text-brand-navy disabled:opacity-50">
-                  {savingNick ? "…" : "저장"}
-                </button>
-                <button type="button" onClick={() => setEditingNick(false)}
-                  className="shrink-0 rounded-lg bg-white/20 px-2.5 py-1.5 text-xs font-bold text-white">취소</button>
-              </div>
-            )}
-            <div className="mt-1 flex flex-wrap gap-1">
+            <p className="truncate text-base font-black leading-tight">{author?.nickname || user?.displayName || "제주 여행자"}</p>
+            <p className="truncate text-xs text-white/70">{user?.email}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
               {author?.isBusiness && (
-                <span className="whitespace-nowrap rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">
-                  💼 비즈니스
-                </span>
+                <span className="whitespace-nowrap rounded-full bg-brand-orange px-2 py-0.5 text-[10px] font-black text-white">💼 비즈니스</span>
               )}
               {isAdmin && (
-                <span className="whitespace-nowrap rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-black text-brand-navy">
-                  👑 관리자
-                </span>
+                <span className="whitespace-nowrap rounded-full bg-yellow-400 px-2 py-0.5 text-[10px] font-black text-brand-navy">👑 관리자</span>
               )}
               {!author?.isBusiness && !isAdmin && (
-                <span className="whitespace-nowrap rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">
-                  🏝️ 제주 탐험가
-                </span>
+                <span className="whitespace-nowrap rounded-full bg-brand-yellow px-2 py-0.5 text-[10px] font-black text-brand-navy">🏝️ 탐험가</span>
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={logout}
-            className="z-10 shrink-0 whitespace-nowrap rounded-full border border-white/30 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10 transition-colors"
-          >
-            로그아웃
-          </button>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => { setNickInput(author?.nickname || ""); setEditingNick(true); }}
+              className="whitespace-nowrap rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold text-white hover:bg-white/30"
+            >
+              ✏️ 닉네임
+            </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="whitespace-nowrap rounded-full border border-white/30 px-3 py-1 text-[11px] font-medium text-white hover:bg-white/10"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
+
+        {/* 닉네임 편집 — 카드 폭 전체 사용 */}
+        {editingNick && (
+          <div className="mt-3 rounded-xl bg-white/10 p-2.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={nickInput}
+                onChange={(e) => setNickInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && saveNickname()}
+                maxLength={20}
+                autoFocus
+                placeholder="닉네임 (최대 20자)"
+                className="min-w-0 flex-1 rounded-lg bg-white px-3 py-2 text-sm font-bold text-text-primary outline-none"
+              />
+              <button type="button" onClick={saveNickname} disabled={savingNick}
+                className="shrink-0 rounded-lg bg-brand-yellow px-4 py-2 text-sm font-black text-brand-navy disabled:opacity-50">
+                {savingNick ? "…" : "저장"}
+              </button>
+              <button type="button" onClick={() => setEditingNick(false)}
+                className="shrink-0 rounded-lg bg-white/20 px-3 py-2 text-sm font-bold text-white">취소</button>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-4 grid grid-cols-3 divide-x divide-white/20 rounded-xl bg-white/10">
