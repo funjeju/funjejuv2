@@ -8,7 +8,6 @@ import {
   stripHtml,
   parseOptions,
   formatHours,
-  getAllIds,
 } from "@/lib/restaurants";
 import { getFoodSeo } from "@/lib/food-seo-store";
 import { findWebzinesByRestaurant } from "@/lib/contents";
@@ -18,10 +17,11 @@ type Props = { params: Promise<{ id: string }> };
 
 const SITE_URL = "https://funjeju.com";
 
-// SSG — 빌드 시 모든 상세 페이지 정적 생성
+// ISR(on-demand) — 빌드 때 589개를 전부 prerender 하지 않고, 첫 요청 시 생성 후 캐시.
+// 빌드 CPU 대폭 절감, 검색 색인은 동일(봇 첫 크롤 시 완전한 HTML 생성·sitemap에 전부 등재).
+// dynamicParams 기본 true → 모든 id 정상 렌더.
 export async function generateStaticParams() {
-  const ids = await getAllIds();
-  return ids.map((id) => ({ id }));
+  return [];
 }
 
 // 24시간마다 재생성 (ISR)
