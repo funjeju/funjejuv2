@@ -3,21 +3,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
-import { getContentBySlug, listPublished } from "@/lib/contents";
+import { getContentBySlug } from "@/lib/contents";
 import { loadAllRestaurants } from "@/lib/restaurants";
 import { ShareButton } from "@/components/common/ShareButton";
 import { KakaoMap } from "@/components/biz/KakaoMap";
 
 const SITE_URL = "https://funjeju.com";
-export const revalidate = 60;
+export const revalidate = 3600; // 콘텐츠는 자주 안 바뀜 → ISR Write 절감 (발행 시 revalidatePath로 즉시 갱신)
 
 /** 절대 URL(피드 Storage)이면 그대로, 상대경로면 SITE_URL 접두 */
 const absUrl = (src: string) => (/^https?:\/\//.test(src) ? src : `${SITE_URL}${src}`);
 export const dynamicParams = true; // 새 발행분도 온디맨드 ISR
 
+// 빌드 때 prerender 안 함 → 첫 요청 시 생성·캐시 (빌드 CPU 절감, 색인 동일)
 export async function generateStaticParams() {
-  const items = await listPublished("webzine", 100);
-  return items.map((c) => ({ slug: c.slug }));
+  return [];
 }
 
 export async function generateMetadata({

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getContentBySlug, listPublished } from "@/lib/contents";
+import { getContentBySlug } from "@/lib/contents";
 import { BriefingArticle } from "@/components/daily/BriefingArticle";
 
 const SITE_URL = "https://funjeju.com";
-export const revalidate = 1800;
+export const revalidate = 3600;
 export const dynamicParams = true;
 
 /** 절대 URL(Storage)이면 그대로, 상대경로면 SITE_URL 접두 */
@@ -12,9 +12,9 @@ function absUrl(src: string): string {
   return /^https?:\/\//.test(src) ? src : `${SITE_URL}${src}`;
 }
 
+// 빌드 때 prerender 안 함 → 첫 요청 시 생성·캐시 (빌드 CPU 절감, 색인 동일)
 export async function generateStaticParams() {
-  const items = await listPublished("briefing", 100);
-  return items.map((c) => ({ slug: c.slug }));
+  return [];
 }
 
 export async function generateMetadata({

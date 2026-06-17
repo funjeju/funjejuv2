@@ -9,7 +9,7 @@ import { TubeIcon } from "@/components/common/TubeIcon";
 import { listPublished } from "@/lib/contents";
 import { listGames } from "@/lib/spot";
 
-export const revalidate = 20;
+export const revalidate = 120; // 20초→120초: 홈 콘텐츠는 그렇게 자주 안 바뀜 → ISR Write 절감
 
 const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNode; bg: string; color: string }[] = [
   { href: "/cctv",      label: "실시간 CCTV",  icon: <CctvIcon size={26} />,   bg: "bg-blue-50",    color: "text-blue-600"   },
