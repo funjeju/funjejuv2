@@ -20,6 +20,18 @@ export default async function SpotGalleryPage() {
     <div className="mx-auto max-w-5xl px-0 md:px-4 md:py-6">
       <PageHeader title="제주 틀린그림찾기" subtitle="제주 사진 속 다른 곳을 찾아보세요" emoji="🔍" />
 
+      {/* 사장님 유입 CTA — 우리 가게 사진으로 틀린그림찾기 + 홍보 홈페이지 */}
+      <Link
+        href="/biz/create"
+        className="mx-4 mb-4 flex items-center justify-between gap-3 rounded-2xl border border-brand-orange/30 bg-gradient-to-r from-brand-orange/10 to-brand-yellow/10 p-4 transition-colors hover:from-brand-orange/15 hover:to-brand-yellow/15 md:mx-0"
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-black text-text-primary">🏪 우리 가게도 만들어주세요!</p>
+          <p className="mt-0.5 text-xs text-text-secondary">우리 가게 사진으로 틀린그림찾기 + 홍보 홈페이지를 무료로 만들어 손님을 모아보세요.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-brand-orange px-3 py-2 text-xs font-bold text-white">만들기 →</span>
+      </Link>
+
       {games.length === 0 ? (
         <p className="px-4 py-16 text-center text-sm text-text-secondary md:px-0">곧 첫 문제가 올라옵니다.</p>
       ) : (
