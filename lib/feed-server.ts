@@ -40,14 +40,14 @@ export async function listFeedPhotos(max = 12): Promise<FeedPhoto[]> {
     type Row = FeedPhoto & { _admin: boolean };
     const photos: Row[] = [];
     for (const d of snap.docs) {
-      const v = d.data() as { imageUrl?: string; authorId?: string; placeName?: string; regionName?: string };
-      if (!v.imageUrl) continue;
-      photos.push({
-        imageUrl: v.imageUrl,
-        placeName: v.placeName,
-        regionName: v.regionName,
-        _admin: !!adminUid && v.authorId === adminUid,
-      });
+      const v = d.data() as { imageUrl?: string; images?: string[]; authorId?: string; placeName?: string; regionName?: string };
+      // 한 피드에 사진이 여러 장이면 전부 후보로 사용 (images[]가 있으면 그대로, 없으면 대표 1장)
+      const imgs = (Array.isArray(v.images) && v.images.length > 0) ? v.images : (v.imageUrl ? [v.imageUrl] : []);
+      const isAdmin = !!adminUid && v.authorId === adminUid;
+      for (const url of imgs) {
+        if (!url) continue;
+        photos.push({ imageUrl: url, placeName: v.placeName, regionName: v.regionName, _admin: isAdmin });
+      }
     }
 
     // 관리자 사진 우선, 그 외엔 최신순(이미 정렬됨) 유지
