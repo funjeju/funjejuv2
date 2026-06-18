@@ -429,7 +429,8 @@ export default function MultiviewPage() {
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
   const [slots, setSlots] = useState<(string | null)[]>(Array(9).fill(null));
-  const { user } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
+  const [showLoginGate, setShowLoginGate] = useState(false);
   const [presets, setPresets] = useState<MvPreset[]>([]);
   const [rotating, setRotating] = useState(false);   // 프리셋 자동 순환(디스플레이 모드)
   const [rotateSec, setRotateSec] = useState(60);    // 전환 간격(초) — 짧을수록 재초기화 부담↑이라 30초 이상만
@@ -687,14 +688,15 @@ export default function MultiviewPage() {
         <div className="flex gap-1 rounded-2xl bg-bg-secondary p-1 md:items-center md:gap-1.5">
           {(([1, 2, 4]) as SlotCount[]).map((n) => {
             const locked = n > effectiveMaxSplit;
+            const needsLogin = locked && !user; // 비로그인이 잠긴 분할을 누르면 회원가입 유도
             const selected = slotCount === n;
             return (
               <button
                 key={n}
                 type="button"
-                disabled={locked}
-                onClick={() => setSlotCount(n)}
-                title={locked ? `로그인하면 ${PUBLIC_MAX_SPLIT}분할까지 가능해요` : `${n}분할`}
+                disabled={locked && !needsLogin}
+                onClick={() => { if (needsLogin) { setShowLoginGate(true); return; } setSlotCount(n); }}
+                title={locked ? (needsLogin ? "로그인하면 여러 화면을 한눈에! (무료)" : `${PUBLIC_MAX_SPLIT}분할까지 가능해요`) : `${n}분할`}
                 className={[
                   "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 font-bold transition-colors md:flex-none md:px-3.5 md:py-2",
                   selected
@@ -1018,6 +1020,33 @@ export default function MultiviewPage() {
                 );
               })}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 비로그인 → 멀티뷰 분할 잠금 클릭 시 회원가입(로그인) 유도 */}
+      {showLoginGate && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowLoginGate(false)}>
+          <div className="w-full max-w-xs rounded-2xl bg-bg-card p-6 text-center shadow-card" onClick={(e) => e.stopPropagation()}>
+            <div className="text-4xl">🖥️</div>
+            <h3 className="mt-3 text-base font-black text-text-primary">여러 CCTV를 한눈에!</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+              로그인하면 <b className="text-brand-navy">최대 {PUBLIC_MAX_SPLIT}분할</b>로 제주 곳곳을 동시에 볼 수 있어요. <b>무료</b>예요!
+            </p>
+            <button
+              type="button"
+              onClick={() => { setShowLoginGate(false); signInWithGoogle(); }}
+              className="mt-5 w-full rounded-full bg-brand-navy py-3 text-sm font-bold text-white hover:bg-brand-navy/90 transition-colors"
+            >
+              Google로 1초 로그인 →
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLoginGate(false)}
+              className="mt-2 w-full py-2 text-xs font-medium text-text-secondary hover:text-text-primary"
+            >
+              나중에 할게요
+            </button>
           </div>
         </div>
       )}
