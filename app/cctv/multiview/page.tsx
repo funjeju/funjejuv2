@@ -11,6 +11,7 @@ import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import { useAuth } from "@/hooks/useAuth";
+import { getEntitlements } from "@/lib/entitlements";
 import { loadPresets, savePresets, type MvPreset } from "@/lib/multiview-presets";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
@@ -500,15 +501,19 @@ export default function MultiviewPage() {
     ? allCctvs.filter((c) => savedIds.has(c.id))
     : allCctvs;
 
+  // 재생 가능한 칸 수 — 플랜 기반(안정값, budget과 무관해 순환 없음).
+  // 비로그인=1칸, 그 외 칸은 잠금 오버레이로 회원가입 유도. 분할 "선택"은 누구나 4분할까지.
+  const playableSlots = Math.min(getEntitlements({ loggedIn: !!user }).limits.maxSplit, PUBLIC_MAX_SPLIT);
+
   // ── 시청시간 예산 (우리 워커 경유 HLS 스트림만 차감, 유튜브 제외) ──
   const activeHlsStreams = useMemo(() => {
     if (!playing) return 0;
-    return slots.slice(0, slotCount).filter((id) => {
+    return slots.slice(0, playableSlots).filter((id) => {
       if (!id) return false;
       const c = allCctvs.find((x) => x.id === id);
       return !!c && !c.youtubeId;
     }).length;
-  }, [playing, slots, slotCount, allCctvs]);
+  }, [playing, slots, playableSlots, allCctvs]);
 
   // 서버 시청예산 — 멀티뷰는 분할 수만큼 차감 (activeStreams = 동시 HLS 스트림 수)
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
@@ -528,15 +533,12 @@ export default function MultiviewPage() {
     if (budget.exhausted && playing) setPlaying(false);
   }, [budget.exhausted, playing]);
 
-  // 멀티뷰는 4분할까지로 제한 (안정성·대역폭). 모든 사용자 동일.
-  const effectiveMaxSplit = Math.min(budget.maxSplit, PUBLIC_MAX_SPLIT);
-
-  // 한도 초과 분할은 강제로 낮춤 (비회원 1분할 / 일반 사용자 6·9 차단)
+  // 선택 분할은 공개 최대치(4)까지만 클램프 — 칸별 잠금은 playableSlots로 처리
   useEffect(() => {
-    if (slotCount > effectiveMaxSplit) {
-      setSlotCount(effectiveMaxSplit as SlotCount);
+    if (slotCount > PUBLIC_MAX_SPLIT) {
+      setSlotCount(PUBLIC_MAX_SPLIT as SlotCount);
     }
-  }, [effectiveMaxSplit, slotCount]);
+  }, [slotCount]);
 
   // localStorage에서 슬롯 상태 복원
   useEffect(() => {
@@ -687,16 +689,14 @@ export default function MultiviewPage() {
         {/* 분할 선택 — 플랜 한도 초과는 잠금 */}
         <div className="flex gap-1 rounded-2xl bg-bg-secondary p-1 md:items-center md:gap-1.5">
           {(([1, 2, 4]) as SlotCount[]).map((n) => {
-            const locked = n > effectiveMaxSplit;
-            const needsLogin = locked && !user; // 비로그인이 잠긴 분할을 누르면 회원가입 유도
+            const locked = false; // 분할 선택은 누구나 가능 — 잠금은 칸별(playableSlots)로
             const selected = slotCount === n;
             return (
               <button
                 key={n}
                 type="button"
-                disabled={locked && !needsLogin}
-                onClick={() => { if (needsLogin) { setShowLoginGate(true); return; } setSlotCount(n); }}
-                title={locked ? (needsLogin ? "로그인하면 여러 화면을 한눈에! (무료)" : `${PUBLIC_MAX_SPLIT}분할까지 가능해요`) : `${n}분할`}
+                onClick={() => setSlotCount(n)}
+                title={`${n}분할`}
                 className={[
                   "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 font-bold transition-colors md:flex-none md:px-3.5 md:py-2",
                   selected
@@ -880,6 +880,21 @@ export default function MultiviewPage() {
             const cctvId = slots[idx];
             const cctv = cctvId ? allCctvs.find((c) => c.id === cctvId) ?? null : null;
             const isDragOver = dragOverIdx === idx;
+            const slotLocked = idx >= playableSlots; // 플랜 초과 칸 → 잠금 오버레이
+            if (slotLocked) {
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setShowLoginGate(true)}
+                  className={`${fsActive ? "h-full min-h-0" : aspectClass} relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-brand-navy/30 bg-brand-navy/5 text-center transition-colors hover:bg-brand-navy/10`}
+                >
+                  <span className="text-2xl">🔒</span>
+                  <span className="px-2 text-[11px] font-bold leading-tight text-brand-navy md:text-xs">로그인하면<br />이 화면도 열려요</span>
+                  <span className="rounded-full bg-brand-navy px-2.5 py-1 text-[10px] font-bold text-white">무료 잠금해제 →</span>
+                </button>
+              );
+            }
             return (
               <div
                 key={idx}
