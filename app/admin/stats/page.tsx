@@ -98,11 +98,25 @@ export default function AdminStatsPage() {
             10초마다 자동 갱신 · 마지막 업데이트 {new Date(data.now).toLocaleTimeString("ko-KR")}
           </p>
         </div>
-        <button type="button" onClick={load}
-          className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white">
-          🔄 새로고침
-        </button>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://analytics.google.com/analytics/web/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-[#e37400] px-3 py-1.5 text-xs font-bold text-white hover:brightness-110"
+            title="구글 애널리틱스(GA4) — 방문자·유입경로·지역(도시) 통계"
+          >
+            📈 GA4 통계 열기 ↗
+          </a>
+          <button type="button" onClick={load}
+            className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white">
+            🔄 새로고침
+          </button>
+        </div>
       </div>
+      <p className="-mt-4 mb-6 text-[11px] text-text-secondary">
+        이 화면은 CCTV 시청·동시접속 실시간 지표예요. 방문자수·유입경로·지역(도시) 등 종합 통계는 <span className="font-bold text-[#e37400]">GA4 통계 열기</span>에서 확인하세요.
+      </p>
 
       {/* ── 실시간 동시접속자 ── */}
       <section className="mb-6 rounded-2xl border-2 border-jeju-green/30 bg-jeju-green/5 p-5">
