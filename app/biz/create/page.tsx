@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/common/PageHeader";
 import { MyBizSites } from "@/components/mypage/MyBizSites";
+import { uploadFeedImage, resizeImageForUpload } from "@/lib/feed";
 import type { CtaButton, CtaButtonType } from "@/lib/biz/types";
+
+const MAX_REF_IMAGES = 7;
 
 const CATEGORIES = ["카페", "식당", "숙소", "쇼핑", "체험", "관광지", "기타"];
 const VIBES = ["감성적", "모던", "자연친화", "가족친화", "로맨틱", "활동적"];
@@ -45,6 +48,28 @@ export default function BizCreatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editSlug, setEditSlug] = useState<string | null>(null);
+  const [refImages, setRefImages] = useState<string[]>([]); // 참조 이미지(갤러리) 최대 7장
+  const [uploading, setUploading] = useState(false);
+
+  async function handleRefImages(files: FileList | null) {
+    if (!files || !user) return;
+    const room = MAX_REF_IMAGES - refImages.length;
+    if (room <= 0) { setError(`참조 이미지는 최대 ${MAX_REF_IMAGES}장까지예요.`); return; }
+    setUploading(true);
+    setError("");
+    try {
+      const picked = Array.from(files).slice(0, room);
+      const urls: string[] = [];
+      for (const f of picked) {
+        urls.push(await uploadFeedImage(user.uid, await resizeImageForUpload(f)));
+      }
+      setRefImages((prev) => [...prev, ...urls].slice(0, MAX_REF_IMAGES));
+    } catch {
+      setError("이미지 업로드에 실패했어요. 다시 시도해주세요.");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   // ?edit=slug 면 기존 홈페이지 정보를 불러와 프리필(편집 모드)
   useEffect(() => {
@@ -68,6 +93,7 @@ export default function BizCreatePage() {
           coordinates: d.coordinates,
         });
         setCtaButtons(Array.isArray(d.ctaButtons) ? d.ctaButtons : []);
+        if (Array.isArray(d.galleryImages)) setRefImages(d.galleryImages.slice(0, MAX_REF_IMAGES));
         setEditSlug(slug);
         setStep(2);
       } catch { /* ignore */ }
@@ -166,6 +192,7 @@ export default function BizCreatePage() {
           placeUrl: form.placeUrl || undefined,
           coordinates: form.coordinates,
           ctaButtons: ctaButtons.filter((b) => b.value.trim()).slice(0, 3),
+          ...(refImages.length > 0 ? { galleryImages: refImages } : {}),
           ...(editSlug ? { editSlug } : {}),
         }),
       });
@@ -288,6 +315,36 @@ export default function BizCreatePage() {
                 ))}
               </div>
             </div>
+
+            {/* 참조 이미지 (갤러리) — 최대 7장 */}
+            <div>
+              <label className="mb-1.5 block text-sm font-bold text-text-primary">
+                참조 이미지 <span className="font-medium text-text-secondary">({refImages.length}/{MAX_REF_IMAGES})</span>
+              </label>
+              <p className="mb-2 text-[11px] text-text-secondary">가게 사진을 올리면 홈페이지 갤러리에 들어가요. 최대 {MAX_REF_IMAGES}장.</p>
+              <div className="flex flex-wrap gap-2">
+                {refImages.map((url, i) => (
+                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border-soft">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setRefImages((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-[11px] font-bold text-white"
+                    >×</button>
+                  </div>
+                ))}
+                {refImages.length < MAX_REF_IMAGES && (
+                  <label className={`flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-border-soft text-text-secondary hover:border-brand-orange hover:text-brand-orange ${uploading ? "opacity-50" : ""}`}>
+                    <span className="text-xl">{uploading ? "…" : "＋"}</span>
+                    <span className="text-[10px] font-medium">{uploading ? "업로드 중" : "사진 추가"}</span>
+                    <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
+                      onChange={(e) => { handleRefImages(e.target.files); e.target.value = ""; }} />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <button
               type="button"
               disabled={!form.businessName}
