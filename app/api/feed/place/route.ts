@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   if (!lat || !lng) return NextResponse.json({ candidates: [] });
   if (!KAKAO_KEY) return NextResponse.json({ candidates: [] });
 
-  // 음식점(FD6) + 카페(CE7) 반경 80m, 가까운 순
-  async function search(code: string): Promise<Candidate[]> {
+  // 매장(음식점/카페)은 가까이(80m), 관광명소(오름·해변·명소 AT4)는 대상이 넓어 좌표가 멀 수 있어 크게(700m).
+  async function search(code: string, radius: number): Promise<Candidate[]> {
     try {
-      const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${code}&x=${lng}&y=${lat}&radius=80&sort=distance&size=5`;
+      const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${code}&x=${lng}&y=${lat}&radius=${radius}&sort=distance&size=5`;
       const res = await fetch(url, { headers: { Authorization: `KakaoAK ${KAKAO_KEY}` }, signal: AbortSignal.timeout(5000) });
       if (!res.ok) return [];
       const data = (await res.json()) as { documents?: Array<{ place_name: string; category_name: string; distance: string; road_address_name?: string; address_name?: string }> };
@@ -34,10 +34,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [food, cafe] = await Promise.all([search("FD6"), search("CE7")]);
-  const candidates = [...food, ...cafe]
+  // FD6 음식점, CE7 카페, AT4 관광명소(오름·해변·명소 등)
+  const [food, cafe, attraction] = await Promise.all([
+    search("FD6", 80),
+    search("CE7", 80),
+    search("AT4", 700),
+  ]);
+  const candidates = [...food, ...cafe, ...attraction]
     .sort((a, b) => a.distance - b.distance)
-    .slice(0, 5);
+    .slice(0, 6);
 
   return NextResponse.json({ candidates });
 }
