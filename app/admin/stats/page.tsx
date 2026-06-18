@@ -100,7 +100,7 @@ export default function AdminStatsPage() {
         </div>
         <div className="flex items-center gap-2">
           <a
-            href="https://analytics.google.com/analytics/web/"
+            href="https://analytics.google.com/analytics/web/#/a396577514p539931691/reports/reportinghub"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full bg-[#e37400] px-3 py-1.5 text-xs font-bold text-white hover:brightness-110"
