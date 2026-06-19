@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { CctvIcon } from "@/components/common/CctvIcon";
-import { TubeIcon } from "@/components/common/TubeIcon";
 
 const items: ({ href: string; label: string; emoji?: string; icon?: ReactNode } | null)[] = [
   { href: "/", label: "홈", emoji: "🏠" },
   { href: "/cctv", label: "CCTV", icon: <CctvIcon size={22} /> },
   null, // center 피드 버튼
-  { href: "/youtube", label: "제주tube", icon: <TubeIcon size={22} /> },
+  { href: "/game/spot", label: "틀린그림찾기", emoji: "🔍" },
   { href: "/mypage", label: "마이", emoji: "👤" },
 ];
 
