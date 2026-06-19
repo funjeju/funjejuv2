@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "AI데일리제주 — 오늘의 제주 날씨와 추천 | 펀제주",
   description: "매일 아침 업데이트되는 제주 날씨와 오늘 가기 좋은 맛집·스팟 추천. AI가 큐레이션하는 제주 데일리 브리핑.",
   keywords: ["제주 날씨", "오늘 제주", "제주 여행", "제주 맛집 추천", "AI데일리제주"],
-  alternates: { canonical: "https://funjeju.com/daily" },
+  alternates: { canonical: "https://www.funjeju.com/daily" },
 };
 
 function fmtDate(iso?: string): string {

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
 import { GUIDES, GUIDE_SLUGS, getGuide } from "@/lib/guides";
 
-const BASE = "https://funjeju.com";
+const BASE = "https://www.funjeju.com";
 
 export function generateStaticParams() {
   return GUIDE_SLUGS.map((slug) => ({ slug }));

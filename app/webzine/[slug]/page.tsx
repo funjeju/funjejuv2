@@ -8,7 +8,7 @@ import { loadAllRestaurants } from "@/lib/restaurants";
 import { ShareButton } from "@/components/common/ShareButton";
 import { KakaoMap } from "@/components/biz/KakaoMap";
 
-const SITE_URL = "https://funjeju.com";
+const SITE_URL = "https://www.funjeju.com";
 export const revalidate = 3600; // 콘텐츠는 자주 안 바뀜 → ISR Write 절감 (발행 시 revalidatePath로 즉시 갱신)
 
 /** 절대 URL(피드 Storage)이면 그대로, 상대경로면 SITE_URL 접두 */

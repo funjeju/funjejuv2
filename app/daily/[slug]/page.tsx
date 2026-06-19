@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getContentBySlug } from "@/lib/contents";
 import { BriefingArticle } from "@/components/daily/BriefingArticle";
 
-const SITE_URL = "https://funjeju.com";
+const SITE_URL = "https://www.funjeju.com";
 export const revalidate = 3600;
 export const dynamicParams = true;
 

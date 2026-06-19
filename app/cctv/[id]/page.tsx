@@ -18,7 +18,7 @@ import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
 
 type Props = { params: Promise<{ id: string }> };
 
-const SITE_URL    = "https://funjeju.com";
+const SITE_URL    = "https://www.funjeju.com";
 // Worker 우선, 없으면 Lightsail fallback
 const PROXY_BASE  = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 

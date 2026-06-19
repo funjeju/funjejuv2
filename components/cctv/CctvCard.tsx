@@ -7,7 +7,7 @@ import { ShareButton } from "@/components/common/ShareButton";
 import { DIRECTION_META } from "@/constants/cctv-directions";
 import type { CctvEntry } from "@/types/cctv";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjeju.com";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.funjeju.com";
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 

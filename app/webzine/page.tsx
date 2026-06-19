@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description:
     "제주 여행 매거진. 애월·성산·한림 등 지역별 도민맛집과 여행 코스를 큐레이션으로 만나보세요.",
   keywords: ["제주 여행", "제주 맛집", "제주 여행 코스", "제주 웹진", "도민맛집"],
-  alternates: { canonical: "https://funjeju.com/webzine" },
+  alternates: { canonical: "https://www.funjeju.com/webzine" },
 };
 
 export default async function WebzineListPage() {

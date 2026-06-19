@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "제주 타자연습 — 매장 설명 타자연습 + 주간순위 | 펀제주",
   description: "제주 가게·메뉴 설명을 타이핑하며 타수에 도전하세요. 주간 순위로 경쟁!",
   keywords: ["제주 타자연습", "타자연습", "제주 게임"],
-  alternates: { canonical: "https://funjeju.com/game/typing" },
+  alternates: { canonical: "https://www.funjeju.com/game/typing" },
 };
 
 export default async function TypingGalleryPage() {

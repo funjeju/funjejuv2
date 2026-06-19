@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "제주 삼행시 짓기 — 좋아요로 우승 도전 | 펀제주",
   description: "제주 가게·메뉴 이름으로 삼행시를 짓고 좋아요를 받아 우승에 도전하세요.",
   keywords: ["제주 삼행시", "삼행시 짓기", "제주 게임"],
-  alternates: { canonical: "https://funjeju.com/game/acrostic" },
+  alternates: { canonical: "https://www.funjeju.com/game/acrostic" },
 };
 
 export default async function AcrosticGalleryPage() {

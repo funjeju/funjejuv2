@@ -48,7 +48,7 @@ export function ShareButton({ title, url, imageUrl, description, compact = false
         content: {
           title,
           description: description ?? "FunJeju에서 확인하세요",
-          imageUrl: imageUrl ?? "https://funjeju.com/og-default.png",
+          imageUrl: imageUrl ?? "https://www.funjeju.com/og-default.png",
           link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
         },
         buttons: [{ title: "자세히 보기", link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],

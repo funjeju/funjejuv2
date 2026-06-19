@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     default: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     template: "%s | 펀제주 FunJeju",
   },
+  alternates: { canonical: "/" },
   // 네이버 권고: 80자 이내
   description:
     "제주 실시간 CCTV·지역별 날씨, 도민맛집, AI 도슨트·여행일정까지. 제주 여행 필수 플랫폼 펀제주.",
@@ -66,6 +67,38 @@ export default function RootLayout({
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+        />
+        {/* 브랜드 구조화데이터 — "펀제주"/"funjeju" 브랜드 인식 + 사이트링크 검색창 */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  "@id": "https://www.funjeju.com/#website",
+                  url: "https://www.funjeju.com",
+                  name: "펀제주",
+                  alternateName: ["FunJeju", "funjeju", "펀제주 funjeju"],
+                  inLanguage: "ko",
+                  potentialAction: {
+                    "@type": "SearchAction",
+                    target: "https://www.funjeju.com/search?q={search_term_string}",
+                    "query-input": "required name=search_term_string",
+                  },
+                },
+                {
+                  "@type": "Organization",
+                  "@id": "https://www.funjeju.com/#org",
+                  name: "펀제주",
+                  alternateName: "FunJeju",
+                  url: "https://www.funjeju.com",
+                  logo: "https://www.funjeju.com/og-image.png",
+                },
+              ],
+            }),
+          }}
         />
       </head>
       <body className="font-sans antialiased">
