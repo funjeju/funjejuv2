@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { loadAllRestaurants } from "@/lib/restaurants";
+import { loadAllRestaurants, restaurantImageUrl } from "@/lib/restaurants";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ export async function GET() {
       title: r.title,
       region: r.region,
       menu: r.menu,
-      thumbnail: r.images?.[0] ? `/restaurant-images/${r.images[0]}` : null,
+      thumbnail: restaurantImageUrl(r.images?.[0]) ?? null,
     })),
   });
 }

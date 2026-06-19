@@ -80,7 +80,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: url },
     openGraph: {
       title, description, url, siteName: "FunJeju", locale: "ko_KR", type: "website",
-      images: [{ url: `${SITE_URL}/og-cctv.png`, width: 1200, height: 630, alt: `${cctv.name} 실시간 CCTV` }],
+      images: [{ url: `${SITE_URL}/og-image.png`, width: 1200, height: 630, alt: `${cctv.name} 실시간 CCTV` }],
     },
     twitter: { card: "summary_large_image", title, description },
     keywords: loc
@@ -129,7 +129,7 @@ export default async function CctvDetailPage({ params }: Props) {
     "@type": "TouristAttraction",
     name: cctv.name,
     description: seo.intro,
-    image: `${SITE_URL}/og-cctv.png`,
+    image: `${SITE_URL}/og-image.png`,
     address: {
       "@type": "PostalAddress",
       addressLocality: cctv.region,
@@ -162,7 +162,7 @@ export default async function CctvDetailPage({ params }: Props) {
     "@type": "VideoObject",
     name: `${loc.formal} 실시간 CCTV — 지금 제주 ${loc.formal} 날씨`,
     description: `지금 ${loc.formal}(${loc.short}) 날씨를 실시간 CCTV로 확인하세요.`,
-    thumbnailUrl: [`${SITE_URL}/og-cctv.png`],
+    thumbnailUrl: [`${SITE_URL}/og-image.png`],
     uploadDate: loc.updatedAt || new Date().toISOString(),
     ...(streamProxyUrl ? { contentUrl: streamProxyUrl } : {}),
     embedUrl: `${SITE_URL}/cctv/${id}`,

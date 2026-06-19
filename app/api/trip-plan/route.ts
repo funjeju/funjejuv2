@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
-import { loadAllRestaurants } from "@/lib/restaurants";
+import { loadAllRestaurants, restaurantImageUrl } from "@/lib/restaurants";
 import { verifyFirebaseToken } from "@/lib/firebase-admin";
 import { consumeUsage, resolveUser } from "@/lib/usage";
 import { JEJU_LOCATIONS } from "@/constants/jeju-locations";
@@ -394,7 +394,7 @@ ${restaurantLines(restaurants)}
           item.lat = mLat;
           item.lng = mLng;
           item.address = matched.address;
-          item.thumbnail = matched.images?.[0] ? `/restaurant-images/${matched.images[0]}` : null;
+          item.thumbnail = restaurantImageUrl(matched.images?.[0]) ?? null;
         } else {
           item.isDominFood = false;
           item.restaurantId = undefined;

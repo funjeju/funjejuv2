@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title, description,
     alternates: { canonical: url },
-    openGraph: { type: "website", url, title, description, siteName: "펀제주", images: [{ url: `${SITE}/og-cctv.png`, width: 1200, height: 630, alt: hub.title }] },
+    openGraph: { type: "website", url, title, description, siteName: "펀제주", images: [{ url: `${SITE}/og-image.png`, width: 1200, height: 630, alt: hub.title }] },
     keywords: [hub.title, "제주 날씨", "제주 실시간 cctv", "제주 라이브캠"],
   };
 }

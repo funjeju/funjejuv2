@@ -91,9 +91,7 @@ export async function loadRestaurantSummaries(): Promise<RestaurantSummary[]> {
     region: r.region,
     menu: r.menu,
     options: r.options,
-    thumbnail: r.images?.[0]
-      ? `/restaurant-images/${r.images[0]}`
-      : null,
+    thumbnail: restaurantImageUrl(r.images?.[0]) ?? null,
     shortDescription: stripHtml(r.content, 80),
   }));
 }

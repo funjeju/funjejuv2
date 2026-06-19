@@ -8,6 +8,7 @@ import {
   stripHtml,
   parseOptions,
   formatHours,
+  restaurantImageUrl,
 } from "@/lib/restaurants";
 import { getFoodSeo } from "@/lib/food-seo-store";
 import { findWebzinesByRestaurant } from "@/lib/contents";
@@ -39,9 +40,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // description: 1문단(가장 키워드 밀도 높음) + 원본 보강, 구글 최적 280자
   const firstPara = seo.intro.split("\n\n")[0] ?? seo.intro;
   const desc = `${firstPara} ${stripHtml(r.content, 80)}`.slice(0, 280);
-  const ogImage = r.images?.[0]
-    ? `${SITE_URL}/restaurant-images/${r.images[0]}`
-    : `${SITE_URL}/og-default.png`;
+  // 적재 맛집은 이미지가 외부 전체 URL → restaurantImageUrl이 http면 그대로, 아니면 로컬 경로
+  const img0 = restaurantImageUrl(r.images?.[0]);
+  const ogImage = img0
+    ? (img0.startsWith("http") ? img0 : `${SITE_URL}${img0}`)
+    : `${SITE_URL}/og-image.png`;
   const url = `${SITE_URL}/food/${id}`;
 
   return {
@@ -90,7 +93,7 @@ export default async function FoodDetailPage({ params }: Props) {
     "@type": "Restaurant",
     name: r.title,
     description: seo.intro,
-    image: r.images.map((img) => `${SITE_URL}/restaurant-images/${img}`),
+    image: r.images.map((img) => { const u = restaurantImageUrl(img)!; return u.startsWith("http") ? u : `${SITE_URL}${u}`; }),
     address: {
       "@type": "PostalAddress",
       ...(r.address && { streetAddress: r.address }),
@@ -138,7 +141,7 @@ export default async function FoodDetailPage({ params }: Props) {
       {r.images?.[0] && (
         <div className="relative aspect-[16/10] overflow-hidden bg-bg-secondary md:rounded-2xl">
           <Image
-            src={`/restaurant-images/${r.images[0]}`}
+            src={restaurantImageUrl(r.images[0])!}
             alt={r.title}
             fill
             sizes="(max-width: 768px) 100vw, 800px"
@@ -242,7 +245,7 @@ export default async function FoodDetailPage({ params }: Props) {
             {r.images.slice(1).map((img, i) => (
               <div key={img} className="relative aspect-square overflow-hidden rounded-xl bg-bg-secondary">
                 <Image
-                  src={`/restaurant-images/${img}`}
+                  src={restaurantImageUrl(img)!}
                   alt={`${r.title} 사진 ${i + 2}`}
                   fill
                   sizes="(max-width: 768px) 50vw, 33vw"
