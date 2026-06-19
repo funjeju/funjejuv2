@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     "제주 CCTV 실시간 보기, 멀티뷰, AI 여행 일정, 도슨트 챗봇, 제주tube까지 funjeju 사용법을 한 곳에서 확인하세요.",
   keywords: ["제주 CCTV 사용법", "제주 여행 일정", "제주 여행 앱", "funjeju 가이드"],
-  alternates: { canonical: "https://www.funjeju.com/guide" },
+  alternates: { canonical: "https://funjeju.com/guide" },
 };
 
 export default function GuideIndexPage() {

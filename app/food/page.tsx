@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "도민맛집 - FunJeju",
     description: "제주 도민이 추천하는 진짜 맛집",
     type: "website",
-    url: "https://www.funjeju.com/food",
+    url: "https://funjeju.com/food",
   },
 };
 

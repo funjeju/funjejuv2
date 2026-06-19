@@ -8,8 +8,8 @@ import { listPublishedSites } from "@/lib/biz/store";
 import { listLocations } from "@/lib/cctv-location";
 import { GROUP_HUB } from "@/types/cctv-location";
 
-// canonical 도메인(www)으로 통일 — metadataBase·canonical과 일치시켜 색인 신호 분산 방지
-const BASE = "https://www.funjeju.com";
+// canonical 도메인(non-www, 네이버 등록 도메인)으로 통일 — 색인 신호 분산 방지
+const BASE = "https://funjeju.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();

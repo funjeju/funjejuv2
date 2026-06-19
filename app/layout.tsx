@@ -7,7 +7,7 @@ import { AppShell } from "@/components/common/AppShell";
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.funjeju.com"), // bare funjeju.com은 미작동 → www로 통일
+  metadataBase: new URL("https://funjeju.com"), // 네이버 등록·실제 200 응답 도메인(non-www)으로 통일
   title: {
     default: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     template: "%s | 펀제주 FunJeju",
@@ -26,13 +26,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "ko_KR",
-    url: "https://www.funjeju.com",
+    url: "https://funjeju.com",
     siteName: "FunJeju",
     title: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지 — 제주 여행 필수 플랫폼",
     images: [
       {
-        url: "https://www.funjeju.com/og-image.png",
+        url: "https://funjeju.com/og-image.png",
         width: 1200,
         height: 630,
         alt: "FunJeju — 제주가 더 FUN해지는 여행",
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지",
-    images: ["https://www.funjeju.com/og-image.png"],
+    images: ["https://funjeju.com/og-image.png"],
   },
   robots: {
     index: true,
@@ -77,24 +77,24 @@ export default function RootLayout({
               "@graph": [
                 {
                   "@type": "WebSite",
-                  "@id": "https://www.funjeju.com/#website",
-                  url: "https://www.funjeju.com",
+                  "@id": "https://funjeju.com/#website",
+                  url: "https://funjeju.com",
                   name: "펀제주",
                   alternateName: ["FunJeju", "funjeju", "펀제주 funjeju"],
                   inLanguage: "ko",
                   potentialAction: {
                     "@type": "SearchAction",
-                    target: "https://www.funjeju.com/search?q={search_term_string}",
+                    target: "https://funjeju.com/search?q={search_term_string}",
                     "query-input": "required name=search_term_string",
                   },
                 },
                 {
                   "@type": "Organization",
-                  "@id": "https://www.funjeju.com/#org",
+                  "@id": "https://funjeju.com/#org",
                   name: "펀제주",
                   alternateName: "FunJeju",
-                  url: "https://www.funjeju.com",
-                  logo: "https://www.funjeju.com/og-image.png",
+                  url: "https://funjeju.com",
+                  logo: "https://funjeju.com/og-image.png",
                 },
               ],
             }),

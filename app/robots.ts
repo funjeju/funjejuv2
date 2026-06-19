@@ -20,7 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/admin/", "/api/", "/mypage"],
       },
     ],
-    sitemap: "https://www.funjeju.com/sitemap.xml",
-    host: "https://www.funjeju.com",
+    sitemap: "https://funjeju.com/sitemap.xml",
+    host: "https://funjeju.com",
   };
 }

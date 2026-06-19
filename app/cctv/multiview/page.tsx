@@ -673,7 +673,7 @@ export default function MultiviewPage() {
           <div className="flex items-center gap-2">
             <ShareButton
               title="제주 멀티뷰 — 실시간 CCTV 동시 시청 | 펀제주"
-              url="https://www.funjeju.com/cctv/multiview"
+              url="https://funjeju.com/cctv/multiview"
               description="여러 제주 CCTV를 한 화면에서 동시에 보세요"
               compact
             />

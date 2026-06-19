@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `타자연습 — ${p.businessName ?? "제주 매장"} | 펀제주`,
     description: p.text.slice(0, 80),
-    alternates: { canonical: `https://www.funjeju.com/game/typing/${id}` },
+    alternates: { canonical: `https://funjeju.com/game/typing/${id}` },
   };
 }
 
@@ -38,7 +38,7 @@ export default async function TypingPlayPage({ params }: { params: Promise<{ id:
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-3 flex items-center justify-between">
         <Link href="/game/typing" className="inline-block text-xs font-medium text-brand-orange">← 타자 목록</Link>
-        <ShareButton title={`타자연습 — ${p.businessName ?? "제주"} | 펀제주`} url={`https://www.funjeju.com/game/typing/${id}`} description="제주 매장 타자연습 + 주간순위!" />
+        <ShareButton title={`타자연습 — ${p.businessName ?? "제주"} | 펀제주`} url={`https://funjeju.com/game/typing/${id}`} description="제주 매장 타자연습 + 주간순위!" />
       </div>
 
       <TypingPlay passage={passage} />

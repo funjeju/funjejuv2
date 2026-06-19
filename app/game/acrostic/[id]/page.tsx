@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `${t.word} 삼행시 — 제주 ${t.businessName ?? ""} | 펀제주`,
     description: `'${t.word}'로 삼행시를 짓고 좋아요로 우승에 도전하세요!`,
-    alternates: { canonical: `https://www.funjeju.com/game/acrostic/${id}` },
+    alternates: { canonical: `https://funjeju.com/game/acrostic/${id}` },
   };
 }
 
@@ -38,7 +38,7 @@ export default async function AcrosticPlayPage({ params }: { params: Promise<{ i
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-3 flex items-center justify-between">
         <Link href="/game/acrostic" className="inline-block text-xs font-medium text-brand-orange">← 삼행시 목록</Link>
-        <ShareButton title={`${t.word} 삼행시 | 펀제주`} url={`https://www.funjeju.com/game/acrostic/${id}`} description={`'${t.word}'로 삼행시 짓기!`} />
+        <ShareButton title={`${t.word} 삼행시 | 펀제주`} url={`https://funjeju.com/game/acrostic/${id}`} description={`'${t.word}'로 삼행시 짓기!`} />
       </div>
 
       <AcrosticPlay topic={topic} />

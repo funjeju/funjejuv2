@@ -7,7 +7,7 @@ import { mockCctvs } from "@/constants/mock-cctvs";
 
 type Props = { params: Promise<{ region: string }> };
 
-const SITE_URL = "https://www.funjeju.com";
+const SITE_URL = "https://funjeju.com";
 
 // 전체 지역 정적 생성
 export async function generateStaticParams() {

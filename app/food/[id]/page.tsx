@@ -16,7 +16,7 @@ import { ShareButton } from "@/components/common/ShareButton";
 
 type Props = { params: Promise<{ id: string }> };
 
-const SITE_URL = "https://www.funjeju.com";
+const SITE_URL = "https://funjeju.com";
 
 // ISR(on-demand) — 빌드 때 589개를 전부 prerender 하지 않고, 첫 요청 시 생성 후 캐시.
 // 빌드 CPU 대폭 절감, 검색 색인은 동일(봇 첫 크롤 시 완전한 HTML 생성·sitemap에 전부 등재).

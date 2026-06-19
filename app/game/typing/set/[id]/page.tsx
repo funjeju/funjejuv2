@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `타자연습 세트 — ${s.title} | 펀제주`,
     description: `${s.passageIds.length}개 지문 연속 타자 + 평균 타수 랭킹`,
-    alternates: { canonical: `https://www.funjeju.com/game/typing/set/${id}` },
+    alternates: { canonical: `https://funjeju.com/game/typing/set/${id}` },
   };
 }
 
@@ -41,7 +41,7 @@ export default async function TypingSetPage({ params }: { params: Promise<{ id: 
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-3 flex items-center justify-between">
         <Link href="/game/typing" className="inline-block text-xs font-medium text-brand-orange">← 타자 목록</Link>
-        <ShareButton title={`타자연습 세트 — ${s.title} | 펀제주`} url={`https://www.funjeju.com/game/typing/set/${id}`} description="제주 매장 타자 세트 + 평균 타수 랭킹!" />
+        <ShareButton title={`타자연습 세트 — ${s.title} | 펀제주`} url={`https://funjeju.com/game/typing/set/${id}`} description="제주 매장 타자 세트 + 평균 타수 랭킹!" />
       </div>
 
       <TypingSetPlay set={set} passages={plainPassages} />

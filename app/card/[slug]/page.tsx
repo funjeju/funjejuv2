@@ -6,7 +6,7 @@ import { CardNewsViewer } from "@/components/card/CardNewsViewer";
 export const revalidate = 60;
 export const dynamicParams = true;
 
-const SITE = "https://www.funjeju.com";
+const SITE = "https://funjeju.com";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

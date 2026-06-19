@@ -18,7 +18,7 @@ export async function generateMetadata({
   const { id } = await params;
   const g = await getGame(id);
   if (!g) return { title: "문제를 찾을 수 없습니다 | 펀제주" };
-  const url = `https://www.funjeju.com/game/spot/${id}`;
+  const url = `https://funjeju.com/game/spot/${id}`;
   const title = `${g.title} — 제주 틀린그림찾기 | 펀제주`;
   const description = `제주 사진 속 다른 ${g.diffCount}곳을 찾아보세요. 최단시간 랭킹에 도전!`;
   // 카톡/페북 미리보기용 og:image — 문제 원본 사진(절대 URL)
@@ -69,7 +69,7 @@ export default async function SpotPlayPage({
     <div className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-3 flex items-center justify-between">
         <Link href="/game/spot" className="inline-block text-xs font-medium text-brand-orange">← 게임 갤러리</Link>
-        <ShareButton title={`${g.title} — 제주 틀린그림찾기 | 펀제주`} url={`https://www.funjeju.com/game/spot/${id}`} description={`다른 ${g.diffCount}곳을 찾아보세요!`} />
+        <ShareButton title={`${g.title} — 제주 틀린그림찾기 | 펀제주`} url={`https://funjeju.com/game/spot/${id}`} description={`다른 ${g.diffCount}곳을 찾아보세요!`} />
       </div>
       <SpotGamePlay game={game} />
 

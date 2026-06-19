@@ -6,7 +6,7 @@ import { fetchGovCardNews } from "@/lib/jeju-gov-cardnews";
 
 export const revalidate = 60;
 
-const SITE = "https://www.funjeju.com";
+const SITE = "https://funjeju.com";
 
 export const metadata: Metadata = {
   title: "제주 카드뉴스 — 한눈에 보는 제주 | 펀제주",

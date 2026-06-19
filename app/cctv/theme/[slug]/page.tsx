@@ -8,7 +8,7 @@ import { getCctvById } from "@/lib/firestore-cctv-server";
 export const revalidate = 300;
 export const dynamicParams = false;
 
-const SITE = "https://www.funjeju.com";
+const SITE = "https://funjeju.com";
 
 // slug → group 역매핑
 function groupBySlug(slug: string): string | null {

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: "제주 틀린그림찾기 — 제주 사진으로 즐기는 게임 | 펀제주",
   description: "제주 풍경·맛집 사진으로 만든 틀린그림찾기. 가장 빠른 시간에 도전하고 랭킹에 이름을 올려보세요.",
   keywords: ["제주 틀린그림찾기", "제주 게임", "제주 사진", "틀린그림찾기"],
-  alternates: { canonical: "https://www.funjeju.com/game/spot" },
+  alternates: { canonical: "https://funjeju.com/game/spot" },
 };
 
 export default async function SpotGalleryPage() {

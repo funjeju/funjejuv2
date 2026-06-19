@@ -6,7 +6,7 @@ import { PublicSite } from "@/components/biz/PublicSite";
 import { buildLocalBusinessJsonLd } from "@/lib/biz/jsonld";
 import type { SiteSchema } from "@/lib/biz/types";
 
-const SITE_URL = "https://www.funjeju.com";
+const SITE_URL = "https://funjeju.com";
 export const runtime = "nodejs";
 // 매 요청 신선하게 읽는다. ISR이 "생성 직후 빈 결과 404"를 캐시해버리는 문제를 원천 차단.
 export const dynamic = "force-dynamic";

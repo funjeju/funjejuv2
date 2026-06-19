@@ -6,7 +6,7 @@ import type { Content } from "@/types/content";
 
 export const revalidate = 60;
 
-const SITE = "https://www.funjeju.com";
+const SITE = "https://funjeju.com";
 
 export const metadata: Metadata = {
   title: "제주 매거진 — 데일리 소식·여행 웹진·카드뉴스 | 펀제주",

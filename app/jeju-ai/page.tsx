@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 
-const SITE = "https://www.funjeju.com";
+const SITE = "https://funjeju.com";
 
 export const metadata: Metadata = {
   title: "제주여행 AI — AI 도슨트 챗봇·AI 여행 일정 | 펀제주",

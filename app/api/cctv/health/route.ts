@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(`${worker}/cctv/${encodeURIComponent(id)}`, {
       // 워커 출처가드 통과용 (브라우저 Referer 흉내)
-      headers: { Referer: "https://www.funjeju.com/", Origin: "https://www.funjeju.com" },
+      headers: { Referer: "https://funjeju.com/", Origin: "https://funjeju.com" },
       signal: AbortSignal.timeout(7000),
       cache: "no-store",
     });
