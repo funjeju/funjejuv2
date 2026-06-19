@@ -71,6 +71,28 @@ const nextConfig: NextConfig = {
         destination: "/guide",
         permanent: true,
       },
+
+      // ── 리뉴얼 전 그누보드/카페24 잔존 URL 정리 (구글 옛 색인 → 새 페이지로 승계, 403/404 차단) ──
+      // 옛 콘텐츠 메뉴 /funjeju/contents/subN — 의미 매칭되는 건 전용 페이지로
+      { source: "/funjeju/contents/sub4", destination: "/food", permanent: true }, // 맛집
+      { source: "/funjeju/contents/sub5", destination: "/feed", permanent: true }, // 커뮤니티
+      { source: "/funjeju/contents/:rest*", destination: "/", permanent: true },   // 소개·숙박 등 나머지 → 홈
+      // 옛 테마/콘텐츠 php 경로
+      { source: "/theme/:path*", destination: "/", permanent: true },
+      { source: "/content/:path*", destination: "/", permanent: true },
+      { source: "/content", destination: "/", permanent: true },
+      // 옛 로그인/회원가입 → 마이페이지
+      { source: "/bbs/login/:path*", destination: "/mypage", permanent: true },
+      { source: "/bbs/register/:path*", destination: "/mypage", permanent: true },
+      // 옛 메인 슬라이드·지금제주·공지 → 홈
+      { source: "/mainslide", destination: "/", permanent: true },
+      { source: "/mainslide/:path*", destination: "/", permanent: true },
+      { source: "/now", destination: "/", permanent: true },
+      { source: "/now/:path*", destination: "/", permanent: true },
+      { source: "/notice", destination: "/", permanent: true },
+      { source: "/notice/:path*", destination: "/", permanent: true },
+      // 옛 게시판 나머지(food·cctv는 위에서 처리됨) → 홈
+      { source: "/bbs/:path*", destination: "/", permanent: true },
     ];
   },
 
