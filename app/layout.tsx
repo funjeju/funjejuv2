@@ -9,8 +9,8 @@ const GA_ID = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.funjeju.com"), // bare funjeju.com은 미작동 → www로 통일
   title: {
-    default: "FunJeju — 제주가 더 FUN해지는 여행",
-    template: "%s | FunJeju",
+    default: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
+    template: "%s | 펀제주 FunJeju",
   },
   // 네이버 권고: 80자 이내
   description:
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "https://www.funjeju.com",
     siteName: "FunJeju",
-    title: "FunJeju — 제주가 더 FUN해지는 여행",
+    title: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지 — 제주 여행 필수 플랫폼",
     images: [
       {
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FunJeju — 제주가 더 FUN해지는 여행",
+    title: "펀제주 FunJeju — 제주가 더 FUN해지는 여행",
     description: "실시간 제주 CCTV, 도민맛집 589곳, AI 도슨트까지",
     images: ["https://www.funjeju.com/og-image.png"],
   },
