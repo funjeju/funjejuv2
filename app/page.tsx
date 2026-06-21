@@ -151,26 +151,7 @@ export default async function HomePage() {
         {/* ── Right Sidebar ── */}
         <aside className="hidden w-72 shrink-0 space-y-4 lg:block">
 
-          {/* AI Chatbot */}
-          <div className="rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card">
-            <div className="mb-3 flex items-center gap-2">
-              <DolmangyiIcon size={24} />
-              <h3 className="text-sm font-bold text-text-primary">AI 도슨트 챗봇</h3>
-            </div>
-            <div className="flex gap-2 items-start">
-              <DolmangyiIcon size={28} className="shrink-0 mt-0.5" />
-              <div className="rounded-xl rounded-tl-none bg-bg-secondary p-2.5 text-xs leading-relaxed text-text-secondary">
-                안녕! 나는 제주 여행 AI 도슨트야! 😎<br />
-                지금 어디야? 딱 맞는 여행을 추천해줄게!
-              </div>
-            </div>
-            <Link
-              href="/chat"
-              className="mt-3 block w-full rounded-xl bg-brand-orange py-2.5 text-center text-xs font-bold text-white hover:bg-brand-orange/90 transition-colors"
-            >
-              새로운 대화 시작 💬
-            </Link>
-          </div>
+          {/* AI 도슨트 챗봇 박스는 전역 플로팅 챗봇(우하단)으로 대체 */}
 
           {/* AI Trip Planner CTA */}
           <div className="rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white">

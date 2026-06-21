@@ -41,6 +41,7 @@ async function fromWebzine(): Promise<Content | null> {
   const topic = await pickWebzineTopic();
   if (!topic) return null;
   const picks = topic.picks.slice(0, 7);
+  if (picks.length < 5) return null; // 업소 5개 미만이면 정보성 카드뉴스 생성 안 함
   const list = picks
     .map((r) => `- [${r.id}] ${r.title} (${r.region}, ${r.menu}) :: ${stripHtml(r.content, 120)}`)
     .join("\n");
@@ -71,7 +72,7 @@ JSON 형식:
         category: r.region,
       };
     });
-  if (sections.length === 0) return null;
+  if (sections.length < 5) return null; // 카드뉴스는 정보성 위해 본문(업소/스팟) 5장 이상만
 
   const cover = picks.find((r) => r.images?.[0]);
   const now = new Date().toISOString();
@@ -96,7 +97,7 @@ JSON 형식:
 /** 라이브피드 → 최근 사진 큐레이션 카드 */
 async function fromFeed(): Promise<Content | null> {
   const feeds = (await listRecentFeedsRich(12)).filter((f) => f.imageUrl);
-  if (feeds.length < 3) return null;
+  if (feeds.length < 5) return null; // 사진 5장 미만이면 생성 안 함
   const picks = feeds.slice(0, 7);
 
   const list = picks
@@ -129,7 +130,7 @@ JSON 형식:
       } as ContentSection;
     })
     .filter((s): s is ContentSection => s !== null);
-  if (sections.length === 0) return null;
+  if (sections.length < 5) return null; // 카드뉴스는 정보성 위해 본문(업소/스팟) 5장 이상만
 
   const now = new Date().toISOString();
   return {
@@ -153,7 +154,7 @@ async function fromBriefing(): Promise<Content | null> {
   const { generateBriefingDraft } = await import("@/lib/briefing-ai");
   const brief = await generateBriefingDraft();
   const src = brief.sections.slice(0, 7);
-  if (src.length === 0) return null;
+  if (src.length < 5) return null; // 5개 미만이면 생성 안 함
 
   const list = src.map((s, i) => `- [${i}] ${s.heading} :: ${s.body.slice(0, 160)}`).join("\n");
   const prompt = `다음 제주 모닝브리핑 섹션들을 인스타 카드뉴스로 요약하라(섹션당 카드 1장).
@@ -177,7 +178,7 @@ JSON 형식:
       return { heading: c.heading || s.heading, body: c.body || s.body.slice(0, 80), image: s.image, category: s.category } as ContentSection;
     })
     .filter((s): s is ContentSection => s !== null);
-  if (sections.length === 0) return null;
+  if (sections.length < 5) return null; // 카드뉴스는 정보성 위해 본문(업소/스팟) 5장 이상만
 
   const now = new Date().toISOString();
   return {
@@ -254,7 +255,7 @@ async function fromWeather(): Promise<Content | null> {
     if (!coverImage) coverImage = imageUrl;
   }
 
-  if (sections.length === 0) return null;
+  if (sections.length < 5) return null; // 카드뉴스는 정보성 위해 본문(업소/스팟) 5장 이상만
 
   const now = new Date();
   const hh = now.getHours();
