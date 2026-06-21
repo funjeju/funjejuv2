@@ -95,6 +95,11 @@ export default function RootLayout({
                   alternateName: "FunJeju",
                   url: "https://funjeju.com",
                   logo: "https://funjeju.com/og-image.png",
+                  // 권위·합의 신호 (E-E-A-T / GEO) — 공식 채널
+                  sameAs: [
+                    "https://www.instagram.com/funjeju",
+                    "https://www.youtube.com/@funjeju",
+                  ],
                 },
               ],
             }),
