@@ -1,15 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JejuMap } from "@/components/biz/minihompy/JejuMap";
+import cctvRaw from "@/locations.json";
+import foodRaw from "@/data/domin_food.json";
 
 export const metadata: Metadata = {
   title: "제주 미니홈피 지도 🎈 | 펀제주",
-  description: "제주 지도 위에 내 미니홈피를 열기구로 띄워보세요. 레벨에 따라 열기구가 자라요.",
+  description: "제주 지도에서 미니홈피·CCTV·도민맛집·내 스팟을 한눈에. 열기구를 띄우고 깃발을 꽂아보세요.",
 };
 
 export const dynamic = "force-dynamic";
 
-/** 제주 OSM 지도 + 열기구 마커. Phase: 데모 마커 1개 + 레벨 시연 + 내 위치 보기. */
+type RawCctv = { id: string; formal?: string; short?: string; lat?: number; lng?: number };
+type RawFood = { id: string; title?: string; address?: string; lat?: string | number; lng?: string | number; images?: string[] };
+
+const CCTV = (cctvRaw as RawCctv[])
+  .filter((c) => c.lat && c.lng)
+  .map((c) => ({ id: c.id, name: c.formal || c.short || c.id, lat: Number(c.lat), lng: Number(c.lng) }));
+
+const FOOD = (foodRaw as RawFood[])
+  .filter((f) => f.lat && f.lng)
+  .map((f) => ({ id: f.id, title: f.title || "", lat: Number(f.lat), lng: Number(f.lng), address: f.address || "", img: f.images?.[0] || "" }));
+
+/** 제주 OSM 지도 + 레이어(미니홈피 깃발·CCTV·도민맛집·내 스팟) + 모달→더보기. */
 export default function MiniHomeMapPage() {
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "'Dotum','Apple SD Gothic Neo',sans-serif" }}>
@@ -18,7 +31,7 @@ export default function MiniHomeMapPage() {
         <Link href="/minihome" style={{ color: "#fff", textDecoration: "underline", fontSize: 12 }}>← 돌아가기</Link>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>
-        <JejuMap />
+        <JejuMap cctv={CCTV} food={FOOD} />
       </div>
     </div>
   );
