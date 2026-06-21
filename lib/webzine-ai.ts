@@ -250,3 +250,56 @@ sections는 위 [0]..[${feeds.length - 1}] 사진 순서대로, imageIndex를 �
     createdAt: now,
   };
 }
+
+/* ──────────────────────────────────────────────
+ * 기존 발행 웹진을 AEO/GEO 기준으로 in-place 재작성 (slug·id·이미지·맛집링크 보존)
+ * - 사실(맛집명·지역·메뉴)은 변경 금지, 표현만 직답·질문형으로 개선 + FAQ 생성
+ * ────────────────────────────────────────────── */
+const REWRITE_SYS = `너는 제주 여행 매거진 에디터다. 이미 발행된 글을 AEO/GEO(AI 검색·답변엔진 인용) 기준으로 다시 쓴다.
+규칙:
+- 맛집 이름·지역·메뉴 등 사실은 절대 바꾸지 마라. 없는 정보 날조 금지. 표현·구성만 개선.
+- intro와 각 섹션 body의 "첫 문장"은 40~60자 자기완결 직답으로 시작(개체 명시: 지역·메뉴·상호).
+- 모호한 수사("맛있는","예쁜") 대신 구체 사실·고유명사·방문 팁을 우선.
+- 섹션의 개수·순서를 그대로 유지하고, 각 섹션은 입력 index를 그대로 반환.
+- faqs 3~5개 생성: q는 실제 검색 질문형, a는 40~60자 직답.
+- 반드시 유효한 JSON만 반환.`;
+
+type ReAeoAI = {
+  intro: string;
+  sections: { index: number; heading: string; body: string }[];
+  keywords?: string[];
+  faqs?: { q: string; a: string }[];
+};
+
+export async function reAeoContent(c: Content): Promise<Content> {
+  const sectionsIn = c.sections.map((s, i) => `[${i}] ${s.heading} :: ${s.body}`).join("\n");
+  const prompt = `다음은 이미 발행된 제주 여행 웹진 글이다. 사실은 유지하고 AEO 기준으로 다시 써서 JSON으로 반환하라.
+
+제목: ${c.title}
+부제: ${c.subtitle}
+도입: ${c.intro}
+
+섹션:
+${sectionsIn}
+
+반환 형식 (JSON):
+{
+  "intro": "개선된 도입 (첫 문장 40~60자 직답)",
+  "sections": [{ "index": 0, "heading": "섹션 제목", "body": "개선된 본문 (첫 문장 직답)" }],
+  "keywords": ["보강 키워드"],
+  "faqs": [{ "q": "검색 질문형", "a": "40~60자 직답" }]
+}`;
+
+  const ai = await generateJSON<ReAeoAI>(REWRITE_SYS, prompt);
+  const newSections: ContentSection[] = c.sections.map((s, i) => {
+    const r = (ai.sections ?? []).find((x) => x.index === i);
+    return { ...s, heading: r?.heading || s.heading, body: r?.body || s.body };
+  });
+  return {
+    ...c,
+    intro: ai.intro || c.intro,
+    sections: newSections,
+    keywords: ai.keywords?.length ? [...new Set([...ai.keywords, ...c.keywords])] : c.keywords,
+    faqs: (ai.faqs ?? []).filter((f) => f?.q && f?.a).slice(0, 5),
+  };
+}

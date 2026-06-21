@@ -27,6 +27,7 @@ export default function AdminContentsPage() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   async function generate(type: ContentType | "webzine-feed", source?: string) {
@@ -41,6 +42,20 @@ export default function AdminContentsPage() {
       setMsg(res.ok ? `초안 생성: ${d.title ?? d.error}` : `실패: ${d.error}`);
       await load();
     } catch { setMsg("생성 실패"); }
+    finally { setBusy(null); }
+  }
+
+  async function reAeo() {
+    if (!confirm("발행된 웹진 중 아직 AEO 재작성 안 된 글을 모두 다시 쓸까요?\n(slug·링크 보존, 검색 순위 유지)")) return;
+    setBusy("reaeo"); setMsg("AEO 재작성 중… (수십 초)");
+    try {
+      const res = await fetch("/api/admin/contents/reaeo", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
+      });
+      const d = await res.json();
+      setMsg(res.ok ? `AEO 재작성 ${d.rewritten}건 완료 (남은 ${d.remaining}건${d.failed?.length ? `, 실패 ${d.failed.length}` : ""})` : `실패: ${d.error}`);
+      await load();
+    } catch { setMsg("재작성 실패"); }
     finally { setBusy(null); }
   }
 
@@ -87,6 +102,11 @@ export default function AdminContentsPage() {
           <button type="button" onClick={() => generate("briefing")} disabled={busy === "gen-briefing"}
             className="rounded-full bg-brand-navy px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
             {busy === "gen-briefing" ? "생성 중…" : "☀️ 브리핑 생성"}
+          </button>
+          <button type="button" onClick={reAeo} disabled={busy === "reaeo"}
+            title="발행 웹진을 AEO/GEO(직답·FAQ)로 일괄 재작성 (slug 보존)"
+            className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">
+            {busy === "reaeo" ? "재작성 중…" : "✨ 웹진 AEO 재작성"}
           </button>
           <Link href="/admin/cardnews"
             className="rounded-full border border-jeju-green bg-jeju-green/10 px-3 py-1.5 text-[11px] font-bold text-jeju-green">
