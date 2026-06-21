@@ -85,6 +85,7 @@ export type RoomConcept = "oreum" | "tangerine" | "beach";
 export interface MiniHompyConfig {
   minimi?: MiniMiKind;
   roomConcept?: RoomConcept;
+  bgmUrl?: string; // BGM 유튜브 링크
 }
 
 export interface ContentAssets {

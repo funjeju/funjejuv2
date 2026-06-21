@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sl
   const { slug } = await params;
   try {
     const body = await req.json();
-    const config = await saveMiniHompyConfig(slug, { minimi: body.minimi, roomConcept: body.roomConcept });
+    const config = await saveMiniHompyConfig(slug, { minimi: body.minimi, roomConcept: body.roomConcept, bgmUrl: body.bgmUrl });
     return NextResponse.json({ ok: true, config });
   } catch (e) {
     console.error("[minihompy PATCH]", e);

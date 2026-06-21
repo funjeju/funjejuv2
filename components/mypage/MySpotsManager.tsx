@@ -41,6 +41,28 @@ async function searchPlaces(query: string): Promise<PlaceResult[]> {
   }
 }
 
+/** 주소 → 좌표 지오코딩 (지도 매칭 실패 시 주소로 직접 등록용) */
+async function geocodeAddress(addr: string): Promise<PlaceResult | null> {
+  if (!KAKAO_REST_KEY) return null;
+  try {
+    const res = await fetch(
+      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
+      { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      documents?: Array<{ address_name?: string; road_address?: { address_name?: string }; x: string; y: string }>;
+    };
+    const d = data.documents?.[0];
+    if (!d) return null;
+    const lat = Number(d.y), lng = Number(d.x);
+    if (!inJeju(lat, lng)) return null;
+    return { name: "", address: d.road_address?.address_name || d.address_name || addr, category: "", lat, lng };
+  } catch {
+    return null;
+  }
+}
+
 /** 카카오 카테고리 → 마이스팟 카테고리 추정 */
 function guessCategory(kakaoCategory: string): MySpotCategory {
   if (kakaoCategory.includes("카페")) return "카페";
@@ -57,6 +79,12 @@ export function MySpotsManager() {
   const [results, setResults] = useState<PlaceResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [pendingPlace, setPendingPlace] = useState<PlaceResult | null>(null); // 카테고리 확정 대기
+  // 지도 매칭 실패 시 주소 직접 등록
+  const [mName, setMName] = useState("");
+  const [mAddr, setMAddr] = useState("");
+  const [mCat, setMCat] = useState<MySpotCategory>("여행지");
+  const [mErr, setMErr] = useState("");
+  const [mSaving, setMSaving] = useState(false);
 
   useEffect(() => {
     if (!user) { setSpots([]); return; }
@@ -68,8 +96,26 @@ export function MySpotsManager() {
     if (!q || searching) return;
     setSearching(true);
     setPendingPlace(null);
-    setResults(await searchPlaces(q));
+    const r = await searchPlaces(q);
+    setResults(r);
+    if (r.length === 0) { setMName(q); setMAddr(""); setMErr(""); } // 매칭 실패 → 주소 등록 프리필
     setSearching(false);
+  }
+
+  async function confirmManual() {
+    if (!user || mSaving) return;
+    const name = mName.trim(), addr = mAddr.trim();
+    if (!name) { setMErr("이름을 입력해주세요"); return; }
+    if (!addr) { setMErr("주소를 입력해주세요"); return; }
+    setMSaving(true); setMErr("");
+    const geo = await geocodeAddress(addr);
+    if (!geo) { setMErr("제주 안에서 주소를 찾지 못했어요. 주소를 다시 확인해주세요."); setMSaving(false); return; }
+    try {
+      await addMySpot(user.uid, { name, category: mCat, lat: geo.lat, lng: geo.lng, address: geo.address });
+      setSpots(await listMySpots(user.uid));
+      setResults(null); setQuery(""); setMName(""); setMAddr(""); setMCat("여행지");
+    } catch { setMErr("저장 실패"); }
+    setMSaving(false);
   }
 
   async function confirmAdd(place: PlaceResult, category: MySpotCategory) {
@@ -133,7 +179,52 @@ export function MySpotsManager() {
         {results !== null && !pendingPlace && (
           <div className="mt-2 overflow-hidden rounded-xl border border-border-soft">
             {results.length === 0 ? (
-              <p className="p-3 text-[11px] text-text-secondary">검색 결과가 없어요</p>
+              <div className="space-y-2 p-3">
+                <p className="text-[11px] font-medium text-text-secondary">
+                  지도에서 못 찾았어요. <span className="text-brand-orange">주소로 직접 등록</span>할 수 있어요.
+                </p>
+                <input
+                  type="text" value={mName} onChange={(e) => setMName(e.target.value)}
+                  placeholder="이름 (예: 우리집 단골카페)" style={{ fontSize: "11px" }}
+                  className="w-full rounded-xl border border-border-soft bg-bg-secondary px-2.5 py-2 outline-none focus:border-brand-orange"
+                />
+                <input
+                  type="text" value={mAddr} onChange={(e) => setMAddr(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirmManual(); } }}
+                  placeholder="주소 (예: 제주시 첨단로 242)" style={{ fontSize: "11px" }}
+                  className="w-full rounded-xl border border-border-soft bg-bg-secondary px-2.5 py-2 outline-none focus:border-brand-orange"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {MY_SPOT_CATEGORIES.map((c) => (
+                    <button
+                      key={c} type="button" onClick={() => setMCat(c)}
+                      className={[
+                        "rounded-full px-3 py-1 text-[11px] font-bold transition-colors",
+                        mCat === c ? "bg-brand-orange text-white" : "bg-bg-card border border-border-soft text-text-secondary hover:border-brand-orange hover:text-brand-orange",
+                      ].join(" ")}
+                    >
+                      {CATEGORY_EMOJI[c]} {c}
+                    </button>
+                  ))}
+                </div>
+                {mErr && <p className="text-[10px] font-medium text-live-red">{mErr}</p>}
+                <div className="flex gap-1.5">
+                  <button
+                    type="button" onClick={confirmManual} disabled={mSaving}
+                    style={{ fontSize: "11px" }}
+                    className="flex-1 rounded-xl bg-brand-orange py-2 font-bold text-white hover:bg-brand-orange/90 disabled:opacity-40 transition-colors"
+                  >
+                    {mSaving ? "등록 중…" : "📍 주소로 등록"}
+                  </button>
+                  <button
+                    type="button" onClick={() => setResults(null)}
+                    style={{ fontSize: "11px" }}
+                    className="shrink-0 rounded-xl border border-border-soft px-3 py-2 font-medium text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
             ) : (
               results.map((r) => (
                 <button
