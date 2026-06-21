@@ -62,18 +62,35 @@ export async function listVisitors(slug: string, limit = 20): Promise<Visitor[]>
   return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Visitor, "uid">) }));
 }
 
-// ── 스크랩(주인 즐겨찾기 모음) ──
-export interface ScrapItem { id: string; title: string; url: string; createdAt: string; }
-export async function listScraps(slug: string, limit = 50): Promise<ScrapItem[]> {
+// ── 스크랩(주인 즐겨찾기) — 링크형 + 스팟형(카테고리별) ──
+export type ScrapType = "link" | "spot";
+export interface ScrapItem { id: string; type: ScrapType; category: string; title: string; url: string; address: string; createdAt: string; }
+export async function listScraps(slug: string, limit = 100): Promise<ScrapItem[]> {
   const snap = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps")
     .orderBy("createdAt", "desc").limit(limit).get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ScrapItem, "id">) }));
+  return snap.docs.map((d) => {
+    const r = d.data() as Partial<ScrapItem>;
+    return {
+      id: d.id,
+      type: r.type ?? (r.url ? "link" : "spot"),
+      category: r.category || "제주",
+      title: r.title || "",
+      url: r.url || "",
+      address: r.address || "",
+      createdAt: r.createdAt || "",
+    };
+  });
 }
-export async function addScrap(slug: string, title: string, url: string): Promise<ScrapItem> {
-  const u = url.trim();
+export interface NewScrap { type?: ScrapType; category?: string; title?: string; url?: string; address?: string; }
+export async function addScrap(slug: string, input: NewScrap): Promise<ScrapItem> {
+  const url = (input.url || "").trim();
+  const type: ScrapType = input.type === "spot" ? "spot" : (url ? "link" : "spot");
   const item = {
-    title: (title || u || "스크랩").slice(0, 60),
-    url: /^https?:\/\//.test(u) ? u.slice(0, 300) : "",
+    type,
+    category: (input.category || "제주").trim().slice(0, 20),
+    title: (input.title || url || input.address || "스크랩").trim().slice(0, 60),
+    url: /^https?:\/\//.test(url) ? url.slice(0, 300) : "",
+    address: (input.address || "").trim().slice(0, 120),
     createdAt: new Date().toISOString(),
   };
   const ref = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps").add(item);

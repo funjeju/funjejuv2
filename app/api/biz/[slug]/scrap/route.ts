@@ -14,9 +14,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   try {
-    const { title, url } = await req.json();
-    if (!String(title || "").trim() && !String(url || "").trim()) return NextResponse.json({ error: "제목이나 링크를 입력해주세요" }, { status: 400 });
-    const item = await addScrap(slug, String(title || ""), String(url || ""));
+    const b = await req.json();
+    if (!String(b.title || "").trim() && !String(b.url || "").trim() && !String(b.address || "").trim())
+      return NextResponse.json({ error: "제목·링크·주소 중 하나는 입력해주세요" }, { status: 400 });
+    const item = await addScrap(slug, { type: b.type, category: b.category, title: b.title, url: b.url, address: b.address });
     return NextResponse.json({ item });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "저장 실패" }, { status: 400 });
