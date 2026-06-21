@@ -57,7 +57,7 @@ export function CardNewsViewer({ slug, total, title, subtitle }: { slug: string;
       {/* 카드 뷰어 */}
       <div className="relative overflow-hidden rounded-2xl border border-border-soft bg-bg-secondary">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src(idx)} alt={`카드 ${idx + 1}`} className="block w-full" width={1080} height={1350} />
+        <img src={src(idx)} alt={`카드 ${idx + 1}`} className="block w-full" width={1080} height={1080} />
         {idx > 0 && (
           <button type="button" onClick={() => setIdx((i) => Math.max(0, i - 1))}
             className="absolute left-2 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-lg text-white">‹</button>
@@ -85,7 +85,7 @@ export function CardNewsViewer({ slug, total, title, subtitle }: { slug: string;
           className="flex-1 rounded-xl bg-brand-orange py-2.5 text-sm font-bold text-white disabled:opacity-50">
           {downloading ? "저장 중…" : `⬇️ 전체 ${total}장 저장`}</button>
       </div>
-      <p className="mt-2 text-center text-[11px] text-text-secondary">저장한 이미지를 인스타·스레드에 캐러셀로 올려보세요 (4:5 · 1080×1350)</p>
+      <p className="mt-2 text-center text-[11px] text-text-secondary">저장한 이미지를 인스타·스레드에 캐러셀로 올려보세요 (1:1 · 1080×1080)</p>
     </div>
   );
 }

@@ -13,7 +13,7 @@ const ORANGE = "#ff5722";
 const NAVY = "#1a3a8a";
 const YELLOW = "#ffd600";
 const W = 1080;
-const H = 1350; // 4:5
+const H = 1080; // 1:1 정사각 (세로사진 규격화·하단 여백 최소화)
 
 // ── 폰트: public/fonts 를 자기 오리진에서 fetch (서버리스 fs 트레이싱 회피) + 메모리 캐시 ──
 const fontCache: Record<string, ArrayBuffer> = {};
@@ -132,8 +132,8 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
 
   // body card — 상단 사진 + 하단(제목 + [기본정보 패널] + 말풍선 소개 + 우하단 마스코트)
   const hasInfo = !!card.info && (card.info.address || card.info.menu || card.info.hours || card.info.prices);
-  const imgH = hasInfo ? 600 : 660;        // 정보 있으면 사진 약간 줄여 공간 확보
-  const mascotSize = hasInfo ? 220 : 300;  // 정보 있으면 마스코트 축소
+  const imgH = hasInfo ? 460 : 560;        // 정사각(1080) 기준 — 정보 있으면 사진 더 줄임
+  const mascotSize = hasInfo ? 200 : 260;  // 정보 있으면 마스코트 축소
   return (
     <div style={{ ...base, flexDirection: "column", background: "#fff" }}>
       <div style={{ width: W, height: imgH, display: "flex", position: "relative", background: "#e9eef5" }}>
@@ -146,8 +146,8 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
           <div style={{ position: "absolute", bottom: 28, left: 36, display: "flex", alignItems: "center", background: "rgba(0,0,0,0.6)", borderRadius: 999, padding: "10px 24px", color: "#fff", fontSize: 28, fontWeight: 700 }}>📍 {card.chip}</div>
         )}
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "40px 52px 104px" }}>
-        <div style={{ color: NAVY, fontSize: 56, fontWeight: 800, lineHeight: 1.18, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "32px 52px 96px" }}>
+        <div style={{ color: NAVY, fontSize: 54, fontWeight: 800, lineHeight: 1.16, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
 
         {/* 맛집/스팟 기본정보 패널 — 확보된 정보만 (빈 가운데를 채움) */}
         {hasInfo && <InfoPanel info={card.info!} />}

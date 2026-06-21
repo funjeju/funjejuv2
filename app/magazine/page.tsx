@@ -95,7 +95,7 @@ export default async function MagazinePage() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {cards.map((c) => (
-            <Link key={c.id} href={`/card/${c.slug}`} className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-border-soft bg-brand-navy shadow-card">
+            <Link key={c.id} href={`/card/${c.slug}`} className="group relative block aspect-square overflow-hidden rounded-2xl border border-border-soft bg-brand-navy shadow-card">
               {c.coverImage && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={c.coverImage} alt={c.title.replace(/\n/g, " ")} className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
