@@ -41,6 +41,13 @@ export default function CctvPage() {
         right={
           <div className="flex items-center gap-1.5">
             <Link
+              href="/qna"
+              className="flex items-center gap-1 rounded-full border border-border-soft bg-bg-card px-2.5 py-1.5 text-[11px] font-bold text-text-secondary hover:text-brand-navy transition-colors"
+              title="제주 실시간 날씨·CCTV 자주 묻는 질문"
+            >
+              💬 <span className="hidden sm:inline">Q&A</span>
+            </Link>
+            <Link
               href="/cctv/multiview"
               className="flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
             >
