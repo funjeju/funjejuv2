@@ -97,6 +97,19 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     border: "#E4EFE7",
     gradient: "from-emerald-500 to-green-600",
   },
+  // 싸이월드 미니홈피 감성 — 파스텔 하늘색 스킨 (미니홈피 /biz/[slug]/home 전용)
+  cyworld: {
+    primary: "#5B86C2",
+    primaryFg: "#ffffff",
+    surface: "#ffffff",
+    surfaceAlt: "#EAF2FB",
+    accent: "#DBEAFF",
+    ink: "#2B3A52",
+    text: "#2B2B2B",
+    textMuted: "#6B7A8D",
+    border: "#CFE0F2",
+    gradient: "from-sky-400 to-blue-500",
+  },
 };
 
 export function getThemeTokens(themeId: ThemeId): ThemeTokens {

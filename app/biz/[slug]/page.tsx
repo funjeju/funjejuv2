@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { getSite as getSiteRaw } from "@/lib/biz/store";
 import { PublicSite } from "@/components/biz/PublicSite";
 import { BizSeoSection } from "@/components/biz/BizSeoSection";
+import { MiniHompyEntrance } from "@/components/biz/minihompy/MiniHompyEntrance";
 import { buildLocalBusinessJsonLd } from "@/lib/biz/jsonld";
 import { buildBizFaqs } from "@/lib/biz/seo";
 import type { SiteSchema } from "@/lib/biz/types";
@@ -83,6 +84,9 @@ export default async function BizSitePage({
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
+      <div className="px-4 pt-4">
+        <MiniHompyEntrance slug={site.slug} name={site.merchantInfo.name} minimi={site.miniHompy?.minimi} />
+      </div>
       <PublicSite site={site} />
       <BizSeoSection site={site} />
     </>

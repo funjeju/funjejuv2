@@ -16,6 +16,8 @@ const NAV = [
   { href: "/admin/cardnews", label: "🃏 카드뉴스", short: "카드" },
   { href: "/admin/game",   label: "🎮 게임",     short: "게임"  },
   { href: "/admin/biz",    label: "🏠 홈페이지",  short: "홈피"  },
+  { href: "/admin/grow-campaigns", label: "🌱 키우기광고", short: "키우기" },
+  { href: "/admin/bomal", label: "🐚 보말지급", short: "보말" },
   { href: "/admin/shop-requests", label: "🏪 가게신청", short: "신청" },
   { href: "/admin/users",  label: "👥 사용자",   short: "사용자" },
 ];

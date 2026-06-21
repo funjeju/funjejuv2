@@ -58,13 +58,33 @@ export type ThemeId =
   | "luxury-modern"
   | "minimal-clean"
   | "vintage-cozy"
-  | "fresh-green";
+  | "fresh-green"
+  | "cyworld";
 
 export interface DesignTokens {
   themeId: ThemeId;
   primaryColor: string;
   fontFamily: string;
   radius: "sm" | "md" | "lg";
+}
+
+// ── 미니홈피(싸이월드st) ──────────────────────────────
+// 제주 오리지널 미니미 6종 (저작권 안전 — 자체 디자인)
+export type MiniMiKind =
+  | "haenyeo"      // 해녀
+  | "dolharbang"   // 돌하르방
+  | "hallabong"    // 한라봉
+  | "baram"        // 바람
+  | "yuchae"       // 유채꽃
+  | "gemeunmorae"; // 검은모래
+
+// 미니룸 컨셉 — 프리셋(커스텀 이미지 꾸미기는 후속)
+export type RoomConcept = "oreum" | "tangerine" | "beach";
+
+/** 업소 미니홈피 설정 (SiteSchema에 부착). 성장 필드는 유저별 미니미와 별개로 업소 진열용. */
+export interface MiniHompyConfig {
+  minimi?: MiniMiKind;
+  roomConcept?: RoomConcept;
 }
 
 export interface ContentAssets {
@@ -144,6 +164,8 @@ export interface SiteSchema {
   /** 하단 고정 CTA 버튼 (최대 3개) */
   ctaButtons?: CtaButton[];
   designTokens: DesignTokens;
+  /** 미니홈피(싸이월드st) 설정 — 미니미 종류·방 컨셉 */
+  miniHompy?: MiniHompyConfig;
   contentAssets: ContentAssets;
   menuData: MenuData;
   layout: SiteBlock[];
