@@ -66,6 +66,8 @@ export default async function WebzineDetailPage({
     description: c.intro || c.subtitle,
     keywords: c.keywords.join(", "),
     datePublished: c.publishedAt ?? c.createdAt,
+    dateModified: c.publishedAt ?? c.createdAt, // 신선도 신호 (GEO)
+    inLanguage: "ko",
     ...(c.coverImage ? { image: absUrl(c.coverImage) } : {}),
     author: { "@type": "Organization", name: "펀제주" },
     publisher: { "@type": "Organization", name: "펀제주" },
