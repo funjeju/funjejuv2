@@ -24,6 +24,23 @@ async function resolveAdminUid(): Promise<string | null> {
   }
 }
 
+/** 특정 시각(epoch ms) 이후 올라온 피드 글 수 — 카드뉴스 자동발급 트리거용 */
+export async function countFeedsSince(sinceMs: number): Promise<number> {
+  try {
+    const snap = await getAdminDb()
+      .collection("feeds")
+      .where("createdAt", ">", sinceMs)
+      .get();
+    return snap.size;
+  } catch {
+    // 인덱스/타입 문제 시 최근 80개 메모리 카운트로 폴백
+    try {
+      const snap = await getAdminDb().collection("feeds").orderBy("createdAt", "desc").limit(80).get();
+      return snap.docs.filter((d) => (d.data().createdAt ?? 0) > sinceMs).length;
+    } catch { return 0; }
+  }
+}
+
 /**
  * 최신 피드 사진 N장. 관리자 사진 우선 정렬.
  * 복합 인덱스 회피를 위해 단순 createdAt desc 조회 후 메모리 정렬.

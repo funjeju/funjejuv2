@@ -16,6 +16,18 @@
     {
       "path": "/api/cron/food-ingest",
       "schedule": "30 23 * * *"
+    },
+    {
+      "path": "/api/cron/cardnews?slot=am",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/cron/cardnews?slot=lunch",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/cardnews?slot=pm",
+      "schedule": "0 9 * * *"
     }
   ]
 }
