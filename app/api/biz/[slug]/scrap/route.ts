@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { bumpScrap } from "@/lib/biz/minihompy-store";
+import { listScraps, addScrap } from "@/lib/biz/minihompy-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// 스크랩(즐겨찾기) 카운트 +1. 로그인 필요. (실제 마이스팟 담기는 클라에서 addMySpot)
-export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
-  const auth = await verifyFirebaseToken(req.headers.get("authorization"));
-  if (!auth) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
+// 미니홈피 주인의 즐겨찾기(스크랩) 모음. TODO: 오너 인증 게이팅(현재 무인증 — 프리런치)
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  try { return NextResponse.json({ scrapCount: await bumpScrap(slug) }); }
-  catch (e) { console.error("[scrap]", e); return NextResponse.json({ error: "실패" }, { status: 500 }); }
+  try { return NextResponse.json({ scraps: await listScraps(slug) }); }
+  catch (e) { console.error("[scrap GET]", e); return NextResponse.json({ scraps: [] }); }
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  try {
+    const { title, url } = await req.json();
+    if (!String(title || "").trim() && !String(url || "").trim()) return NextResponse.json({ error: "제목이나 링크를 입력해주세요" }, { status: 400 });
+    const item = await addScrap(slug, String(title || ""), String(url || ""));
+    return NextResponse.json({ item });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "저장 실패" }, { status: 400 });
+  }
 }

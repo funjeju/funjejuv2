@@ -62,15 +62,22 @@ export async function listVisitors(slug: string, limit = 20): Promise<Visitor[]>
   return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Visitor, "uid">) }));
 }
 
-/** 스크랩(즐겨찾기) 카운트 +1 → 새 카운트. */
-export async function bumpScrap(slug: string): Promise<number> {
-  const db = getAdminDb();
-  const ref = db.collection(COLLECTION).doc(slug);
-  return db.runTransaction(async (tx) => {
-    const n = (((await tx.get(ref)).data()?.scrapCount as number) ?? 0) + 1;
-    tx.set(ref, { scrapCount: n }, { merge: true });
-    return n;
-  });
+// ── 스크랩(주인 즐겨찾기 모음) ──
+export interface ScrapItem { id: string; title: string; url: string; createdAt: string; }
+export async function listScraps(slug: string, limit = 50): Promise<ScrapItem[]> {
+  const snap = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps")
+    .orderBy("createdAt", "desc").limit(limit).get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ScrapItem, "id">) }));
+}
+export async function addScrap(slug: string, title: string, url: string): Promise<ScrapItem> {
+  const u = url.trim();
+  const item = {
+    title: (title || u || "스크랩").slice(0, 60),
+    url: /^https?:\/\//.test(u) ? u.slice(0, 300) : "",
+    createdAt: new Date().toISOString(),
+  };
+  const ref = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps").add(item);
+  return { id: ref.id, ...item };
 }
 
 // ── 다이어리(달력) ──

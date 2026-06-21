@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { addMySpot } from "@/lib/my-spots";
-import type { MySpotCategory } from "@/types/my-spot";
 import type { SiteSchema, MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { MiniMi } from "./MiniMi";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
@@ -18,6 +16,7 @@ import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config
 interface GuestPost { name: string; text: string; createdAt?: string; }
 interface DiaryEntry { id: string; date: string; text: string; }
 interface Visitor { uid: string; name: string; lastVisit: number; }
+interface ScrapItem { id: string; title: string; url: string; }
 type Tab = "home" | "diary" | "photo" | "guestbook" | "scrap" | "visitor" | "bgm";
 
 const MENU: { id: Tab; ko: string; en: string }[] = [
@@ -37,15 +36,8 @@ function ytEmbed(url: string): string | null {
   const m = url.match(/(?:youtu\.be\/|v=)([\w-]{11})/);
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
-function guessCat(c: string): MySpotCategory {
-  if (c.includes("카페")) return "카페";
-  if (c.includes("음식") || c.includes("맛집") || c.includes("식당")) return "맛집";
-  if (c.includes("숙박") || c.includes("펜션") || c.includes("호텔")) return "숙소";
-  return "여행지";
-}
-
 export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPosts?: GuestPost[] }) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user } = useAuth();
   const m = site.merchantInfo;
   const photo = site.contentAssets.heroImage || site.contentAssets.logoImage || "";
   const gallery = (site.contentAssets.galleryImages ?? []).filter(Boolean);
@@ -79,8 +71,10 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   const [diaryText, setDiaryText] = useState("");
   // 방문자
   const [visitors, setVisitors] = useState<Visitor[]>([]);
-  // 스크랩
-  const [scrapped, setScrapped] = useState(false);
+  // 스크랩(주인 즐겨찾기)
+  const [scraps, setScraps] = useState<ScrapItem[]>([]);
+  const [sTitle, setSTitle] = useState("");
+  const [sUrl, setSUrl] = useState("");
   // BGM
   const [bgmUrl, setBgmUrl] = useState(site.miniHompy?.bgmUrl ?? "");
   const [bgmInput, setBgmInput] = useState(site.miniHompy?.bgmUrl ?? "");
@@ -99,7 +93,8 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   useEffect(() => {
     if (tab === "diary" && diary.length === 0) fetch(`/api/biz/${site.slug}/diary`).then((r) => r.json()).then((d) => setDiary(d.entries ?? [])).catch(() => {});
     if (tab === "visitor" && visitors.length === 0) fetch(`/api/biz/${site.slug}/visitors`).then((r) => r.json()).then((d) => setVisitors(d.visitors ?? [])).catch(() => {});
-  }, [tab, site.slug, diary.length, visitors.length]);
+    if (tab === "scrap" && scraps.length === 0) fetch(`/api/biz/${site.slug}/scrap`).then((r) => r.json()).then((d) => setScraps(d.scraps ?? [])).catch(() => {});
+  }, [tab, site.slug, diary.length, visitors.length, scraps.length]);
 
   const triggerBob = useCallback(() => { setHostBob(true); window.setTimeout(() => setHostBob(false), 1120); }, []);
   const onRoomClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -137,14 +132,13 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
     } catch { /* */ }
   };
 
-  const scrap = async () => {
-    if (!user) { signInWithGoogle(); return; }
-    if (scrapped) return;
+  const addScrapItem = async () => {
+    const t = sTitle.trim(), u = sUrl.trim();
+    if (!t && !u) return;
+    setSTitle(""); setSUrl("");
     try {
-      if (m.coordinates) await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address });
-      const t = await user.getIdToken();
-      await fetch(`/api/biz/${site.slug}/scrap`, { method: "POST", headers: { Authorization: `Bearer ${t}` } });
-      setScrapped(true);
+      const r = await fetch(`/api/biz/${site.slug}/scrap`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: t, url: u }) });
+      const d = await r.json(); if (d.item) setScraps((p) => [d.item, ...p]);
     } catch { /* */ }
   };
 
@@ -324,16 +318,22 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
             </div>
           )}
 
-          {/* 스크랩 = 즐겨찾기(마이스팟 담기) */}
+          {/* 스크랩 = 주인의 즐겨찾기 모음 */}
           {tab === "scrap" && (
-            <div style={{ textAlign: "center", padding: "10px 0" }}>
-              <div className="mh-card-h" style={{ textAlign: "left" }}>⭐ 스크랩 (즐겨찾기)</div>
-              <div style={{ fontSize: 40, margin: "12px 0" }}>⭐</div>
-              <p style={{ fontSize: 12, color: "#6a5e48", marginBottom: 14 }}>이 가게를 <b>내 마이스팟</b>에 담아두면<br />AI 여행일정 짤 때 동선에 자동 반영돼요!</p>
-              <button onClick={scrap} disabled={scrapped} style={{ background: scrapped ? "#e8e2d4" : "var(--accent)", color: scrapped ? "#9a8" : "#fff", border: "none", borderRadius: 8, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: scrapped ? "default" : "pointer" }}>
-                {scrapped ? "담았어요 ✓" : user ? "⭐ 마이스팟에 담기" : "로그인하고 담기"}
-              </button>
-              {!m.coordinates && <p style={{ fontSize: 10, color: "#b0a486", marginTop: 8 }}>※ 위치정보가 없어 카운트만 올라가요</p>}
+            <div>
+              <div className="mh-card-h">⭐ 스크랩 (즐겨찾기 모음)</div>
+              <div style={{ fontSize: 12, minHeight: 70 }}>
+                {scraps.length === 0 ? <p style={{ color: "#a89878", padding: "16px 0", textAlign: "center" }}>좋아하는 곳·링크를 스크랩해보세요! 🔖</p> : scraps.map((s) => (
+                  <div key={s.id} style={{ borderBottom: "1px dashed #eee", padding: "5px 0" }}>
+                    {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", textDecoration: "none" }}>🔗 {s.title}</a> : <span>📌 {s.title}</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                <input value={sTitle} onChange={(e) => setSTitle(e.target.value)} placeholder="제목" style={{ width: 110, fontSize: 12, height: 32, border: "1px solid #e3d9c2", borderRadius: 7, padding: "0 8px", background: "#fff" }} />
+                <input value={sUrl} onChange={(e) => setSUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addScrapItem(); }} placeholder="링크(선택) https://..." style={{ flex: 1, fontSize: 12, height: 32, border: "1px solid #e3d9c2", borderRadius: 7, padding: "0 8px", background: "#fff" }} />
+                <button className="mh-btn" onClick={addScrapItem} style={{ background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }}>추가</button>
+              </div>
             </div>
           )}
 
