@@ -20,7 +20,6 @@ const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNod
   { href: "/magazine",  label: "제주 매거진",   emoji: "📖", bg: "bg-pink-50",    color: "text-pink-600"   },
   { href: "/youtube",   label: "제주tube",      icon: <TubeIcon size={26} />,   bg: "bg-red-50",     color: "text-red-600"    },
   { href: "/card",      label: "카드뉴스",      emoji: "🃏", bg: "bg-sky-50",     color: "text-sky-600"    },
-  { href: "/minihome/map", label: "제주 지도",  emoji: "🗺️", bg: "bg-green-50",   color: "text-green-600"  },
 ];
 
 export default async function HomePage() {
