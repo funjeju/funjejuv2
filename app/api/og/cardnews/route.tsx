@@ -13,7 +13,7 @@ const ORANGE = "#ff5722";
 const NAVY = "#1a3a8a";
 const YELLOW = "#ffd600";
 const W = 1080;
-const H = 1080; // 1:1 정사각 (세로사진 규격화·하단 여백 최소화)
+const H = 1350; // 카드 전체는 4:5 (인스타/스레드). 단 본문 사진은 1:1 정사각
 
 // ── 폰트: public/fonts 를 자기 오리진에서 fetch (서버리스 fs 트레이싱 회피) + 메모리 캐시 ──
 const fontCache: Record<string, ArrayBuffer> = {};
@@ -130,62 +130,39 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
     );
   }
 
-  // body card — 상단 사진 + 하단(제목 + [기본정보 패널] + 말풍선 소개 + 우하단 마스코트)
+  // body card — 정사각(1080×1080) 사진 + 하단 콤팩트 텍스트. 마스코트는 사진 우하단 스티커.
   const hasInfo = !!card.info && (card.info.address || card.info.menu || card.info.hours || card.info.prices);
-  const imgH = hasInfo ? 460 : 560;        // 정사각(1080) 기준 — 정보 있으면 사진 더 줄임
-  const mascotSize = hasInfo ? 200 : 260;  // 정보 있으면 마스코트 축소
+  const IMG = 1080; // 정사각 사진 (카드폭 = 사진폭)
+  // 맛집 정보 한 줄 압축 (📍주소 · 🕐영업 · 💰가격)
+  const infoLine = hasInfo
+    ? [card.info!.address && `📍 ${card.info!.address}`, card.info!.hours && `🕐 ${card.info!.hours}`, card.info!.prices && `💰 ${card.info!.prices}`]
+        .filter(Boolean).join("   ")
+    : "";
   return (
     <div style={{ ...base, flexDirection: "column", background: "#fff" }}>
-      <div style={{ width: W, height: imgH, display: "flex", position: "relative", background: "#e9eef5" }}>
+      <div style={{ width: W, height: IMG, display: "flex", position: "relative", background: "#e9eef5" }}>
         {card.image && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={card.image} width={W} height={imgH} style={{ objectFit: "cover" }} alt="" />
+          <img src={card.image} width={W} height={IMG} style={{ objectFit: "cover" }} alt="" />
         )}
         <div style={{ position: "absolute", top: 36, left: 36, display: "flex", alignItems: "center", justifyContent: "center", width: 72, height: 72, borderRadius: 999, background: ORANGE, color: "#fff", fontSize: 40, fontWeight: 800 }}>{card.n}</div>
         {card.chip && (
           <div style={{ position: "absolute", bottom: 28, left: 36, display: "flex", alignItems: "center", background: "rgba(0,0,0,0.6)", borderRadius: 999, padding: "10px 24px", color: "#fff", fontSize: 28, fontWeight: 700 }}>📍 {card.chip}</div>
         )}
+        {/* 마스코트 — 사진 우하단 스티커 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={mascot} width={180} height={180} style={{ position: "absolute", right: 20, bottom: 14, objectFit: "contain" }} alt="" />
       </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "32px 52px 96px" }}>
-        <div style={{ color: NAVY, fontSize: 54, fontWeight: 800, lineHeight: 1.16, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
-
-        {/* 맛집/스팟 기본정보 패널 — 확보된 정보만 (빈 가운데를 채움) */}
-        {hasInfo && <InfoPanel info={card.info!} />}
-
-        <div style={{ flex: 1, minHeight: 12, display: "flex" }} />
-
-        {/* 말풍선(소개글) + 우하단 마스코트 */}
-        <div style={{ display: "flex", alignItems: "flex-end" }}>
-          <div style={{ position: "relative", flex: 1, display: "flex", background: "#f1f5fb", border: "3px solid #e1e8f3", borderRadius: 32, padding: "26px 32px", marginRight: 18 }}>
-            <div style={{ color: "#33405a", fontSize: hasInfo ? 30 : 34, fontWeight: 500, lineHeight: 1.45, display: "flex" }}>{card.body}</div>
-            {/* 말풍선 꼬리 (마스코트 쪽) */}
-            <div style={{ position: "absolute", right: -17, bottom: 56, width: 28, height: 28, background: "#f1f5fb", borderRight: "3px solid #e1e8f3", borderTop: "3px solid #e1e8f3", transform: "rotate(45deg)" }} />
-          </div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mascot} width={mascotSize} height={mascotSize} style={{ objectFit: "contain", flexShrink: 0 }} alt="" />
-        </div>
+      {/* 하단 콤팩트 텍스트 (사진이 정사각이라 공간 작음 → 제목 + 소개/정보) */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "20px 48px 96px" }}>
+        <div style={{ color: NAVY, fontSize: 50, fontWeight: 800, lineHeight: 1.15, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
+        {hasInfo ? (
+          <div style={{ marginTop: 14, color: "#33405a", fontSize: 27, fontWeight: 600, lineHeight: 1.4, display: "flex" }}>{infoLine}</div>
+        ) : (
+          <div style={{ marginTop: 14, color: "#33405a", fontSize: 30, fontWeight: 500, lineHeight: 1.4, display: "flex" }}>{card.body}</div>
+        )}
       </div>
       <Footer idx={idx} total={total} mascot={mascot} />
-    </div>
-  );
-}
-
-/** 맛집/스팟 기본정보 패널 (확보된 항목만 행으로) */
-function InfoPanel({ info }: { info: SpotInfo }) {
-  const rows: { icon: string; label: string; value: string }[] = [];
-  if (info.address) rows.push({ icon: "📍", label: "주소", value: info.address });
-  if (info.menu)    rows.push({ icon: "🍽️", label: "메뉴", value: info.menu });
-  if (info.hours)   rows.push({ icon: "🕐", label: "영업", value: info.hours });
-  if (info.prices)  rows.push({ icon: "💰", label: "가격", value: info.prices });
-  return (
-    <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 12, background: "#f7f9fc", border: "2px solid #e6ebf4", borderRadius: 24, padding: "22px 28px" }}>
-      {rows.map((r, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "flex-start", fontSize: 28 }}>
-          <span style={{ width: 42, display: "flex" }}>{r.icon}</span>
-          <span style={{ width: 96, color: "#8a93a6", fontWeight: 700, display: "flex", flexShrink: 0 }}>{r.label}</span>
-          <span style={{ flex: 1, color: "#2b3550", fontWeight: 600, lineHeight: 1.35, display: "flex" }}>{r.value}</span>
-        </div>
-      ))}
     </div>
   );
 }
