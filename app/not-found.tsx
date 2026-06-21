@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { NotFoundTracker } from "@/components/common/NotFoundTracker";
 
 // 매칭 안 되는 모든 경로(옛 URL 포함)는 깨진 화면 대신 이 친절한 안내로.
 // HTTP 404를 그대로 반환해 검색엔진엔 "없는 페이지"로 정확히 알리되, 사용자는 길을 잃지 않게.
@@ -14,6 +15,7 @@ export default function NotFound() {
   ];
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-4 py-16 text-center">
+      <NotFoundTracker />
       <DolmangyiIcon size={72} />
       <h1 className="mt-5 text-xl font-black text-text-primary">앗, 페이지를 찾을 수 없어요</h1>
       <p className="mt-2 text-sm leading-relaxed text-text-secondary">
