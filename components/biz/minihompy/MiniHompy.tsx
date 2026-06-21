@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { addMySpot } from "@/lib/my-spots";
+import type { MySpotCategory } from "@/types/my-spot";
 import type { SiteSchema, MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { MiniMi } from "./MiniMi";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
@@ -36,8 +38,14 @@ function ytEmbed(url: string): string | null {
   const m = url.match(/(?:youtu\.be\/|v=)([\w-]{11})/);
   return m ? `https://www.youtube.com/embed/${m[1]}` : null;
 }
+function guessCat(c: string): MySpotCategory {
+  if (c.includes("카페")) return "카페";
+  if (c.includes("음식") || c.includes("맛집") || c.includes("식당")) return "맛집";
+  if (c.includes("숙박") || c.includes("펜션") || c.includes("호텔")) return "숙소";
+  return "여행지";
+}
 export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPosts?: GuestPost[] }) {
-  const { user } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
   const m = site.merchantInfo;
   const photo = site.contentAssets.heroImage || site.contentAssets.logoImage || "";
   const gallery = (site.contentAssets.galleryImages ?? []).filter(Boolean);
@@ -78,6 +86,17 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   // BGM
   const [bgmUrl, setBgmUrl] = useState(site.miniHompy?.bgmUrl ?? "");
   const [bgmInput, setBgmInput] = useState(site.miniHompy?.bgmUrl ?? "");
+  // 방문자가 이 가게를 내 마이스팟에 담기
+  const [savedSpot, setSavedSpot] = useState(false);
+
+  const addToMySpot = async () => {
+    if (!user) { signInWithGoogle(); return; }
+    if (savedSpot || !m.coordinates) return;
+    try {
+      await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address });
+      setSavedSpot(true);
+    } catch { /* */ }
+  };
 
   // 방문 카운트 + 접속로그(로그인 시)
   useEffect(() => {
@@ -384,7 +403,13 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
               {site.externalLinks?.naverPlace && <a href={site.externalLinks.naverPlace} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, background: "#03C75A", color: "#fff", borderRadius: 6, padding: "5px 0", textAlign: "center", textDecoration: "none", fontWeight: 700 }}>네이버 플레이스</a>}
               {(site.externalLinks?.kakaoPlace || m.coordinates) && <a href={site.externalLinks?.kakaoPlace || `https://map.kakao.com/link/to/${encodeURIComponent(m.name)},${m.coordinates?.lat},${m.coordinates?.lng}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, background: "#3B82F6", color: "#fff", borderRadius: 6, padding: "5px 0", textAlign: "center", textDecoration: "none", fontWeight: 700 }}>길찾기</a>}
               {site.externalLinks?.instagram && <a href={site.externalLinks.instagram} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, background: "#E1306C", color: "#fff", borderRadius: 6, padding: "5px 0", textAlign: "center", textDecoration: "none", fontWeight: 700 }}>인스타그램</a>}
+              {m.coordinates && (
+                <button onClick={addToMySpot} disabled={savedSpot} style={{ fontSize: 11, background: savedSpot ? "#e8e2d4" : "#e8590c", color: savedSpot ? "#9a8" : "#fff", border: "none", borderRadius: 6, padding: "6px 0", cursor: savedSpot ? "default" : "pointer", fontWeight: 700 }}>
+                  {savedSpot ? "⭐ 마이스팟에 담음 ✓" : user ? "⭐ 내 마이스팟에 담기" : "⭐ 로그인하고 담기"}
+                </button>
+              )}
             </div>
+            <p style={{ fontSize: 9, color: "#b0a486", marginTop: 6 }}>담아두면 AI 여행일정 동선에 자동 반영돼요</p>
           </div>
         </div>
       </div>
