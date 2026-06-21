@@ -149,17 +149,23 @@ function renderCard(card: Card, idx: number, total: number, mascot: string) {
         {card.chip && (
           <div style={{ position: "absolute", bottom: 28, left: 36, display: "flex", alignItems: "center", background: "rgba(0,0,0,0.6)", borderRadius: 999, padding: "10px 24px", color: "#fff", fontSize: 28, fontWeight: 700 }}>📍 {card.chip}</div>
         )}
+        {/* 챗봇 코멘트 — 사진 위 작은 반투명 말풍선 (마스코트 왼쪽) */}
+        {card.body && (
+          <div style={{ position: "absolute", left: 32, right: 214, bottom: 120, display: "flex", background: "rgba(255,255,255,0.55)", borderRadius: 26, padding: "18px 24px" }}>
+            <div style={{ color: "#16202e", fontSize: 27, fontWeight: 600, lineHeight: 1.35, display: "flex" }}>
+              {card.body.length > 50 ? `${card.body.slice(0, 50)}…` : card.body}
+            </div>
+          </div>
+        )}
         {/* 마스코트 — 사진 우하단 스티커 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={mascot} width={180} height={180} style={{ position: "absolute", right: 20, bottom: 14, objectFit: "contain" }} alt="" />
       </div>
-      {/* 하단 콤팩트 텍스트 (사진이 정사각이라 공간 작음 → 제목 + 소개/정보) */}
+      {/* 하단 — 제목 + (맛집이면) 콤팩트 정보 한 줄 */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "20px 48px 96px" }}>
         <div style={{ color: NAVY, fontSize: 50, fontWeight: 800, lineHeight: 1.15, letterSpacing: -1, display: "flex" }}>{card.heading}</div>
-        {hasInfo ? (
+        {hasInfo && (
           <div style={{ marginTop: 14, color: "#33405a", fontSize: 27, fontWeight: 600, lineHeight: 1.4, display: "flex" }}>{infoLine}</div>
-        ) : (
-          <div style={{ marginTop: 14, color: "#33405a", fontSize: 30, fontWeight: 500, lineHeight: 1.4, display: "flex" }}>{card.body}</div>
         )}
       </div>
       <Footer idx={idx} total={total} mascot={mascot} />
