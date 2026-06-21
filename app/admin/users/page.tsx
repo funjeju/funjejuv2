@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, limit } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { toggleBusiness } from "@/lib/feed";
 
@@ -12,7 +12,28 @@ type UserRow = {
   photoURL?: string | null;
   isBusiness: boolean;
   ctaData?: { text: string; url: string };
+  createdAt?: number;   // 가입일 (epoch ms)
+  lastSeenAt?: number;  // 최종 접속 (epoch ms)
 };
+
+const DAY = 86400000;
+function tsToMs(t: unknown): number | undefined {
+  const v = t as { toDate?: () => Date } | undefined;
+  return v?.toDate ? v.toDate().getTime() : undefined;
+}
+function fmtDate(ms?: number): string {
+  if (!ms) return "—";
+  const d = new Date(ms);
+  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+}
+function fmtRel(ms?: number): string {
+  if (!ms) return "기록 없음";
+  const diff = Date.now() - ms;
+  if (diff < 3600000) return `${Math.max(1, Math.floor(diff / 60000))}분 전`;
+  if (diff < DAY) return `${Math.floor(diff / 3600000)}시간 전`;
+  if (diff < 7 * DAY) return `${Math.floor(diff / DAY)}일 전`;
+  return fmtDate(ms);
+}
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -23,22 +44,23 @@ export default function AdminUsersPage() {
     setLoading(true);
     try {
       const db = getFirebaseDb();
-      const snap = await getDocs(
-        query(collection(db, "users"), orderBy("displayName"), limit(100))
-      );
-      setUsers(
-        snap.docs.map((d) => {
-          const data = d.data();
-          return {
-            uid: d.id,
-            displayName: data.displayName ?? "(이름 없음)",
-            email: data.email,
-            photoURL: data.photoURL,
-            isBusiness: !!data.isBusiness,
-            ctaData: data.ctaData,
-          };
-        })
-      );
+      const snap = await getDocs(query(collection(db, "users"), limit(500)));
+      const rows = snap.docs.map((d) => {
+        const data = d.data();
+        return {
+          uid: d.id,
+          displayName: data.displayName ?? "(이름 없음)",
+          email: data.email,
+          photoURL: data.photoURL,
+          isBusiness: !!data.isBusiness,
+          ctaData: data.ctaData,
+          createdAt: tsToMs(data.createdAt),
+          lastSeenAt: tsToMs(data.lastSeenAt),
+        } as UserRow;
+      });
+      // 최근 접속 순 (없으면 가입일)
+      rows.sort((a, b) => (b.lastSeenAt ?? b.createdAt ?? 0) - (a.lastSeenAt ?? a.createdAt ?? 0));
+      setUsers(rows);
     } catch (e) {
       console.error(e);
     } finally {
@@ -47,6 +69,7 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -61,11 +84,33 @@ export default function AdminUsersPage() {
     }
   }
 
+  const [now] = useState(() => Date.now()); // 렌더 중 순수성 유지 (1회 고정)
+  const activeToday = users.filter((u) => u.lastSeenAt && now - u.lastSeenAt < DAY).length;
+  const active7d = users.filter((u) => u.lastSeenAt && now - u.lastSeenAt < 7 * DAY).length;
+  const new7d = users.filter((u) => u.createdAt && now - u.createdAt < 7 * DAY).length;
+  const bizCount = users.filter((u) => u.isBusiness).length;
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-black text-text-primary">👥 사용자 관리</h1>
-        <p className="text-sm text-text-secondary">비즈니스 회원 승인/해제</p>
+        <p className="text-sm text-text-secondary">가입·접속 현황 + 비즈니스 회원 승인</p>
+      </div>
+
+      {/* 요약 통계 */}
+      <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {[
+          { label: "총 회원", v: users.length, c: "text-text-primary" },
+          { label: "오늘 활성", v: activeToday, c: "text-jeju-green" },
+          { label: "최근 7일 활성", v: active7d, c: "text-brand-navy" },
+          { label: "신규 7일", v: new7d, c: "text-brand-orange" },
+          { label: "비즈니스", v: bizCount, c: "text-brand-orange" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl border border-border-soft bg-bg-card p-3 text-center shadow-card">
+            <p className={`text-2xl font-black ${s.c}`}>{s.v}</p>
+            <p className="text-[10px] font-medium text-text-secondary">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {msg && (
@@ -120,10 +165,15 @@ export default function AdminUsersPage() {
                     )}
                   </div>
                   <p className="text-[10px] text-text-secondary truncate">{u.email}</p>
-                  <p className="font-mono text-[9px] text-text-secondary truncate">{u.uid}</p>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-text-secondary">
+                    <span>📅 가입 {fmtDate(u.createdAt)}</span>
+                    <span className={u.lastSeenAt && now - u.lastSeenAt < DAY ? "font-bold text-jeju-green" : ""}>
+                      🕐 최근접속 {fmtRel(u.lastSeenAt)}
+                    </span>
+                  </div>
                   {u.ctaData && (
                     <p className="mt-0.5 text-[10px] text-brand-orange">
-                      CTA: "{u.ctaData.text}" → {u.ctaData.url}
+                      CTA: &quot;{u.ctaData.text}&quot; → {u.ctaData.url}
                     </p>
                   )}
                 </div>

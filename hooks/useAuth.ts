@@ -35,6 +35,7 @@ export function useAuth() {
               photoURL: u.photoURL,
               isBusiness: false,
               createdAt: serverTimestamp(),
+              lastSeenAt: serverTimestamp(),
             });
           } else {
             // 이름/사진 변경됐을 수도 → 머지 업데이트
