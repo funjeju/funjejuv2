@@ -12,6 +12,7 @@ export const sidebarItems = [
   // { href: "/game/typing", label: "타자연습", icon: "⌨️" },
   // { href: "/pricing", label: "요금제",       icon: "💎" },  // 정식 요금제 확정 전까지 임시 숨김 (페이지는 보존)
   { href: "/youtube", label: "제주tube",    icon: "▶️" }, // 틀린그림찾기 아래·마이페이지 위
+  { href: "/minihome", label: "미니홈피",   icon: "🎈" }, // 싸이월드st 미니홈피 (미니미·키우기·지도)
   { href: "/mypage",  label: "마이페이지",  icon: "👤" },
 ] as const;
 
