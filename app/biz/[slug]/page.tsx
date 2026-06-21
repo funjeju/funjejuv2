@@ -3,7 +3,9 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { getSite as getSiteRaw } from "@/lib/biz/store";
 import { PublicSite } from "@/components/biz/PublicSite";
+import { BizSeoSection } from "@/components/biz/BizSeoSection";
 import { buildLocalBusinessJsonLd } from "@/lib/biz/jsonld";
+import { buildBizFaqs } from "@/lib/biz/seo";
 import type { SiteSchema } from "@/lib/biz/types";
 
 const SITE_URL = "https://funjeju.com";
@@ -65,10 +67,24 @@ export default async function BizSitePage({
   const url = `${SITE_URL}/biz/${slug}`;
   const jsonLd = buildLocalBusinessJsonLd(site, url);
 
+  // AEO — FAQPage JSON-LD (구조화 데이터 기반)
+  const faqs = buildBizFaqs(site);
+  const faqJsonLd = faqs.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  } : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
       <PublicSite site={site} />
+      <BizSeoSection site={site} />
     </>
   );
 }
