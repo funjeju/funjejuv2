@@ -28,6 +28,8 @@ export type Content = {
   intro: string;
   sections: ContentSection[];
   keywords: string[];
+  /** AEO — 자주 묻는 질문 (FAQPage JSON-LD + 본문 FAQ 섹션). q=질문형, a=40~60자 직답 */
+  faqs?: { q: string; a: string }[];
   coverImage?: string;
   region?: string;
   menu?: string;

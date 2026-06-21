@@ -72,9 +72,22 @@ export default async function WebzineDetailPage({
     mainEntityOfPage: `${SITE_URL}/webzine/${c.slug}`,
   };
 
+  // AEO — FAQPage JSON-LD (AI 답변엔진 인용·구글 리치결과)
+  const faqs = (c.faqs ?? []).filter((f) => f?.q && f?.a);
+  const faqJsonLd = faqs.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  } : null;
+
   return (
     <article className="mx-auto max-w-3xl px-0 md:px-4 md:py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
 
       {c.coverImage && (
         <div className="relative aspect-[16/9] overflow-hidden bg-bg-secondary md:rounded-2xl">
@@ -160,6 +173,21 @@ export default async function WebzineDetailPage({
             );
           })}
         </div>
+
+        {/* AEO — 자주 묻는 질문 (질문형 H2 + 직답) */}
+        {faqs.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-base font-black text-text-primary">자주 묻는 질문</h2>
+            <div className="space-y-2.5">
+              {faqs.map((f, i) => (
+                <div key={i} className="rounded-2xl border border-border-soft bg-bg-card p-4">
+                  <h3 className="text-sm font-bold text-brand-navy">Q. {f.q}</h3>
+                  <p className="mt-1.5 text-[13px] leading-6 text-text-secondary">{f.a}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* 글 끝 — 출처 재안내 */}
         <div className="mt-8 flex gap-2 rounded-2xl border border-brand-orange/30 bg-brand-orange/5 px-4 py-3">

@@ -52,6 +52,7 @@ type WebzineAIResult = {
   intro: string;
   sections: { restaurantId: string; heading: string; body: string }[];
   keywords: string[];
+  faqs?: { q: string; a: string }[];
 };
 
 // slug는 ASCII만 — 한글 slug는 URL 인코딩 왕복에서 라우팅 매칭이 불안정.
@@ -69,6 +70,12 @@ const SYS = `너는 제주 여행 매거진 에디터다. 주어진 도민맛집
 - 각 맛집 섹션은 4~6문장. 맛집 특징, 대표 메뉴 또는 분위기, 이 맛집만의 포인트, 방문 팁(웨이팅·주차·계절 등) 포함. 과장 금지, 정보성 있게.
 - 전체 글(intro + 모든 섹션 body 합산)이 1,500자 이상이 되도록 충분히 작성하라.
 - keywords는 제주/지역/메뉴 조합 + 롱테일 10~15개.
+
+[AEO/GEO 작성 규칙 — AI 검색·답변엔진 인용 최적화]
+- intro와 각 섹션 body의 "첫 문장"은 40~60자의 자기완결 직답으로 시작하라. (개체 명시: "제주 [지역]의 [메뉴]는 …" / "[상호]는 [지역]에 있는 …집으로 …")
+- heading은 가능하면 검색 질문형 또는 핵심 명사구로. 모호한 수사보다 사실·고유명사(지역·메뉴·상호) 우선.
+- "맛있는·예쁜" 같은 형용사 대신 구체 사실(대표 메뉴·위치·특징·방문 팁)을 적어라. 날조는 절대 금지.
+- 가능하면 본문에 "자주 묻는 질문(FAQ)" 3개를 만들어 faqs 배열로 반환하라. 각 q는 실제 검색 질문형, a는 40~60자 직답.
 - 반드시 유효한 JSON만 반환.`;
 
 export async function generateWebzineDraft(topic: WebzineTopic): Promise<Content> {
@@ -88,7 +95,8 @@ ${list}
   "subtitle": "한 줄 부제 (지역+메뉴 특색 요약)",
   "intro": "4~5문장 도입 (지역 분위기, 메뉴 특색, 여행 동선 팁, 계절 추천)",
   "sections": [{ "restaurantId": "위 [id]", "heading": "맛집 이름", "body": "4~6문장 소개 (특징·메뉴·방문팁 포함)" }],
-  "keywords": ["제주 ${topic.menu}", "${topic.region} ${topic.menu}", "제주 ${topic.region} 맛집", "..."]
+  "keywords": ["제주 ${topic.menu}", "${topic.region} ${topic.menu}", "제주 ${topic.region} 맛집", "..."],
+  "faqs": [{ "q": "검색 질문형 (예: 제주 ${topic.region} ${topic.menu} 맛집 추천은?)", "a": "40~60자 직답" }]
 }`;
 
   const ai = await generateJSON<WebzineAIResult>(SYS, prompt);
@@ -130,6 +138,7 @@ ${list}
       "도민맛집",
       "제주 맛집 추천",
     ],
+    faqs: (ai.faqs ?? []).filter((f) => f?.q && f?.a).slice(0, 5),
     coverImage: restaurantImageUrl(cover?.images?.[0]),
     region: topic.region,
     menu: topic.menu,
@@ -154,6 +163,10 @@ const FEED_SYS = `너는 제주 여행 매거진 에디터다. 여행자들이 �
 - 전체 본문(intro + 섹션 합산) 1,500자 이상.
 - keywords: 제주+지역+계절+여행 롱테일 10~15개.
 - sections 수는 입력 사진 수와 같게. 각 섹션은 입력의 imageIndex를 그대로 반환.
+
+[AEO/GEO 작성 규칙]
+- intro·각 섹션 body의 "첫 문장"은 40~60자 자기완결 직답으로 시작(지역·장소·계절 등 개체 명시).
+- 모호한 수사보다 구체 사실(지역명·장소·촬영시점·동선)을 우선.
 - 반드시 유효한 JSON만 반환.`;
 
 type FeedWebzineAI = {
