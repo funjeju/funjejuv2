@@ -6,7 +6,10 @@ import "leaflet/dist/leaflet.css";
 import type { MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { useAuth } from "@/hooks/useAuth";
 import { listMySpots } from "@/lib/my-spots";
+import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
+
+const CCTV_PROXY = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 /**
  * 제주 미니홈피 지도 — OSM 위에 레이어: 미니홈피 깃발(열기구)·CCTV·도민맛집·내 마이스팟.
@@ -15,13 +18,13 @@ import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config
 
 interface Flag { id: string; name: string; lat: number; lng: number; minimi: MiniMiKind; concept: RoomConcept; level: number; message?: string; }
 interface CctvPt { id: string; name: string; lat: number; lng: number; }
-interface FoodPt { id: string; title: string; lat: number; lng: number; address: string; img: string; }
+interface FoodPt { id: string; title: string; lat: number; lng: number; address: string; img: string; summary?: string; }
 interface SpotPt { name: string; lat: number; lng: number; category?: string; address?: string; }
 
 type Sel =
   | { kind: "flag"; title: string; sub: string; msg?: string; href: string; cta: string }
-  | { kind: "cctv"; title: string; sub: string; href: string; cta: string }
-  | { kind: "food"; title: string; sub: string; img?: string; href: string; cta: string }
+  | { kind: "cctv"; id: string; title: string; sub: string; href: string; cta: string }
+  | { kind: "food"; title: string; sub: string; img?: string; summary?: string; href: string; cta: string }
   | { kind: "spot"; title: string; sub: string; href: string; cta: string };
 
 const SPRITE_FALLBACK: Record<string, MiniMiKind> = { yuchae: "hallabong" };
@@ -99,8 +102,8 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
       L.marker([lat, lng], { icon: L.divIcon({ className: "", html, iconSize: [anchor[0] * 2, anchor[1]], iconAnchor: anchor }), zIndexOffset: z }).on("click", onClick).addTo(layer);
 
     if (show.home) flags.forEach((f) => mk(f.lat, f.lng, balloonHtml(f.level, f.minimi), [27, 76], () => setSel({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
-    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiIcon("📷", 22), [11, 22], () => setSel({ kind: "cctv", title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "실시간 보기" })));
-    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiIcon("🍴", 20), [10, 20], () => setSel({ kind: "food", title: f.title, sub: f.address, img: f.img, href: `/food/${f.id}`, cta: "맛집 보기" })));
+    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiIcon("📷", 22), [11, 22], () => setSel({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
+    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiIcon("🍴", 20), [10, 20], () => setSel({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
     if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiIcon("⭐", 20), [10, 20], () => setSel({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
   }, [show, flags, cctv, food, myspots]);
 
@@ -154,10 +157,16 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
       {/* 마커 클릭 모달 */}
       {sel && (
         <div onClick={() => setSel(null)} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 18, width: 300, maxWidth: "90vw", boxShadow: "0 8px 30px rgba(0,0,0,.3)" }}>
-            {sel.kind === "food" && sel.img && <div style={{ height: 130, borderRadius: 10, background: `center/cover no-repeat url(${sel.img})`, marginBottom: 10 }} />}
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 18, width: 320, maxWidth: "90vw", boxShadow: "0 8px 30px rgba(0,0,0,.3)" }}>
+            {sel.kind === "cctv" && (
+              <div style={{ marginBottom: 10 }}>
+                <HlsMiniPlayer id={sel.id} name={sel.title} proxyUrl={CCTV_PROXY ? `${CCTV_PROXY}/cctv/${sel.id}` : null} forcePlay />
+              </div>
+            )}
+            {sel.kind === "food" && sel.img && <div style={{ height: 140, borderRadius: 10, background: `center/cover no-repeat url(${sel.img})`, marginBottom: 10 }} />}
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2b3a52" }}>{sel.title}</div>
             <div style={{ fontSize: 12, color: "#7a6e58", marginTop: 3 }}>{sel.sub}</div>
+            {sel.kind === "food" && sel.summary && <div style={{ fontSize: 12, color: "#5a4a32", marginTop: 6, lineHeight: 1.5 }}>{sel.summary}…</div>}
             {sel.kind === "flag" && sel.msg && <div style={{ fontSize: 12, color: "#5a4a32", marginTop: 6, background: "#fffae0", borderRadius: 8, padding: "6px 9px" }}>“{sel.msg}”</div>}
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               {"href" in sel && (
