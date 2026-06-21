@@ -169,11 +169,23 @@ export default async function CctvDetailPage({ params }: Props) {
     publication: { "@type": "BroadcastEvent", isLiveBroadcast: true, startDate: loc.updatedAt || "2026-01-01T00:00:00+09:00" },
   } : null;
 
+  // AEO — FAQPage JSON-LD ([E]FAQ를 AI 답변엔진·구글 리치결과에 노출)
+  const faqLd = loc && loc.faq.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: loc.faq.map((f) => ({
+      "@type": "Question",
+      name: f.q,
+      acceptedAnswer: { "@type": "Answer", text: f.a },
+    })),
+  } : null;
+
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       {videoLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(videoLd) }} />}
+      {faqLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />}
 
       <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
         <ol className="flex flex-wrap items-center gap-1 text-xs text-text-secondary">
