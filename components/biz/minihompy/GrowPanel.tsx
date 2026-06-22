@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { track } from "@/lib/analytics";
 import { CROPS, type Campaign, type CropType } from "@/lib/biz/grow";
 
 /**
@@ -53,7 +54,7 @@ export function GrowPanel({ accent, onProgress }: { accent: string; onProgress?:
       const r = await fetch("/api/minihome/me/grow", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ campaignId }) });
       const d = await r.json();
       if (!r.ok) { flash(d.error || "시작 실패"); return; }
-      setGrows((g) => [d.grow, ...g]); setPicking(false); flash("키우기를 시작했어요! 🌱");
+      setGrows((g) => [d.grow, ...g]); setPicking(false); track("grow_start", { campaign_id: campaignId }); flash("키우기를 시작했어요! 🌱");
     } finally { setBusy(""); }
   };
 
@@ -65,6 +66,7 @@ export function GrowPanel({ accent, onProgress }: { accent: string; onProgress?:
       const d = await r.json();
       if (!r.ok) { flash(d.nextWaterInMs ? `${fmtWait(d.nextWaterInMs)}에 줄 수 있어요 ⏳` : (d.error || "실패")); return; }
       setGrows((gs) => gs.map((g) => (g.id === growId ? d.grow : g)));
+      track("grow_water", { completed: !!d.grow.completed });
       if (d.progress && onProgress) onProgress(d.progress);
       flash(d.progress?.leveledUp ? `🎊 레벨 업! Lv.${d.progress.level}` : d.grow.completed ? "🎉 다 자랐어요! 보상을 받으세요" : "쑥쑥 자랐어요! 🌿 +10XP");
     } finally { setBusy(""); }
@@ -78,12 +80,14 @@ export function GrowPanel({ accent, onProgress }: { accent: string; onProgress?:
       const d = await r.json();
       if (!r.ok) { flash(d.error || "실패"); return; }
       setGrows((gs) => gs.map((g) => (g.id === growId ? { ...g, rewardClaimed: true } : g)));
+      track("grow_claim", { reward: d.reward });
       if (d.progress && onProgress) onProgress(d.progress);
       flash(`🐚 보말 ${d.reward} 획득! +30XP`);
     } finally { setBusy(""); }
   };
 
   const share = (g: Grow) => {
+    track("grow_share", { advertiser: g.advertiser, crop: g.crop });
     const text = `제주 미니홈피에서 ${g.advertiser}의 ${CROPS[g.crop].label}을 다 길렀어요! 🎉 #펀제주 #미니홈피`;
     if (navigator.share) navigator.share({ title: "펀제주 미니홈피", text, url: g.link }).catch(() => {});
     else { navigator.clipboard?.writeText(`${text} ${g.link}`); flash("공유 문구를 복사했어요!"); }

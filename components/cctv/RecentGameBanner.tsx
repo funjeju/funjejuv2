@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { SpotGame } from "@/types/spot";
+import { track } from "@/lib/analytics";
 
 /**
  * CCTV 상세 → 최근 틀린그림(소상공인 강제관찰 광고) 배너.
@@ -16,7 +19,7 @@ export function RecentGameBanner({ games, className = "" }: { games: SpotGame[];
       </div>
       <div className="grid grid-cols-3 gap-2">
         {games.slice(0, 3).map((g) => (
-          <Link key={g.id} href={`/game/spot/${g.id}`} className="group overflow-hidden rounded-xl border border-border-soft bg-bg-card transition-transform hover:scale-[1.02]">
+          <Link key={g.id} href={`/game/spot/${g.id}`} onClick={() => track("cctv_to_game_click", { game_id: g.id })} className="group overflow-hidden rounded-xl border border-border-soft bg-bg-card transition-transform hover:scale-[1.02]">
             <div className="relative aspect-square bg-bg-secondary">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={g.variantImage} alt={g.title} className="h-full w-full object-cover" loading="lazy" />

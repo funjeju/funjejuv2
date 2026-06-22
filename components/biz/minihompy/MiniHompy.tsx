@@ -7,6 +7,7 @@ import { addMySpot } from "@/lib/my-spots";
 import type { MySpotCategory } from "@/types/my-spot";
 import type { SiteSchema, MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { MiniMi } from "./MiniMi";
+import { track } from "@/lib/analytics";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
 
 /**
@@ -113,18 +114,20 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   const speak = useCallback(() => {
     const v = speakText.trim(); if (!v) return;
     setBubble(v); window.setTimeout(() => setBubble(null), 2600); setSpeakText(""); setSpeakOpen(false);
-  }, [speakText]);
+    track("minihome_speak", { slug: site.slug });
+  }, [speakText, site.slug]);
 
   const submitPost = useCallback(() => {
     const v = input.trim(); if (!v) return;
     const post = { name: "방문자", text: v }; setPosts((p) => [post, ...p]); setInput("");
+    track("guestbook_post", { slug: site.slug });
     fetch(`/api/biz/${site.slug}/guestbook`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(post) }).catch(() => {});
   }, [input, site.slug]);
 
   const saveConfig = useCallback((extra?: { bgmUrl?: string }) => {
     setSaveState("saving");
     fetch(`/api/biz/${site.slug}/minihompy`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ minimi, roomConcept: concept, ...extra }) })
-      .then((r) => { if (!r.ok) throw new Error(); setSaveState("saved"); window.setTimeout(() => setSaveState("idle"), 2000); }).catch(() => setSaveState("idle"));
+      .then((r) => { if (!r.ok) throw new Error(); setSaveState("saved"); track("minihome_decorate_save", { minimi, concept }); window.setTimeout(() => setSaveState("idle"), 2000); }).catch(() => setSaveState("idle"));
   }, [site.slug, minimi, concept]);
 
   const addDiary = async () => {
@@ -142,7 +145,7 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   const addToMySpot = async () => {
     if (!user) { signInWithGoogle(); return; }
     if (savedSpot || !m.coordinates) return;
-    try { await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address }); setSavedSpot(true); } catch { /* */ }
+    try { await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address }); setSavedSpot(true); track("myspot_add", { source: "minihome", slug: site.slug }); } catch { /* */ }
   };
 
   const diaryByDate = useMemo(() => { const map: Record<string, DiaryEntry[]> = {}; for (const e of diary) (map[e.date] ??= []).push(e); return map; }, [diary]);

@@ -7,6 +7,7 @@ import type { MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { MiniMi } from "./MiniMi";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
 import { SHOP_ITEMS } from "./shop-items";
+import { track } from "@/lib/analytics";
 import { GrowPanel } from "./GrowPanel";
 import { ChatRoom } from "./ChatRoom";
 
@@ -66,6 +67,7 @@ export function MyMiniHome() {
       if (!r.ok) throw new Error();
       const d = await r.json();
       setHome(d.home);
+      track("minihome_equip", next as Record<string, string | undefined>);
       setSave("saved"); window.setTimeout(() => setSave("idle"), 1600);
     } catch { setSave("idle"); }
   }, [user]);

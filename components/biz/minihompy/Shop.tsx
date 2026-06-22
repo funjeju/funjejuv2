@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { track } from "@/lib/analytics";
 import { SHOP_CATEGORIES, SHOP_ITEMS, BOMAL_PACKS } from "./shop-items";
 
 /**
@@ -46,6 +47,7 @@ export function Shop() {
       const d = await r.json();
       if (!r.ok) { flash(d.error || "구매 실패 🥲"); return; }
       setHome(d.home);
+      track("bomal_purchase", { item_id: id, item_name: name });
       flash(`${name} 구매 완료! 🎉`);
     } finally { setBusy(false); }
   }, [user, home, signInWithGoogle]);
@@ -74,7 +76,7 @@ export function Shop() {
               <div style={{ fontSize: 15, fontWeight: 700 }}>🐚 내 보말 <span style={{ color: "#e0890a" }}>{balance.toLocaleString()}</span></div>
               <div style={{ display: "flex", gap: 6 }}>
                 {BOMAL_PACKS.map((p) => (
-                  <button key={p.bomal} onClick={() => flash("충전(결제)은 곧 오픈돼요 🛠️")} title={`${p.won.toLocaleString()}원 (결제 연동 예정)`} style={{ fontSize: 11, background: "#e0890a", color: "#fff", border: "none", borderRadius: 7, padding: "6px 9px", cursor: "pointer" }}>
+                  <button key={p.bomal} onClick={() => { track("bomal_topup_click", { bomal: p.bomal, won: p.won }); flash("충전(결제)은 곧 오픈돼요 🛠️"); }} title={`${p.won.toLocaleString()}원 (결제 연동 예정)`} style={{ fontSize: 11, background: "#e0890a", color: "#fff", border: "none", borderRadius: 7, padding: "6px 9px", cursor: "pointer" }}>
                     🐚{p.bomal}{p.bonus ? ` ${p.bonus}` : ""}
                   </button>
                 ))}

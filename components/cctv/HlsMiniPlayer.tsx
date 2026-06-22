@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useCctvSession } from "@/hooks/useCctvSession";
+import { track } from "@/lib/analytics";
 
 type Props = {
   id: string;
@@ -134,6 +135,7 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
     e.stopPropagation();
     if (!proxyUrl) return;
     setActivated(true);
+    track("cctv_play", { cctv_id: id, cctv_name: name, mode: "click" });
   }
 
   return (

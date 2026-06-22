@@ -7,6 +7,7 @@ import type { MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { useAuth } from "@/hooks/useAuth";
 import { listMySpots } from "@/lib/my-spots";
 import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { track } from "@/lib/analytics";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
 
 const CCTV_PROXY = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
@@ -100,14 +101,15 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
     layer.clearLayers();
     const mk = (lat: number, lng: number, html: string, anchor: [number, number], onClick: () => void, z = 0) =>
       L.marker([lat, lng], { icon: L.divIcon({ className: "", html, iconSize: [anchor[0] * 2, anchor[1]], iconAnchor: anchor }), zIndexOffset: z }).on("click", onClick).addTo(layer);
+    const select = (s: Sel) => { track("map_marker", { kind: s.kind }); setSel(s); };
 
-    if (show.home) flags.forEach((f) => mk(f.lat, f.lng, balloonHtml(f.level, f.minimi), [27, 76], () => setSel({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
-    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiIcon("📷", 22), [11, 22], () => setSel({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
-    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiIcon("🍴", 20), [10, 20], () => setSel({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
-    if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiIcon("⭐", 20), [10, 20], () => setSel({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
+    if (show.home) flags.forEach((f) => mk(f.lat, f.lng, balloonHtml(f.level, f.minimi), [27, 76], () => select({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
+    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiIcon("📷", 22), [11, 22], () => select({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
+    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiIcon("🍴", 20), [10, 20], () => select({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
+    if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiIcon("⭐", 20), [10, 20], () => select({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
   }, [show, flags, cctv, food, myspots]);
 
-  const toggle = (k: keyof typeof show) => setShow((s) => ({ ...s, [k]: !s[k] }));
+  const toggle = (k: keyof typeof show) => setShow((s) => { if (!s[k]) track("map_layer_on", { layer: k }); return { ...s, [k]: !s[k] }; });
 
   const startPlant = () => { if (!user) { signInWithGoogle(); return; } setPlantMode(true); setErr(""); };
   const cancelPlant = () => { setPlantMode(false); setPicked(null); if (tempRef.current && mapRef.current) { tempRef.current.remove(); tempRef.current = null; } };
@@ -128,7 +130,7 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
       const tk = await user.getIdToken();
       const r = await fetch("/api/minihome/flags", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${tk}` }, body: JSON.stringify({ name: form.name, lat: picked[0], lng: picked[1], minimi: form.minimi, concept: form.concept, message: form.message }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error || "꽂기 실패");
-      setFlags((p) => [d.flag, ...p.filter((f) => f.id !== d.flag.id)]); cancelPlant(); setForm({ name: "", minimi: "baram", concept: "oreum", message: "" });
+      setFlags((p) => [d.flag, ...p.filter((f) => f.id !== d.flag.id)]); track("flag_plant", { minimi: form.minimi, concept: form.concept }); cancelPlant(); setForm({ name: "", minimi: "baram", concept: "oreum", message: "" });
     } catch (e) { setErr(e instanceof Error ? e.message : "꽂기 실패"); } finally { setSaving(false); }
   };
 
@@ -170,7 +172,7 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
             {sel.kind === "flag" && sel.msg && <div style={{ fontSize: 12, color: "#5a4a32", marginTop: 6, background: "#fffae0", borderRadius: 8, padding: "6px 9px" }}>“{sel.msg}”</div>}
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               {"href" in sel && (
-                <a href={sel.href} style={{ flex: 1, textAlign: "center", background: "#3f8fc4", color: "#fff", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>{sel.cta} →</a>
+                <a href={sel.href} onClick={() => track("map_outbound", { kind: sel.kind })} style={{ flex: 1, textAlign: "center", background: "#3f8fc4", color: "#fff", borderRadius: 8, padding: "9px 0", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>{sel.cta} →</a>
               )}
               <button onClick={() => setSel(null)} style={{ background: "#f0ece2", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 13, cursor: "pointer" }}>닫기</button>
             </div>

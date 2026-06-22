@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { track } from "@/lib/analytics";
 
 /**
  * 미니홈피 실시간 채팅 — 3초 폴링 + 20초 접속 핑.
@@ -48,6 +49,7 @@ export function ChatRoom({ ownerUid, accent = "#5b86c2" }: { ownerUid: string; a
     try {
       const t = await user.getIdToken();
       await fetch(`/api/minihome/u/${ownerUid}/chat`, { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ text: v }) });
+      track("minihome_chat_send", { owner: ownerUid });
       await load();
     } finally { setSending(false); }
   };

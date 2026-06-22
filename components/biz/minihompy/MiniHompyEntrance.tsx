@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { MiniMiKind } from "@/lib/biz/types";
 import { MiniMi } from "./MiniMi";
+import { track } from "@/lib/analytics";
 
 /**
  * 비즈홈피(/biz/[slug])에 박는 "미니홈피 입장" 티저 배너.
@@ -20,6 +21,7 @@ export function MiniHompyEntrance({ slug, name, minimi = "hallabong" }: { slug: 
   return (
     <Link
       href={`/biz/${slug}/home`}
+      onClick={() => track("minihome_enter", { slug })}
       style={{
         display: "block",
         margin: "0 auto",

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { addMySpot, listMySpots, deleteMySpot } from "@/lib/my-spots";
+import { track } from "@/lib/analytics";
 import {
   MY_SPOT_CATEGORIES, CATEGORY_EMOJI, DIRECTION_EMOJI,
   type MySpot, type MySpotCategory,
@@ -112,6 +113,7 @@ export function MySpotsManager() {
     if (!geo) { setMErr("제주 안에서 주소를 찾지 못했어요. 주소를 다시 확인해주세요."); setMSaving(false); return; }
     try {
       await addMySpot(user.uid, { name, category: mCat, lat: geo.lat, lng: geo.lng, address: geo.address });
+      track("myspot_add", { source: "manual_address", category: mCat });
       setSpots(await listMySpots(user.uid));
       setResults(null); setQuery(""); setMName(""); setMAddr(""); setMCat("여행지");
     } catch { setMErr("저장 실패"); }
@@ -128,6 +130,7 @@ export function MySpotsManager() {
         name: place.name, category,
         lat: place.lat, lng: place.lng, address: place.address,
       });
+      track("myspot_add", { source: "search", category });
       setSpots(await listMySpots(user.uid));
     } catch { /* 다음 로드에서 동기화 */ }
   }
