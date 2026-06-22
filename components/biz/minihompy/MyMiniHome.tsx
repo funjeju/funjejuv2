@@ -13,11 +13,17 @@ import { ChatRoom } from "./ChatRoom";
 
 /**
  * 내 계정 미니홈피 — /minihome/me. minihomes/{uid} 기반.
- * 장착(미니미·방컨셉)을 고르면 PATCH /api/minihome/me 로 내 계정에 저장.
- * 기본 6미니미·3컨셉은 무료. 상점 특별템(보유)은 적용칸 표시(에셋은 후속).
+ * 싸이월드 스프레드: 좌 MY PROFILE / 중앙 미니룸(2D 산책)+탭내용 / 우 메뉴(홈·꾸미기·키우기·채팅).
  */
 
 interface Home { displayName: string; minimi: MiniMiKind; concept: RoomConcept; level: number; xp: number; bomal: number; ownedItems: string[]; background?: string; specialMinimi?: string; customBgUrl?: string; }
+type Tab = "home" | "style" | "grow" | "chat";
+const MENU: { id: Tab; ko: string; en: string }[] = [
+  { id: "home", ko: "홈", en: "HOME" },
+  { id: "style", ko: "꾸미기", en: "STYLE" },
+  { id: "grow", ko: "키우기", en: "GROW" },
+  { id: "chat", ko: "채팅", en: "CHAT" },
+];
 
 export function MyMiniHome() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -27,11 +33,16 @@ export function MyMiniHome() {
   const [background, setBackground] = useState<string>("");
   const [specialMinimi, setSpecialMinimi] = useState<string>("");
   const [save, setSave] = useState<"idle" | "saving" | "saved">("idle");
+  const [tab, setTab] = useState<Tab>("home");
 
   const roomRef = useRef<HTMLDivElement>(null);
-  const [hostLeft, setHostLeft] = useState(46);
+  const [hostX, setHostX] = useState(50);
+  const [hostY, setHostY] = useState(84);
   const [walking, setWalking] = useState(false);
   const [facing, setFacing] = useState<"left" | "right">("right");
+  const [bubble, setBubble] = useState<string | null>(null);
+  const [speakOpen, setSpeakOpen] = useState(false);
+  const [speakText, setSpeakText] = useState("");
 
   useEffect(() => {
     if (!user) { setHome(null); return; }
@@ -45,25 +56,29 @@ export function MyMiniHome() {
     })();
   }, [user]);
 
+  // 미니미 2D 이동 — 배경 어디든 클릭하면 그 지점으로
   const onRoomClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rr = roomRef.current?.getBoundingClientRect();
     if (!rr) return;
-    const pct = Math.max(2, Math.min(((e.clientX - rr.left) / rr.width) * 100 - 5, 88));
-    setFacing(pct > hostLeft ? "right" : "left");
-    setHostLeft(pct);
-    setWalking(true);
+    const x = Math.max(6, Math.min(((e.clientX - rr.left) / rr.width) * 100, 94));
+    const y = Math.max(34, Math.min(((e.clientY - rr.top) / rr.height) * 100, 95));
+    setFacing(x > hostX ? "right" : "left");
+    setHostX(x); setHostY(y); setWalking(true);
     window.setTimeout(() => setWalking(false), 1120);
-  }, [hostLeft]);
+  }, [hostX]);
+
+  const speak = useCallback(() => {
+    const v = speakText.trim(); if (!v) return;
+    setBubble(v); window.setTimeout(() => setBubble(null), 2600); setSpeakText(""); setSpeakOpen(false);
+    track("minihome_speak", { own: true });
+  }, [speakText]);
 
   const persist = useCallback(async (next: { minimi?: MiniMiKind; concept?: RoomConcept; background?: string; specialMinimi?: string }) => {
     if (!user) return;
     setSave("saving");
     try {
       const t = await user.getIdToken();
-      const r = await fetch("/api/minihome/me", {
-        method: "PATCH", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
-        body: JSON.stringify(next),
-      });
+      const r = await fetch("/api/minihome/me", { method: "PATCH", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify(next) });
       if (!r.ok) throw new Error();
       const d = await r.json();
       setHome(d.home);
@@ -110,9 +125,7 @@ export function MyMiniHome() {
   const ownedBg = SHOP_ITEMS.filter((i) => i.category === "background" && i.asset && home?.ownedItems?.includes(i.id));
   const ownedSpecialMinimi = SHOP_ITEMS.filter((i) => i.category === "minimi" && i.asset && home?.ownedItems?.includes(i.id));
   const ownsCustomBg = home?.ownedItems?.includes("bg-custom");
-  const bgImage = background === "bg-custom"
-    ? (home?.customBgUrl || room.bgImage)
-    : (background && SHOP_ITEMS.find((i) => i.id === background)?.asset) || room.bgImage;
+  const bgImage = background === "bg-custom" ? (home?.customBgUrl || room.bgImage) : (background && SHOP_ITEMS.find((i) => i.id === background)?.asset) || room.bgImage;
   const customSprite = specialMinimi ? SHOP_ITEMS.find((i) => i.id === specialMinimi)?.asset : undefined;
   const ownedSpecials = SHOP_ITEMS.filter((i) => (i.category === "minimi" || i.category === "background") && !i.asset && home?.ownedItems?.includes(i.id));
 
@@ -130,94 +143,147 @@ export function MyMiniHome() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: room.pageBg, transition: "background .4s", padding: 16, fontFamily: "'Dotum','Apple SD Gothic Neo',sans-serif", color: "#3a332a" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div className="mh-page" style={{ background: room.pageBg, ["--accent" as string]: room.accent, ["--soft" as string]: room.accentSoft }}>
+      <style>{`
+        .mh-page{min-height:100vh;padding:18px;font-family:'Dotum','Apple SD Gothic Neo',sans-serif;color:#3a332a;transition:background .4s;}
+        .mh-top{max-width:1100px;margin:0 auto 10px;display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:13px;gap:10px;flex-wrap:wrap;}
+        .mh-wrap{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:flex-start;}
+        .mh-profile{width:190px;flex:none;}
+        .mh-book{flex:1;min-width:0;background:#fffdf6;border:1px solid #e3d9c2;border-radius:12px;padding:14px;}
+        .mh-menu{width:88px;flex:none;display:flex;flex-direction:column;gap:6px;}
+        .mh-card{background:#fffdf6;border:1px solid #e3d9c2;border-radius:10px;padding:10px;}
+        .mh-card-h{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.5px;border-bottom:1px solid var(--soft);padding-bottom:4px;margin-bottom:6px;}
+        .mh-tab{display:flex;flex-direction:column;align-items:center;gap:1px;background:var(--soft);border:1px solid var(--accent);border-radius:8px;padding:9px 4px;cursor:pointer;color:#5a4a32;white-space:nowrap;}
+        .mh-tab.on{background:var(--accent);color:#fff;}
+        .mh-tab b{font-size:12px;}.mh-tab span{font-size:8px;letter-spacing:.5px;opacity:.8;}
+        .mh-title{font-family:'Brush Script MT','Snell Roundhand',cursive;font-size:26px;color:var(--accent);line-height:1;}
+        .mh-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#6a5e48;}
+        .mh-btn{font-size:12px;border-radius:7px;padding:5px 12px;cursor:pointer;}
+        @media(max-width:820px){.mh-wrap{flex-direction:column;}.mh-profile,.mh-book,.mh-menu{width:100%;}.mh-menu{flex-direction:row;flex-wrap:wrap;}.mh-menu .mh-tab{flex:1 1 22%;flex-direction:row;gap:5px;}}
+      `}</style>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: room.accent, color: "#fff", padding: "8px 14px", borderRadius: "10px 10px 0 0", fontSize: 14 }}>
-          <span style={{ fontWeight: 700 }}>🏠 {home?.displayName ?? "내"} 미니홈피</span>
-          <span style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12 }}>
-            <span title={`XP ${(home?.xp ?? 0)}`}>Lv.{home?.level ?? 1}</span>
-            <span style={{ width: 60, height: 7, background: "rgba(255,255,255,.35)", borderRadius: 4, overflow: "hidden" }}>
-              <span style={{ display: "block", height: "100%", width: `${((home?.xp ?? 0) % 100)}%`, background: "#fff4c2" }} />
-            </span>
-            <span>🐚 {(home?.bomal ?? 0).toLocaleString()}</span>
-            <Link href="/minihome/shop" style={{ color: "#fff", textDecoration: "underline" }}>상점</Link>
-            <Link href="/minihome/map" style={{ color: "#fff", textDecoration: "underline" }}>지도</Link>
-          </span>
+      <div className="mh-top">
+        <span style={{ fontWeight: 700 }}>🏠 {home?.displayName ?? "내"} 미니홈피</span>
+        <span style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 12 }}>
+          <span title={`XP ${home?.xp ?? 0}`}>Lv.{home?.level ?? 1}</span>
+          <span style={{ width: 60, height: 7, background: "rgba(255,255,255,.35)", borderRadius: 4, overflow: "hidden" }}><span style={{ display: "block", height: "100%", width: `${(home?.xp ?? 0) % 100}%`, background: "#fff4c2" }} /></span>
+          <span>🐚 {(home?.bomal ?? 0).toLocaleString()}</span>
+          <Link href="/minihome/shop" style={{ color: "#fff", textDecoration: "underline" }}>상점</Link>
+          <Link href="/minihome/map" style={{ color: "#fff", textDecoration: "underline" }}>지도</Link>
+        </span>
+      </div>
+
+      <div className="mh-wrap">
+
+        {/* 좌: MY PROFILE */}
+        <div className="mh-profile">
+          <div className="mh-card">
+            <div className="mh-card-h">MY PROFILE</div>
+            <div style={{ border: "1px solid #e3d9c2", background: room.bgImage ? `center/cover no-repeat url(${room.bgImage})` : "#eef3e6", borderRadius: 8, height: 120, display: "flex", alignItems: "flex-end", justifyContent: "center", overflow: "hidden" }}>
+              <MiniMi kind={minimi} scale={0.9} customSprite={customSprite} />
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6 }}>{home?.displayName ?? "여행자"} {MINIMI[minimi].emoji}</div>
+            <div style={{ fontSize: 11, color: "#8a7a5a", marginTop: 2 }}>Lv.{home?.level ?? 1} 제주 여행자</div>
+            <div style={{ display: "flex", gap: 6, marginTop: 8, fontSize: 11, textAlign: "center" }}>
+              <div style={{ flex: 1, background: "#fff", border: "1px solid #e3d9c2", borderRadius: 5, padding: "5px 0" }}>보말<br /><b style={{ color: "#e0890a" }}>{(home?.bomal ?? 0).toLocaleString()}</b></div>
+              <div style={{ flex: 1, background: "#fff", border: "1px solid #e3d9c2", borderRadius: 5, padding: "5px 0" }}>보유템<br /><b style={{ color: "var(--accent)" }}>{home?.ownedItems?.length ?? 0}</b></div>
+            </div>
+            <div className="mh-card-h" style={{ marginTop: 8 }}>MENU</div>
+            {MENU.map((t) => (
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}>
+                <div className="mh-row" style={tab === t.id ? { color: "var(--accent)", fontWeight: 700 } : undefined}>▸ {t.ko}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ background: "#fffdf6", border: "1px solid #e3d9c2", borderTop: 0, borderRadius: "0 0 12px 12px", padding: 14 }}>
-          {/* 씬 */}
-          <div ref={roomRef} onClick={onRoomClick} style={{ position: "relative", height: 300, border: "1px solid #d8cba8", borderRadius: 8, overflow: "hidden", cursor: "pointer", background: bgImage ? `center/cover no-repeat url(${bgImage}), ${room.bg}` : room.bg }}>
-            <div style={{ position: "absolute", bottom: 14, left: `${hostLeft}%`, transition: "left 1.2s linear", transform: walking ? "translateY(-4px)" : "none" }}>
+        {/* 중앙: 미니룸(고정) + 탭 내용 */}
+        <div className="mh-book">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 10 }}>
+            <div>
+              <div className="mh-title">{home?.displayName ?? "My"} Minihome</div>
+              <div style={{ fontSize: 9, letterSpacing: 2, color: "#b0a486" }}>WELCOME TO MY MINIHOME</div>
+            </div>
+            <button className="mh-btn" onClick={() => setSpeakOpen((s) => !s)} style={{ background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }}>💬 말하기</button>
+          </div>
+
+          {speakOpen && (
+            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+              <input value={speakText} onChange={(e) => setSpeakText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") speak(); }} autoFocus placeholder="미니미가 할 말...(말풍선)" style={{ flex: 1, fontSize: 12, height: 32, border: "1px solid var(--accent)", borderRadius: 7, padding: "0 8px", background: "#fff" }} />
+              <button className="mh-btn" onClick={speak} style={{ background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }}>말하기</button>
+            </div>
+          )}
+
+          {/* 미니룸 — 항상 상단 고정, 클릭하면 미니미가 그 지점으로(2D) */}
+          <div ref={roomRef} onClick={onRoomClick} style={{ position: "relative", height: 320, border: "1px solid #d8cba8", borderRadius: 8, overflow: "hidden", cursor: "pointer", background: bgImage ? `center/cover no-repeat url(${bgImage}), ${room.bg}` : room.bg }}>
+            <div style={{ position: "absolute", left: `${hostX}%`, top: `${hostY}%`, transform: `translate(-50%,-100%) ${walking ? "translateY(-4px)" : ""}`, transition: "left 1.1s linear, top 1.1s linear", zIndex: 3 }}>
               <MiniMi kind={minimi} name={home?.displayName ?? "나"} pose={walking ? "side" : "front"} flip={walking && facing === "right"} customSprite={customSprite} />
             </div>
-            <div style={{ position: "absolute", left: 8, bottom: 6, fontSize: 10, color: "#7a6a48", background: "rgba(255,255,255,.6)", borderRadius: 4, padding: "0 4px" }}>바닥을 클릭해 산책 🚶</div>
+            {bubble && <div style={{ position: "absolute", left: `${hostX}%`, top: `${hostY}%`, transform: "translate(-50%,-260%)", fontSize: 12, background: "#fffae0", border: "1px solid #e8d77a", borderRadius: 10, padding: "5px 9px", zIndex: 5, whiteSpace: "nowrap" }}>{bubble}</div>}
+            <div style={{ position: "absolute", left: 8, bottom: 6, fontSize: 10, color: "#7a6a48", background: "rgba(255,255,255,.6)", borderRadius: 4, padding: "0 4px" }}>아무 곳이나 클릭→미니미 이동 🚶</div>
           </div>
 
-          {/* 장착(꾸미기) */}
+          {/* 탭 내용 */}
           <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: room.accent }}>🎨 꾸미기</span>
-              <span style={{ fontSize: 11, color: save === "saved" ? "#5b9e3f" : "#a89878" }}>{save === "saving" ? "저장 중..." : save === "saved" ? "✓ 내 계정에 저장됨" : "고르면 바로 저장돼요"}</span>
-            </div>
-
-            <div style={{ fontSize: 11, color: "#8a7a5a", margin: "6px 0 4px" }}>방 컨셉</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {ROOM_ORDER.map((c) => (
-                <button key={c} onClick={() => pickConcept(c)} style={chip(concept === c)}>{ROOM_CONCEPTS[c].emoji} {ROOM_CONCEPTS[c].label}</button>
-              ))}
-            </div>
-
-            <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>미니미</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {MINIMI_ORDER.map((k) => (
-                <button key={k} onClick={() => pickMinimi(k)} style={chip(!specialMinimi && minimi === k)}>{MINIMI[k].emoji} {MINIMI[k].label}</button>
-              ))}
-              {ownedSpecialMinimi.map((i) => (
-                <button key={i.id} onClick={() => pickSpecialMinimi(i.id)} style={chip(specialMinimi === i.id)}>{i.emoji} {i.name}</button>
-              ))}
-            </div>
-
-            {/* 보유 배경 (구매한 커스텀 배경 장착 + 내 사진 업로드) */}
-            {(ownedBg.length > 0 || ownsCustomBg) && (
-              <>
-                <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>보유 배경</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={() => pickBackground("")} style={chip(!background)}>{room.emoji} 기본({room.label})</button>
-                  {ownedBg.map((i) => (
-                    <button key={i.id} onClick={() => pickBackground(i.id)} style={chip(background === i.id)}>{i.emoji} {i.name}</button>
-                  ))}
-                  {ownsCustomBg && home?.customBgUrl && (
-                    <button onClick={() => pickBackground("bg-custom")} style={chip(background === "bg-custom")}>📷 내 사진</button>
-                  )}
-                  {ownsCustomBg && (
-                    <label style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, cursor: "pointer", border: "1px dashed #cbb890", background: "#fbf6ea", color: "#8a7a5a" }}>
-                      ⬆ 사진 {home?.customBgUrl ? "변경" : "업로드"}
-                      <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ""; }} />
-                    </label>
-                  )}
-                </div>
-              </>
+            {tab === "home" && (
+              <div style={{ fontSize: 12, color: "#8a7a5a", textAlign: "center", padding: "10px 0" }}>
+                미니룸 바닥을 눌러 산책하고, 메뉴에서 꾸미기·키우기·채팅을 즐겨보세요! 🎈
+              </div>
             )}
 
-            {/* 보유한 상점 특별템 (적용칸 — 에셋 후속) */}
-            {ownedSpecials.length > 0 && (
-              <>
-                <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>보유한 특별템</div>
+            {tab === "style" && (
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span className="mh-card-h" style={{ border: 0, margin: 0 }}>🎨 꾸미기</span>
+                  <span style={{ fontSize: 11, color: save === "saved" ? "#5b9e3f" : "#a89878" }}>{save === "saving" ? "저장 중..." : save === "saved" ? "✓ 저장됨" : "고르면 바로 저장돼요"}</span>
+                </div>
+                <div style={{ fontSize: 11, color: "#8a7a5a", margin: "6px 0 4px" }}>방 컨셉</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {ownedSpecials.map((i) => (
-                    <span key={i.id} title="적용 준비중 (에셋 추가 예정)" style={{ fontSize: 12, padding: "5px 9px", borderRadius: 6, border: "1px dashed #cbb890", background: "#fbf6ea", color: "#8a7a5a" }}>{i.emoji} {i.name} <b style={{ color: "#c08a2a" }}>적용 준비중</b></span>
-                  ))}
+                  {ROOM_ORDER.map((c) => <button key={c} onClick={() => pickConcept(c)} style={chip(concept === c)}>{ROOM_CONCEPTS[c].emoji} {ROOM_CONCEPTS[c].label}</button>)}
                 </div>
-              </>
+                <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>미니미</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {MINIMI_ORDER.map((k) => <button key={k} onClick={() => pickMinimi(k)} style={chip(!specialMinimi && minimi === k)}>{MINIMI[k].emoji} {MINIMI[k].label}</button>)}
+                  {ownedSpecialMinimi.map((i) => <button key={i.id} onClick={() => pickSpecialMinimi(i.id)} style={chip(specialMinimi === i.id)}>{i.emoji} {i.name}</button>)}
+                </div>
+                {(ownedBg.length > 0 || ownsCustomBg) && (
+                  <>
+                    <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>보유 배경</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <button onClick={() => pickBackground("")} style={chip(!background)}>{room.emoji} 기본({room.label})</button>
+                      {ownedBg.map((i) => <button key={i.id} onClick={() => pickBackground(i.id)} style={chip(background === i.id)}>{i.emoji} {i.name}</button>)}
+                      {ownsCustomBg && home?.customBgUrl && <button onClick={() => pickBackground("bg-custom")} style={chip(background === "bg-custom")}>📷 내 사진</button>}
+                      {ownsCustomBg && (
+                        <label style={{ fontSize: 12, padding: "5px 10px", borderRadius: 6, cursor: "pointer", border: "1px dashed #cbb890", background: "#fbf6ea", color: "#8a7a5a" }}>
+                          ⬆ 사진 {home?.customBgUrl ? "변경" : "업로드"}
+                          <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ""; }} />
+                        </label>
+                      )}
+                    </div>
+                  </>
+                )}
+                {ownedSpecials.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 11, color: "#8a7a5a", margin: "10px 0 4px" }}>보유한 특별템</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {ownedSpecials.map((i) => <span key={i.id} style={{ fontSize: 12, padding: "5px 9px", borderRadius: 6, border: "1px dashed #cbb890", background: "#fbf6ea", color: "#8a7a5a" }}>{i.emoji} {i.name} <b style={{ color: "#c08a2a" }}>적용 준비중</b></span>)}
+                    </div>
+                  </>
+                )}
+                <div style={{ fontSize: 10, color: "#b0a486", marginTop: 10 }}>특별 미니미·배경은 <Link href="/minihome/shop" style={{ color: room.accent }}>상점</Link>에서 보말로 구매하세요.</div>
+              </div>
             )}
-            <div style={{ fontSize: 10, color: "#b0a486", marginTop: 10 }}>특별 미니미·커스텀 배경은 <Link href="/minihome/shop" style={{ color: room.accent }}>상점</Link>에서 보말로 구매하세요.</div>
-          </div>
 
-          {/* 키우기 광고 */}
-          <GrowPanel accent={room.accent} onProgress={(p) => setHome((h) => (h ? { ...h, xp: p.xp, level: p.level, bomal: p.bomal } : h))} />
-          {user && <ChatRoom ownerUid={user.uid} accent={room.accent} />}
+            {tab === "grow" && <GrowPanel accent={room.accent} onProgress={(p) => setHome((h) => (h ? { ...h, xp: p.xp, level: p.level, bomal: p.bomal } : h))} />}
+            {tab === "chat" && user && <ChatRoom ownerUid={user.uid} accent={room.accent} />}
+          </div>
+        </div>
+
+        {/* 우: 메뉴 탭 */}
+        <div className="mh-menu">
+          {MENU.map((t) => (
+            <button key={t.id} type="button" onClick={() => setTab(t.id)} className={`mh-tab${tab === t.id ? " on" : ""}`}><b>{t.ko}</b><span>{t.en}</span></button>
+          ))}
         </div>
       </div>
     </div>
