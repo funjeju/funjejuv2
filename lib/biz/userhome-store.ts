@@ -27,9 +27,12 @@ export interface UserHome {
   background?: string; // 장착한 배경 상점아이템 id ("" 또는 미설정=컨셉 기본배경)
   specialMinimi?: string; // 장착한 특별 미니미 상점아이템 id ("" 또는 미설정=기본 미니미)
   customBgUrl?: string; // bg-custom 장착 시 업로드한 내 사진 URL
+  decorSavedAt?: number; // 마지막 꾸미기 변경 시각(epoch ms) — 주1회 제한
   createdAt: string;
   updatedAt: string;
 }
+
+export const DECOR_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000; // 주 1회
 
 const now = () => new Date().toISOString();
 
@@ -70,30 +73,47 @@ export async function setCustomBg(uid: string, url: string): Promise<void> {
   await ref.set({ customBgUrl: url, background: "bg-custom", updatedAt: now() }, { merge: true });
 }
 
+export interface DecorResult { ok: boolean; reason?: string; nextChangeAt?: number; }
+
+/**
+ * 꾸미기 저장 — 미니미/방컨셉/배경/특별미니미.
+ * ⚠️ 실제로 바뀌는 게 있으면 **주 1회 제한**(decorSavedAt). 동일값 재선택은 제한 안 함.
+ * TODO: 유료 무제한 변경 권한 → 그때 cooldown 우회.
+ */
 export async function updateUserHome(
   uid: string,
   patch: { minimi?: MiniMiKind; concept?: RoomConcept; background?: string; specialMinimi?: string }
-): Promise<void> {
+): Promise<DecorResult> {
   const ref = getAdminDb().collection(COL).doc(uid);
-  const clean: Record<string, unknown> = { updatedAt: now() };
-  if (patch.minimi && VALID_MINIMI.includes(patch.minimi)) clean.minimi = patch.minimi;
-  if (patch.concept && VALID_ROOM.includes(patch.concept)) clean.concept = patch.concept;
+  const cur = (await ref.get()).data() ?? {};
+  const owned = (cur.ownedItems as string[]) ?? [];
+  const clean: Record<string, unknown> = {};
 
-  // 배경/특별미니미는 "보유 + 에셋 존재"한 것만 장착, ""=해제
-  const needOwned = patch.background !== undefined || patch.specialMinimi !== undefined;
-  const owned = needOwned ? ((await ref.get()).data()?.ownedItems as string[] ?? []) : [];
+  if (patch.minimi && VALID_MINIMI.includes(patch.minimi) && patch.minimi !== cur.minimi) clean.minimi = patch.minimi;
+  if (patch.concept && VALID_ROOM.includes(patch.concept) && patch.concept !== cur.concept) clean.concept = patch.concept;
   if (patch.background !== undefined) {
     const bg = patch.background;
-    if (!bg) clean.background = "";
-    else if (bg === "bg-custom" && owned.includes("bg-custom")) clean.background = "bg-custom"; // 동적 에셋(customBgUrl)
-    else if (owned.includes(bg) && SHOP_ITEMS.find((i) => i.id === bg)?.asset) clean.background = bg;
-    else clean.background = "";
+    let resolved = "";
+    if (bg === "bg-custom" && owned.includes("bg-custom")) resolved = "bg-custom";
+    else if (bg && owned.includes(bg) && SHOP_ITEMS.find((i) => i.id === bg)?.asset) resolved = bg;
+    if (resolved !== (cur.background ?? "")) clean.background = resolved;
   }
   if (patch.specialMinimi !== undefined) {
     const it = SHOP_ITEMS.find((i) => i.id === patch.specialMinimi);
-    clean.specialMinimi = patch.specialMinimi && owned.includes(patch.specialMinimi) && it?.category === "minimi" && it?.asset ? patch.specialMinimi : "";
+    const resolved = patch.specialMinimi && owned.includes(patch.specialMinimi) && it?.category === "minimi" && it?.asset ? patch.specialMinimi : "";
+    if (resolved !== (cur.specialMinimi ?? "")) clean.specialMinimi = resolved;
   }
+
+  if (Object.keys(clean).length === 0) return { ok: true }; // 변경 없음
+
+  const last = (cur.decorSavedAt as number) ?? 0;
+  if (Date.now() - last < DECOR_COOLDOWN_MS) {
+    return { ok: false, reason: "꾸미기는 주 1회만 변경할 수 있어요", nextChangeAt: last + DECOR_COOLDOWN_MS };
+  }
+  clean.decorSavedAt = Date.now();
+  clean.updatedAt = now();
   await ref.set(clean, { merge: true });
+  return { ok: true };
 }
 
 export interface BuyResult { ok: boolean; reason?: string; home?: UserHome; }

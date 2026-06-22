@@ -16,7 +16,7 @@ import { ChatRoom } from "./ChatRoom";
  * 싸이월드 스프레드: 좌 MY PROFILE / 중앙 미니룸(2D 산책)+탭내용 / 우 메뉴(홈·꾸미기·키우기·채팅).
  */
 
-interface Home { displayName: string; minimi: MiniMiKind; concept: RoomConcept; level: number; xp: number; bomal: number; ownedItems: string[]; background?: string; specialMinimi?: string; customBgUrl?: string; }
+interface Home { displayName: string; minimi: MiniMiKind; concept: RoomConcept; level: number; xp: number; bomal: number; ownedItems: string[]; background?: string; specialMinimi?: string; customBgUrl?: string; decorSavedAt?: number; }
 type Tab = "home" | "style" | "grow" | "chat";
 const MENU: { id: Tab; ko: string; en: string }[] = [
   { id: "home", ko: "홈", en: "HOME" },
@@ -24,6 +24,33 @@ const MENU: { id: Tab; ko: string; en: string }[] = [
   { id: "grow", ko: "키우기", en: "GROW" },
   { id: "chat", ko: "채팅", en: "CHAT" },
 ];
+
+// 미니미 산책 이스터에그 — 클릭할수록 랜덤 멘트(귀여운→도발적)
+const WALK_LINES = [
+  "오~ 오늘 운동 좀 하는데? 💪", "영차영차 🚶", "산책 가자 🌿", "발걸음 가벼워~", "한 바퀴 더!",
+  "제주 공기 좋다 🍃", "오늘 날씨 좋네 ☀️", "어디 가지~ 🎵", "두근두근 모험! 🗺️", "천천히 걸어도 돼 😌",
+  "꽃 구경 중 🌼", "바다 보러 갈까 🌊", "콧노래 흥얼흥얼 🎶", "발바닥이 간질간질", "돌하르방한테 인사 🗿",
+  "오름 한 바퀴? ⛰️", "귤 따러 갈까 🍊", "뚜벅뚜벅", "산책은 진리지 😎", "나비 따라가는 중 🦋",
+  "헥헥... 좀 쉬었다 갈까?", "오늘 만보 채우는 거야? 👀", "다리 알 배기겠다", "물 한 잔 하고 올게 💧", "또 클릭이야? ㅋㅋ",
+];
+const NAG_LINES = [
+  "야 이제 그만하고 진짜로 나가서 걷고 와 😏", "이러다 신발창 다 닳겠어 👟", "마우스만 운동시키지 말고 너도 좀 움직여 😤",
+  "나 어지러워!! 그만 좀 🌀", "여기 맴맴 도는 거 너야 나야?", "그만 괴롭혀 ㅠㅠ", "손가락 운동만 하지 말고~",
+  "집콕 그만! 밖에 제주 날씨 좋대 🌞", "나 다리 풀렸어... 🦵", "적당히 좀 해 이 산책 중독자야 😆",
+  "너 지금 일 안 하지? 👀", "클릭 그만하고 물 마셔 💧", "내 다리가 무슨 죄야 😭", "스토커세요...? 😳",
+];
+function walkLine(clicks: number): string | null {
+  if (clicks % 3 !== 0 && Math.random() > 0.32) return null; // 적당한 간격
+  const nag = clicks > 40 && Math.random() < 0.5;
+  const pool = nag ? NAG_LINES : WALK_LINES;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+const todayKey = () => `mh_walk_${new Date().toISOString().slice(0, 10)}`;
+function fmtAfter(ms: number) {
+  const d = Math.ceil(ms / (24 * 3600 * 1000));
+  return d > 1 ? `${d}일 후` : `${Math.ceil(ms / (3600 * 1000))}시간 후`;
+}
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function MyMiniHome() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -43,6 +70,16 @@ export function MyMiniHome() {
   const [bubble, setBubble] = useState<string | null>(null);
   const [speakOpen, setSpeakOpen] = useState(false);
   const [speakText, setSpeakText] = useState("");
+  // 걸음 이스터에그
+  const [walkSteps, setWalkSteps] = useState(0);
+  const clicksRef = useRef(0);
+  // 꾸미기 저장(주1회)
+  const [dirty, setDirty] = useState(false);
+  const [decorMsg, setDecorMsg] = useState("");
+
+  useEffect(() => {
+    try { setWalkSteps(Number(localStorage.getItem(todayKey()) || 0)); } catch { /* */ }
+  }, []);
 
   useEffect(() => {
     if (!user) { setHome(null); return; }
@@ -62,10 +99,18 @@ export function MyMiniHome() {
     if (!rr) return;
     const x = Math.max(6, Math.min(((e.clientX - rr.left) / rr.width) * 100, 94));
     const y = Math.max(34, Math.min(((e.clientY - rr.top) / rr.height) * 100, 95));
+    // 거리 누적(클릭 이동거리 → 걸음). 오늘치 localStorage.
+    const dist = Math.hypot(x - hostX, y - hostY);
+    const steps = Math.max(1, Math.round(dist * 1.5));
+    setWalkSteps((s) => { const n = s + steps; try { localStorage.setItem(todayKey(), String(n)); } catch { /* */ } return n; });
     setFacing(x > hostX ? "right" : "left");
     setHostX(x); setHostY(y); setWalking(true);
     window.setTimeout(() => setWalking(false), 1120);
-  }, [hostX]);
+    // 랜덤 멘트 이스터에그
+    clicksRef.current += 1;
+    const line = walkLine(clicksRef.current);
+    if (line) { setBubble(line); window.setTimeout(() => setBubble(null), 2600); }
+  }, [hostX, hostY]);
 
   const speak = useCallback(() => {
     const v = speakText.trim(); if (!v) return;
@@ -73,24 +118,26 @@ export function MyMiniHome() {
     track("minihome_speak", { own: true });
   }, [speakText]);
 
-  const persist = useCallback(async (next: { minimi?: MiniMiKind; concept?: RoomConcept; background?: string; specialMinimi?: string }) => {
+  // 선택은 미리보기만(로컬). 저장 버튼으로 커밋.
+  const pickMinimi = (k: MiniMiKind) => { setMinimi(k); setSpecialMinimi(""); setDirty(true); setDecorMsg(""); };
+  const pickConcept = (c: RoomConcept) => { setConcept(c); setDirty(true); setDecorMsg(""); };
+  const pickBackground = (bg: string) => { setBackground(bg); setDirty(true); setDecorMsg(""); };
+  const pickSpecialMinimi = (id: string) => { setSpecialMinimi(id); setDirty(true); setDecorMsg(""); };
+
+  const saveDecor = useCallback(async () => {
     if (!user) return;
-    setSave("saving");
+    setSave("saving"); setDecorMsg("");
     try {
       const t = await user.getIdToken();
-      const r = await fetch("/api/minihome/me", { method: "PATCH", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify(next) });
-      if (!r.ok) throw new Error();
+      const r = await fetch("/api/minihome/me", { method: "PATCH", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ minimi, concept, background, specialMinimi }) });
       const d = await r.json();
-      setHome(d.home);
-      track("minihome_equip", next as Record<string, string | undefined>);
-      setSave("saved"); window.setTimeout(() => setSave("idle"), 1600);
+      if (r.status === 429) { setSave("idle"); setDecorMsg(`주 1회만 변경 가능 — 다음 변경 ${d.nextChangeAt ? fmtAfter(d.nextChangeAt - Date.now()) : ""}`); return; }
+      if (!r.ok) throw new Error();
+      setHome(d.home); setDirty(false);
+      track("minihome_equip", { minimi, concept, background, specialMinimi });
+      setSave("saved"); window.setTimeout(() => setSave("idle"), 1800);
     } catch { setSave("idle"); }
-  }, [user]);
-
-  const pickMinimi = (k: MiniMiKind) => { setMinimi(k); setSpecialMinimi(""); persist({ minimi: k, concept, background, specialMinimi: "" }); };
-  const pickConcept = (c: RoomConcept) => { setConcept(c); persist({ minimi, concept: c, background, specialMinimi }); };
-  const pickBackground = (bg: string) => { setBackground(bg); persist({ minimi, concept, background: bg, specialMinimi }); };
-  const pickSpecialMinimi = (id: string) => { setSpecialMinimi(id); persist({ minimi, concept, background, specialMinimi: id }); };
+  }, [user, minimi, concept, background, specialMinimi]);
 
   const uploadBg = useCallback(async (file: File) => {
     if (!user || !file) return;
@@ -122,6 +169,8 @@ export function MyMiniHome() {
   }, [user]);
 
   const room = ROOM_CONCEPTS[concept];
+  const cooldownLeft = home?.decorSavedAt ? home.decorSavedAt + WEEK_MS - Date.now() : 0;
+  const onCooldown = cooldownLeft > 0;
   const ownedBg = SHOP_ITEMS.filter((i) => i.category === "background" && i.asset && home?.ownedItems?.includes(i.id));
   const ownedSpecialMinimi = SHOP_ITEMS.filter((i) => i.category === "minimi" && i.asset && home?.ownedItems?.includes(i.id));
   const ownsCustomBg = home?.ownedItems?.includes("bg-custom");
@@ -223,6 +272,12 @@ export function MyMiniHome() {
             <div style={{ position: "absolute", left: 8, bottom: 6, fontSize: 10, color: "#7a6a48", background: "rgba(255,255,255,.6)", borderRadius: 4, padding: "0 4px" }}>아무 곳이나 클릭→미니미 이동 🚶</div>
           </div>
 
+          {/* 오늘 걸음 거리 */}
+          <div style={{ marginTop: 6, textAlign: "center", fontSize: 12, color: "#6a5e48" }}>
+            오늘 🥾 <b style={{ color: room.accent }}>{walkSteps.toLocaleString()}</b>보 걸었어요
+            {walkSteps > 300 ? " · 오늘 많이 걸었네! 😆" : walkSteps > 100 ? " · 운동 좀 하는데? 💪" : ""}
+          </div>
+
           {/* 탭 내용 */}
           <div style={{ marginTop: 12 }}>
             {tab === "home" && (
@@ -235,7 +290,7 @@ export function MyMiniHome() {
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <span className="mh-card-h" style={{ border: 0, margin: 0 }}>🎨 꾸미기</span>
-                  <span style={{ fontSize: 11, color: save === "saved" ? "#5b9e3f" : "#a89878" }}>{save === "saving" ? "저장 중..." : save === "saved" ? "✓ 저장됨" : "고르면 바로 저장돼요"}</span>
+                  <span style={{ fontSize: 10, color: "#b0a486" }}>주 1회 변경 가능</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#8a7a5a", margin: "6px 0 4px" }}>방 컨셉</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -270,7 +325,16 @@ export function MyMiniHome() {
                     </div>
                   </>
                 )}
-                <div style={{ fontSize: 10, color: "#b0a486", marginTop: 10 }}>특별 미니미·배경은 <Link href="/minihome/shop" style={{ color: room.accent }}>상점</Link>에서 보말로 구매하세요.</div>
+                {/* 저장 버튼 + 주1회 안내 */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12, borderTop: "1px dashed #e3d9c2", paddingTop: 10 }}>
+                  <button onClick={saveDecor} disabled={!dirty || save === "saving" || onCooldown} style={{ background: !dirty || onCooldown ? "#e8e2d4" : "var(--accent)", color: !dirty || onCooldown ? "#9a8" : "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: !dirty || onCooldown ? "default" : "pointer" }}>
+                    {save === "saving" ? "저장 중..." : save === "saved" ? "✓ 저장됨" : "💾 저장"}
+                  </button>
+                  <span style={{ fontSize: 11, color: decorMsg ? "#c0392b" : "#a89878" }}>
+                    {decorMsg ? decorMsg : onCooldown ? `다음 변경 ${fmtAfter(cooldownLeft)} 가능` : dirty ? "변경사항을 저장하세요" : "미니미·방을 골라보세요"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 10, color: "#b0a486", marginTop: 8 }}>매번 자유롭게 바꾸는 <b>무제한 변경권</b>은 곧 유료로 제공돼요. 특별 미니미·배경은 <Link href="/minihome/shop" style={{ color: room.accent }}>상점</Link>에서.</div>
               </div>
             )}
 
