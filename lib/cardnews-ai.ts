@@ -221,8 +221,8 @@ async function grabSnapshot(id: string): Promise<Buffer | null> {
 const WEATHER_SYS = `너는 제주 CCTV 화면을 보고 현장 날씨를 읽는 분석가다. 보이는 것만 판단하고 추측·날조 금지.
 반환(JSON): { "weather": "맑음|구름조금|흐림|비|눈|안개|야간 중 하나", "scene": "현장 모습 한 줄(파도·하늘·혼잡 등, 18자 이내)" }`;
 
-async function fromWeather(): Promise<Content | null> {
-  const weatherCameraIds = await getWeatherCamerasForNow(); // KST 기준 오전/오후 세트 자동 선택
+async function fromWeather(slot?: "am" | "pm"): Promise<Content | null> {
+  const weatherCameraIds = await getWeatherCamerasForNow(slot); // slot 지정 시 강제, 없으면 KST 자동
   if (weatherCameraIds.length === 0) return null;
 
   const db = getAdminDb();
@@ -277,10 +277,10 @@ async function fromWeather(): Promise<Content | null> {
   };
 }
 
-/** 소스별 카드뉴스 초안 생성 */
-export async function generateCardNewsDraft(source: CardNewsSource): Promise<Content | null> {
+/** 소스별 카드뉴스 초안 생성. weather는 slot(am/pm) 강제 가능. */
+export async function generateCardNewsDraft(source: CardNewsSource, slot?: "am" | "pm"): Promise<Content | null> {
   if (source === "feed") return fromFeed();
   if (source === "briefing") return fromBriefing();
-  if (source === "weather") return fromWeather();
+  if (source === "weather") return fromWeather(slot);
   return fromWebzine();
 }

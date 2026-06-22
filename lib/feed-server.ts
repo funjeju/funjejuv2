@@ -1,4 +1,5 @@
 import "server-only";
+import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase-admin";
 
 /**
@@ -24,19 +25,24 @@ async function resolveAdminUid(): Promise<string | null> {
   }
 }
 
-/** 특정 시각(epoch ms) 이후 올라온 피드 글 수 — 카드뉴스 자동발급 트리거용 */
+/** 특정 시각(epoch ms) 이후 올라온 피드 글 수 — 카드뉴스 자동발급 트리거용.
+ *  feeds.createdAt 는 Firestore Timestamp 이므로 숫자가 아니라 Timestamp로 비교해야 한다. */
+function toMs(c: unknown): number {
+  if (c && typeof (c as { toMillis?: () => number }).toMillis === "function") return (c as { toMillis: () => number }).toMillis();
+  return typeof c === "number" ? c : 0;
+}
 export async function countFeedsSince(sinceMs: number): Promise<number> {
   try {
     const snap = await getAdminDb()
       .collection("feeds")
-      .where("createdAt", ">", sinceMs)
+      .where("createdAt", ">", Timestamp.fromMillis(sinceMs))
       .get();
     return snap.size;
   } catch {
     // 인덱스/타입 문제 시 최근 80개 메모리 카운트로 폴백
     try {
       const snap = await getAdminDb().collection("feeds").orderBy("createdAt", "desc").limit(80).get();
-      return snap.docs.filter((d) => (d.data().createdAt ?? 0) > sinceMs).length;
+      return snap.docs.filter((d) => toMs(d.data().createdAt) > sinceMs).length;
     } catch { return 0; }
   }
 }

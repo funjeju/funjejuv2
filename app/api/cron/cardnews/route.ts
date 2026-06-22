@@ -66,13 +66,20 @@ export async function GET(req: NextRequest) {
 
   const origin = req.nextUrl.origin;
   const hour = kstHour();
-  const results: Record<string, unknown> = { kstHour: hour };
+  const slot = req.nextUrl.searchParams.get("slot"); // am | lunch | pm (vercel.json), 없으면 시각 기반
+  const results: Record<string, unknown> = { kstHour: hour, slot };
 
-  // 어떤 소스를 만들지 결정: 시각 기반(날씨/맛집) + 피드 8개 체크
+  // 어떤 소스를 만들지 결정 — slot 우선(정시 드리프트 무관), 없으면 시각 기반
   const sources: CardNewsSource[] = [];
-  if (hour >= 6 && hour < 12) sources.push("weather");      // 오전 슬롯 → 날씨(오전 세트)
-  else if (hour >= 16 && hour < 22) sources.push("weather"); // 오후 슬롯 → 날씨(오후 세트)
-  if (hour >= 12 && hour < 16) sources.push("webzine");      // 점심 슬롯 → 맛집
+  let weatherSlot: "am" | "pm" | undefined;
+  if (slot === "am") { sources.push("weather"); weatherSlot = "am"; }
+  else if (slot === "pm") { sources.push("weather"); weatherSlot = "pm"; }
+  else if (slot === "lunch") { sources.push("webzine"); }
+  else {
+    if (hour >= 6 && hour < 12) { sources.push("weather"); weatherSlot = "am"; }
+    else if (hour >= 16 && hour < 22) { sources.push("weather"); weatherSlot = "pm"; }
+    if (hour >= 12 && hour < 16) sources.push("webzine");
+  }
 
   // 피드: 새 글 8개 이상 쌓였으면 발급 (마커 갱신)
   let feedTriggered = false;
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
   const published: string[] = [];
   for (const source of sources) {
     try {
-      const draft = await generateCardNewsDraft(source);
+      const draft = await generateCardNewsDraft(source, source === "weather" ? weatherSlot : undefined);
       if (!draft) { results[`${source}_skip`] = "소스 부족"; continue; }
       await publishCard(draft, origin);
       published.push(`${source}:${draft.slug}`);
