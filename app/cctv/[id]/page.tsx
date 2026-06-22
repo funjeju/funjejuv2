@@ -15,6 +15,8 @@ import { GROUP_HUB } from "@/types/cctv-location";
 import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
+import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
+import { listGames } from "@/lib/spot";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -123,6 +125,7 @@ export default async function CctvDetailPage({ params }: Props) {
   }
 
   const weather = cctv.lat && cctv.lng ? await fetchWeather(cctv.lat, cctv.lng) : null;
+  const spotGames = await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -219,6 +222,9 @@ export default async function CctvDetailPage({ params }: Props) {
               cctvName={cctv.name}
             />
           )}
+
+          {/* 모바일: 영상 바로 아래 최근 틀린그림 배너 */}
+          <RecentGameBanner games={spotGames} className="lg:hidden" />
 
           {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
           {!cctv.youtubeId && (
@@ -498,6 +504,9 @@ export default async function CctvDetailPage({ params }: Props) {
               채팅 시작하기 →
             </Link>
           </div>
+
+          {/* 데스크톱: 돌AI 버튼 아래 최근 틀린그림 배너 */}
+          <RecentGameBanner games={spotGames} className="hidden lg:block" />
         </aside>
       </div>
     </div>
