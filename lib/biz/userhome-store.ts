@@ -28,6 +28,8 @@ export interface UserHome {
   specialMinimi?: string; // 장착한 특별 미니미 상점아이템 id ("" 또는 미설정=기본 미니미)
   customBgUrl?: string; // bg-custom 장착 시 업로드한 내 사진 URL
   decorSavedAt?: number; // 마지막 꾸미기 변경 시각(epoch ms) — 주1회 제한
+  bgmUrl?: string; // BGM 유튜브 링크
+  photos?: string[]; // 사진첩 (업로드한 사진 URL들)
   createdAt: string;
   updatedAt: string;
 }
@@ -55,14 +57,30 @@ export async function getOrCreateUserHome(uid: string, displayName?: string): Pr
   return { uid, ...home };
 }
 
-export interface PublicHome { uid: string; displayName: string; minimi: MiniMiKind; concept: RoomConcept; level: number; background?: string; specialMinimi?: string; customBgUrl?: string; }
+export interface PublicHome { uid: string; displayName: string; minimi: MiniMiKind; concept: RoomConcept; level: number; background?: string; specialMinimi?: string; customBgUrl?: string; bgmUrl?: string; photos?: string[]; }
 
 /** 남의 미니홈 공개 조회 — 보말·보유아이템 등 민감정보 제외. */
 export async function getPublicHome(uid: string): Promise<PublicHome | null> {
   const snap = await getAdminDb().collection(COL).doc(uid).get();
   if (!snap.exists) return null;
   const d = snap.data() as Partial<UserHome>;
-  return { uid, displayName: d.displayName ?? "여행자", minimi: d.minimi ?? "hallabong", concept: d.concept ?? "oreum", level: d.level ?? 1, background: d.background ?? "", specialMinimi: d.specialMinimi ?? "", customBgUrl: d.customBgUrl ?? "" };
+  return { uid, displayName: d.displayName ?? "여행자", minimi: d.minimi ?? "hallabong", concept: d.concept ?? "oreum", level: d.level ?? 1, background: d.background ?? "", specialMinimi: d.specialMinimi ?? "", customBgUrl: d.customBgUrl ?? "", bgmUrl: d.bgmUrl ?? "", photos: d.photos ?? [] };
+}
+
+/** BGM 유튜브 링크 저장 (쿨다운 없음). */
+export async function setBgm(uid: string, url: string): Promise<void> {
+  const u = String(url || "").trim();
+  const val = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//.test(u) ? u.slice(0, 200) : "";
+  await getAdminDb().collection(COL).doc(uid).set({ bgmUrl: val, updatedAt: now() }, { merge: true });
+}
+
+/** 사진첩에 사진 추가 (URL 배열, 최대 30장). */
+export async function addPhoto(uid: string, url: string): Promise<string[]> {
+  const ref = getAdminDb().collection(COL).doc(uid);
+  const cur = ((await ref.get()).data()?.photos as string[]) ?? [];
+  const next = [url, ...cur].slice(0, 30);
+  await ref.set({ photos: next, updatedAt: now() }, { merge: true });
+  return next;
 }
 
 /** bg-custom 사진 업로드 후 장착 — 보유 검증. */

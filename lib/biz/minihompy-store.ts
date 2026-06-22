@@ -18,28 +18,28 @@ export interface GuestPost {
 const VALID_MINIMI: MiniMiKind[] = ["haenyeo", "dolharbang", "hallabong", "baram", "yuchae", "gemeunmorae"];
 const VALID_ROOM: RoomConcept[] = ["oreum", "tangerine", "beach"];
 
-export async function listGuestPosts(slug: string, limit = 50): Promise<GuestPost[]> {
+export async function listGuestPosts(slug: string, limit = 50, coll: string = COLLECTION): Promise<GuestPost[]> {
   const db = getAdminDb();
-  const snap = await db.collection(COLLECTION).doc(slug).collection("guestbook")
+  const snap = await db.collection(coll).doc(slug).collection("guestbook")
     .orderBy("createdAt", "desc").limit(limit).get();
   return snap.docs.map((d) => d.data() as GuestPost);
 }
 
-export async function addGuestPost(slug: string, name: string, text: string): Promise<GuestPost> {
+export async function addGuestPost(slug: string, name: string, text: string, coll: string = COLLECTION): Promise<GuestPost> {
   const db = getAdminDb();
   const post: GuestPost = {
     name: (name || "익명").slice(0, 20),
     text: text.slice(0, 200),
     createdAt: new Date().toISOString(),
   };
-  await db.collection(COLLECTION).doc(slug).collection("guestbook").add(post);
+  await db.collection(coll).doc(slug).collection("guestbook").add(post);
   return post;
 }
 
-/** 방문자 카운터 — biz_sites/{slug} 에 누적. TODAY는 날짜 바뀌면 리셋. 로그인 방문자는 접속로그도 기록. */
-export async function bumpVisit(slug: string, visitor?: { uid: string; name: string }): Promise<{ today: number; total: number }> {
+/** 방문자 카운터 — {coll}/{slug} 에 누적. TODAY는 날짜 바뀌면 리셋. 로그인 방문자는 접속로그도 기록. */
+export async function bumpVisit(slug: string, visitor?: { uid: string; name: string }, coll: string = COLLECTION): Promise<{ today: number; total: number }> {
   const db = getAdminDb();
-  const ref = db.collection(COLLECTION).doc(slug);
+  const ref = db.collection(coll).doc(slug);
   const day = new Date().toISOString().slice(0, 10);
   const res = await db.runTransaction(async (tx) => {
     const d = (await tx.get(ref)).data() ?? {};
@@ -56,8 +56,8 @@ export async function bumpVisit(slug: string, visitor?: { uid: string; name: str
 }
 
 export interface Visitor { uid: string; name: string; lastVisit: number; }
-export async function listVisitors(slug: string, limit = 20): Promise<Visitor[]> {
-  const snap = await getAdminDb().collection(COLLECTION).doc(slug).collection("visitors")
+export async function listVisitors(slug: string, limit = 20, coll: string = COLLECTION): Promise<Visitor[]> {
+  const snap = await getAdminDb().collection(coll).doc(slug).collection("visitors")
     .orderBy("lastVisit", "desc").limit(limit).get();
   return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<Visitor, "uid">) }));
 }
@@ -65,8 +65,8 @@ export async function listVisitors(slug: string, limit = 20): Promise<Visitor[]>
 // ── 스크랩(주인 즐겨찾기) — 링크형 + 스팟형(카테고리별) ──
 export type ScrapType = "link" | "spot";
 export interface ScrapItem { id: string; type: ScrapType; category: string; title: string; url: string; address: string; createdAt: string; }
-export async function listScraps(slug: string, limit = 100): Promise<ScrapItem[]> {
-  const snap = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps")
+export async function listScraps(slug: string, limit = 100, coll: string = COLLECTION): Promise<ScrapItem[]> {
+  const snap = await getAdminDb().collection(coll).doc(slug).collection("scraps")
     .orderBy("createdAt", "desc").limit(limit).get();
   return snap.docs.map((d) => {
     const r = d.data() as Partial<ScrapItem>;
@@ -82,7 +82,7 @@ export async function listScraps(slug: string, limit = 100): Promise<ScrapItem[]
   });
 }
 export interface NewScrap { type?: ScrapType; category?: string; title?: string; url?: string; address?: string; }
-export async function addScrap(slug: string, input: NewScrap): Promise<ScrapItem> {
+export async function addScrap(slug: string, input: NewScrap, coll: string = COLLECTION): Promise<ScrapItem> {
   const url = (input.url || "").trim();
   const type: ScrapType = input.type === "spot" ? "spot" : (url ? "link" : "spot");
   const item = {
@@ -93,21 +93,21 @@ export async function addScrap(slug: string, input: NewScrap): Promise<ScrapItem
     address: (input.address || "").trim().slice(0, 120),
     createdAt: new Date().toISOString(),
   };
-  const ref = await getAdminDb().collection(COLLECTION).doc(slug).collection("scraps").add(item);
+  const ref = await getAdminDb().collection(coll).doc(slug).collection("scraps").add(item);
   return { id: ref.id, ...item };
 }
 
 // ── 다이어리(달력) ──
 export interface DiaryEntry { id: string; date: string; text: string; createdAt: string; }
-export async function listDiary(slug: string, limit = 80): Promise<DiaryEntry[]> {
-  const snap = await getAdminDb().collection(COLLECTION).doc(slug).collection("diary")
+export async function listDiary(slug: string, limit = 80, coll: string = COLLECTION): Promise<DiaryEntry[]> {
+  const snap = await getAdminDb().collection(coll).doc(slug).collection("diary")
     .orderBy("date", "desc").limit(limit).get();
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DiaryEntry, "id">) }));
 }
-export async function addDiary(slug: string, date: string, text: string): Promise<DiaryEntry> {
+export async function addDiary(slug: string, date: string, text: string, coll: string = COLLECTION): Promise<DiaryEntry> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("날짜 형식 오류");
   const entry = { date, text: text.slice(0, 300), createdAt: new Date().toISOString() };
-  const ref = await getAdminDb().collection(COLLECTION).doc(slug).collection("diary").add(entry);
+  const ref = await getAdminDb().collection(coll).doc(slug).collection("diary").add(entry);
   return { id: ref.id, ...entry };
 }
 

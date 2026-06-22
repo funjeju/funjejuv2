@@ -6,6 +6,7 @@ import { listGrows } from "@/lib/biz/grow-store";
 import { MiniMi } from "@/components/biz/minihompy/MiniMi";
 import { VisitGrows } from "@/components/biz/minihompy/VisitGrows";
 import { ChatRoom } from "@/components/biz/minihompy/ChatRoom";
+import { VisitGuestbook } from "@/components/biz/minihompy/VisitGuestbook";
 import { ROOM_CONCEPTS, MINIMI } from "@/components/biz/minihompy/minimi-config";
 import { SHOP_ITEMS } from "@/components/biz/minihompy/shop-items";
 
@@ -51,6 +52,7 @@ export default async function VisitMiniHomePage({ params }: { params: Promise<{ 
           </div>
 
           <VisitGrows ownerUid={uid} grows={grows} />
+          <VisitGuestbook ownerUid={uid} accent={room.accent} />
           <ChatRoom ownerUid={uid} accent={room.accent} />
         </div>
       </div>
