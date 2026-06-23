@@ -18,6 +18,14 @@
       "schedule": "30 23 * * *"
     },
     {
+      "path": "/api/cron/spot-ingest",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/spot-guide",
+      "schedule": "30 1,6,11 * * *"
+    },
+    {
       "path": "/api/cron/cardnews?slot=am",
       "schedule": "0 23 * * *"
     },
