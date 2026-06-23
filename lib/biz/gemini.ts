@@ -37,20 +37,40 @@ function parseJSON<T>(text: string): T {
   }
 }
 
+// 일시적 과부하(503/UNAVAILABLE/overloaded·429)면 잠깐 쉬었다 재시도 — 자동발행 크론이 한 슬롯 통째로 날리지 않게.
+function isTransient(e: unknown): boolean {
+  const s = (e instanceof Error ? e.message : String(e)).toLowerCase();
+  return s.includes("503") || s.includes("unavailable") || s.includes("overloaded") || s.includes("high demand") || s.includes("429") || s.includes("rate");
+}
+
 export async function generateJSON<T>(systemPrompt: string, userPrompt: string): Promise<T> {
-  const res = await getAI().models.generateContent({
-    model: MODEL,
-    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-    config: {
-      systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      temperature: 0.3,
-      thinkingConfig: { thinkingBudget: 0 },
-    },
-  });
-  const text = res.text;
-  if (!text) throw new Error("AI returned empty response");
-  return parseJSON<T>(text);
+  const attempts = 4;
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await getAI().models.generateContent({
+        model: MODEL,
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: "application/json",
+          temperature: 0.3,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
+      const text = res.text;
+      if (!text) throw new Error("AI returned empty response");
+      return parseJSON<T>(text);
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1 && isTransient(e)) {
+        await new Promise((r) => setTimeout(r, 1500 * (i + 1))); // 1.5s·3s·4.5s 백오프
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
 }
 
 /**
