@@ -56,6 +56,12 @@ const DICT: Record<string, Entry> = {
   "cctv.wind": { ko: "바람", en: "Wind", ja: "風", zh: "风" },
   "cctv.noWeather": { ko: "날씨 정보를 가져올 수 없어요", en: "Weather data unavailable", ja: "天気情報を取得できません", zh: "无法获取天气信息" },
   "cctv.rainWarn": { ko: "강수 — 우산 챙기세요!", en: "Rain — bring an umbrella!", ja: "降雨 — 傘をお忘れなく！", zh: "有降雨 — 记得带伞！" },
+  "cctv.rainChance": { ko: "강수확률", en: "Rain chance", ja: "降水確率", zh: "降水概率" },
+  "cctv.rain": { ko: "비", en: "Rain", ja: "雨", zh: "雨" },
+  "cctv.rising": { ko: "밀물", en: "Rising", ja: "満ち潮", zh: "涨潮" },
+  "cctv.falling": { ko: "썰물", en: "Falling", ja: "引き潮", zh: "退潮" },
+  "cctv.tideHigh": { ko: "만조", en: "High", ja: "満潮", zh: "满潮" },
+  "cctv.tideLow": { ko: "간조", en: "Low", ja: "干潮", zh: "干潮" },
 
   // ── 날씨 설명 (WMO 코드) ────────────────────────────────
   "wx.clear": { ko: "맑음", en: "Clear", ja: "晴れ", zh: "晴" },

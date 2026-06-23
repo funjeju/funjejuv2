@@ -6,7 +6,7 @@ import { VurixLaunch } from "@/components/cctv/VurixLaunch";
 import { isVurixId } from "@/constants/vurix";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
-import { fetchWeather } from "@/lib/weather";
+import { fetchWeather, fetchTide } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
@@ -127,6 +127,7 @@ export default async function CctvDetailPage({ params }: Props) {
   }
 
   const weather = cctv.lat && cctv.lng ? await fetchWeather(cctv.lat, cctv.lng) : null;
+  const tide = cctv.lat && cctv.lng ? await fetchTide(cctv.lat, cctv.lng) : null;
   const spotGames = await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
 
   const jsonLd = {
@@ -278,7 +279,7 @@ export default async function CctvDetailPage({ params }: Props) {
           </div>
 
           {/* 실시간 날씨 (다국어) */}
-          <CctvLiveInfo weather={weather} />
+          <CctvLiveInfo weather={weather} tide={tide} />
 
           {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (

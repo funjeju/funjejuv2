@@ -9,6 +9,7 @@ export type Weather = {
   humidity: number;            // 습도 (%)
   windSpeed: number;           // 풍속 (m/s)
   precipitation: number;       // 강수량 (mm)
+  precipProbability: number;   // 강수확률 (%) — 현재 시각 기준
   weatherCode: number;         // WMO 날씨 코드
   isDay: boolean;
   description: string;         // 한글 날씨 설명
@@ -109,8 +110,10 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
   url.searchParams.set("longitude", String(lng));
   url.searchParams.set("current",
     "temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day");
+  url.searchParams.set("hourly", "precipitation_probability");
   url.searchParams.set("timezone", "Asia/Seoul");
   url.searchParams.set("wind_speed_unit", "ms");
+  url.searchParams.set("forecast_days", "1");
 
   try {
     const res = await fetch(url.toString(), {
@@ -127,10 +130,20 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
         precipitation: number;
         weather_code: number;
         is_day: number;
+        time?: string;
       };
+      hourly?: { time: string[]; precipitation_probability: number[] };
     };
 
     const c = data.current;
+    // 현재 시각의 강수확률 (hourly에서 현재 시 매칭)
+    let precipProbability = 0;
+    if (data.hourly?.time?.length) {
+      const nowHour = (c.time ?? "").slice(0, 13); // YYYY-MM-DDTHH
+      const idx = data.hourly.time.findIndex((t) => t.slice(0, 13) === nowHour);
+      const probs = data.hourly.precipitation_probability ?? [];
+      precipProbability = idx >= 0 ? (probs[idx] ?? 0) : (probs[0] ?? 0);
+    }
     const isDay = c.is_day === 1;
     const { description, emoji } = interpretCode(c.weather_code, isDay);
 
@@ -146,6 +159,7 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
       humidity: Math.round(c.relative_humidity_2m),
       windSpeed: Math.round(c.wind_speed_10m * 10) / 10,
       precipitation: c.precipitation,
+      precipProbability,
       weatherCode: c.weather_code,
       isDay,
       description,
@@ -157,6 +171,72 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
       tideEmoji: tideInfo.emoji,
       tideDetail: tideInfo.detail,
     };
+  } catch {
+    return null;
+  }
+}
+
+/* ──────────────────────────────────────────────
+ * 조위(만조·간조) — Open-Meteo Marine API (API 키 불필요)
+ * sea_level_height_msl(평균해수면 기준 m) 시계열에서 극값을 찾아 만조/간조 시각·높이 산출.
+ * ────────────────────────────────────────────── */
+export type TideEvent = { type: "high" | "low"; time: string; heightCm: number };
+export type TideInfo = {
+  currentCm: number;       // 현재 수위 (cm, 평균해수면 기준)
+  rising: boolean;         // 밀물(true)/썰물(false)
+  events: TideEvent[];     // 오늘 만조·간조 (시간순)
+  next?: TideEvent;        // 지금 이후 첫 만조/간조
+};
+
+function kstParts(): { date: string; hourKey: string } {
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hour12: false,
+  }).formatToParts(new Date());
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  let hh = g("hour"); if (hh === "24") hh = "00";
+  const date = `${g("year")}-${g("month")}-${g("day")}`;
+  return { date, hourKey: `${date}T${hh}` };
+}
+
+export async function fetchTide(lat: number, lng: number): Promise<TideInfo | null> {
+  const url = new URL("https://marine-api.open-meteo.com/v1/marine");
+  url.searchParams.set("latitude", String(lat));
+  url.searchParams.set("longitude", String(lng));
+  url.searchParams.set("hourly", "sea_level_height_msl");
+  url.searchParams.set("timezone", "Asia/Seoul");
+  url.searchParams.set("forecast_days", "2");
+
+  try {
+    const res = await fetch(url.toString(), { next: { revalidate: 600 } });
+    if (!res.ok) return null;
+    const data = await res.json() as { hourly?: { time: string[]; sea_level_height_msl: (number | null)[] } };
+    const time = data.hourly?.time ?? [];
+    const h = data.hourly?.sea_level_height_msl ?? [];
+    if (time.length < 3 || h.length < 3) return null;
+
+    const { date, hourKey } = kstParts();
+
+    // 극값 탐색 → 만조(high)/간조(low)
+    const all: TideEvent[] = [];
+    for (let i = 1; i < h.length - 1; i++) {
+      const prev = h[i - 1], cur = h[i], next = h[i + 1];
+      if (prev == null || cur == null || next == null) continue;
+      if (cur > prev && cur >= next) all.push({ type: "high", time: time[i], heightCm: Math.round(cur * 100) });
+      else if (cur < prev && cur <= next) all.push({ type: "low", time: time[i], heightCm: Math.round(cur * 100) });
+    }
+
+    // 현재 수위·밀물/썰물
+    let curIdx = time.findIndex((t) => t.slice(0, 13) === hourKey);
+    if (curIdx < 0) curIdx = 0;
+    const curVal = h[curIdx] ?? 0;
+    const nextVal = h[curIdx + 1] ?? curVal;
+    const currentCm = Math.round((curVal ?? 0) * 100);
+    const rising = nextVal > curVal;
+
+    const events = all.filter((e) => e.time.slice(0, 10) === date);
+    const next = all.find((e) => e.time > hourKey + ":00");
+
+    return { currentCm, rising, events, next };
   } catch {
     return null;
   }

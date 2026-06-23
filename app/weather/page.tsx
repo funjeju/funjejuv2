@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { fetchWeather } from "@/lib/weather";
+import { fetchWeather, fetchTide } from "@/lib/weather";
 
 export const revalidate = 600; // 10분
+
+const hhmm = (iso: string) => iso.slice(11, 16);
 
 const SITE = "https://funjeju.com";
 
@@ -40,7 +42,11 @@ export const metadata: Metadata = {
 
 export default async function WeatherPage() {
   const data = await Promise.all(
-    REGIONS.map(async (r) => ({ ...r, w: await fetchWeather(r.lat, r.lng).catch(() => null) })),
+    REGIONS.map(async (r) => ({
+      ...r,
+      w: await fetchWeather(r.lat, r.lng).catch(() => null),
+      t: await fetchTide(r.lat, r.lng).catch(() => null),
+    })),
   );
 
   const kst = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", month: "long", day: "numeric" });
@@ -93,10 +99,23 @@ export default async function WeatherPage() {
                 <p className="text-xs font-semibold text-text-secondary">{r.w.description} · 체감 {r.w.apparentTemp}°</p>
                 <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-text-secondary">
                   <span>💨 {r.w.windLabel} {r.w.windSpeed}m/s</span>
-                  <span>{r.w.tideEmoji} {r.w.tide}</span>
                   <span>💧 습도 {r.w.humidity}%</span>
-                  <span>☔ {r.w.precipitation}mm</span>
+                  <span>
+                    {r.w.precipitation > 0
+                      ? `🌧 비 ${r.w.precipitation}mm`
+                      : `🌧 강수확률 ${r.w.precipProbability}%`}
+                  </span>
+                  {r.t ? (
+                    <span>{r.t.rising ? "🌊 밀물" : "🏖 썰물"} {r.t.currentCm}cm</span>
+                  ) : (
+                    <span>{r.w.tideEmoji} {r.w.tide}</span>
+                  )}
                 </div>
+                {r.t && r.t.events.length > 0 && (
+                  <p className="mt-1.5 truncate text-[10px] font-medium text-ocean-blue">
+                    {r.t.events.map((e) => `${e.type === "high" ? "만조" : "간조"} ${hhmm(e.time)}(${e.heightCm}cm)`).join(" · ")}
+                  </p>
+                )}
               </>
             ) : (
               <p className="mt-3 text-xs text-text-secondary">날씨 정보를 가져오는 중…</p>
