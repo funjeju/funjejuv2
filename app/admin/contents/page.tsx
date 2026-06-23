@@ -16,6 +16,7 @@ export default function AdminContentsPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [activeType, setActiveType] = useState<ContentType | "all">("all");
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +68,22 @@ export default function AdminContentsPage() {
       });
       await load();
     } finally { setBusy(null); }
+  }
+
+  async function revise(id: string) {
+    const note = (notes[id] || "").trim();
+    if (!note) { setMsg("수정 지시를 입력하세요"); return; }
+    setBusy(`rev-${id}`); setMsg("AI가 지시 반영해 재작성 중… (수십 초)");
+    try {
+      const res = await fetch("/api/admin/contents/revise", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, note }),
+      });
+      const d = await res.json();
+      setMsg(res.ok ? `재작성 완료: ${d.title} — 미리보기 확인 후 배포하세요` : `실패: ${d.error}`);
+      if (res.ok) setNotes((p) => ({ ...p, [id]: "" }));
+      await load();
+    } catch { setMsg("재작성 실패"); }
+    finally { setBusy(null); }
   }
 
   async function remove(id: string) {
@@ -160,6 +177,31 @@ export default function AdminContentsPage() {
                 <button type="button" onClick={() => remove(c.id)} disabled={busy === c.id}
                   className="rounded-full border border-border-soft bg-white px-3 py-1 text-[11px] font-semibold text-text-secondary">
                   삭제
+                </button>
+              </div>
+
+              {/* 검수 반려 사유 */}
+              {c.review?.verdict === "flagged" && (c.review.issues?.length ?? 0) > 0 && (
+                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
+                  <p className="font-bold">🔴 검수 반려 — 수정 후 배포하세요</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {c.review.issues.map((it, i) => <li key={i}>{it}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {/* 관리자 프롬프트 재작성 */}
+              <div className="mt-2">
+                <textarea
+                  value={notes[c.id] ?? ""}
+                  onChange={(e) => setNotes((p) => ({ ...p, [c.id]: e.target.value }))}
+                  placeholder="AI에게 수정 지시 (예: 추자도(돈대산)는 서쪽이 아니니 빼고 서쪽 다른 곳으로 채워줘)"
+                  rows={2}
+                  className="w-full rounded-lg border border-border-soft bg-white p-2 text-[12px] text-text-primary"
+                />
+                <button type="button" onClick={() => revise(c.id)} disabled={busy === `rev-${c.id}`}
+                  className="mt-1 rounded-full bg-brand-navy px-3 py-1 text-[11px] font-bold !text-white disabled:opacity-50">
+                  {busy === `rev-${c.id}` ? "AI 재작성 중…" : "🤖 AI로 수정"}
                 </button>
               </div>
             </div>

@@ -38,4 +38,12 @@ export type Content = {
   publishedAt?: string;
   /** 추가 JSON-LD (예: 여행일정 TouristTrip) — webzine 페이지가 그대로 출력 */
   extraLd?: unknown;
+  /** 검수 결과 — 2차 검수팀(AI) 게이트. flagged면 발행 보류, 어드민이 프롬프트로 수정. */
+  review?: {
+    verdict: "approved" | "flagged";
+    issues: string[];        // 검수팀이 지적한 문제 (반려 사유)
+    reviewedAt: string;
+    rounds: number;          // 자동 검수/수정 라운드 수
+    adminNote?: string;      // 어드민이 마지막으로 입력한 수정 지시
+  };
 };

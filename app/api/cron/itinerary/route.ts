@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { buildItineraryPost } from "@/lib/itinerary-post-ai";
 import { createContent } from "@/lib/contents";
+import { publishWithReview } from "@/lib/content-review";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -24,12 +25,12 @@ export async function GET(req: NextRequest) {
   try {
     const draft = await buildItineraryPost();
     if (!draft) return NextResponse.json({ ok: false, reason: "일정 생성 실패(재시도 대상)" }, { status: 200 });
-    if (req.nextUrl.searchParams.get("draft") !== "1") {
-      draft.status = "published";
-      draft.publishedAt = new Date().toISOString();
+    if (req.nextUrl.searchParams.get("draft") === "1") {
+      await createContent(draft);
+      return NextResponse.json({ ok: true, draftOnly: true, id: draft.id, slug: draft.slug, title: draft.title });
     }
-    await createContent(draft);
-    return NextResponse.json({ ok: true, id: draft.id, slug: draft.slug, status: draft.status, title: draft.title, sections: draft.sections.length });
+    const r = await publishWithReview(draft); // 2차 검수 게이트 → 통과만 발행
+    return NextResponse.json({ ok: true, title: draft.title, sections: draft.sections.length, ...r });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

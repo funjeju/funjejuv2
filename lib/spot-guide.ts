@@ -30,6 +30,8 @@ export const THEMES: Record<ThemeKey, { label: string; phrase: string; kw: RegEx
 /** 좌표로 권역 판정 (제주 중심 ~33.36,126.53) */
 export function deriveRegion(lat?: number, lng?: number): RegionKey {
   if (typeof lat !== "number" || typeof lng !== "number") return "jungsangan";
+  // 추자도(북위 33.9 부근, 제주 본섬 밖 먼바다 · 행정상 제주시) → '서쪽' 오분류 방지, 북부로 귀속
+  if (lat >= 33.7) return "north";
   if (lng >= 126.75) return "east";
   if (lng <= 126.34) return "west";
   if (lat >= 33.45) return "north";
