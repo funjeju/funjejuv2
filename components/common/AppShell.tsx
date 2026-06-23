@@ -6,6 +6,7 @@ import { AppHeader } from "@/components/common/AppHeader";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { FloatingChat } from "@/components/common/FloatingChat";
 import { usePageViewTracker } from "@/hooks/usePageViewTracker";
+import { LangProvider } from "@/lib/i18n";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,11 +18,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // 비즈 홈페이지(/biz/[slug])는 독립 페이지 — funjeju 네비/사이드바 없이 풀스크린
   if (pathname.startsWith("/biz/")) {
-    return <>{children}</>;
+    return <LangProvider>{children}</LangProvider>;
   }
 
   return (
-    <>
+    <LangProvider>
       <div className="flex min-h-screen">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -31,6 +32,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <FloatingChat />
       <BottomNavigation />
-    </>
+    </LangProvider>
   );
 }

@@ -16,6 +16,7 @@ import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
 import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
+import { CctvLiveInfo } from "@/components/cctv/CctvLiveInfo";
 import { listGames } from "@/lib/spot";
 
 type Props = { params: Promise<{ id: string }> };
@@ -272,49 +273,8 @@ export default async function CctvDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* 실시간 날씨 */}
-          <div className="mx-4 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-4 md:mx-0">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-bold text-brand-navy">🌡️ 현장 실시간 정보</p>
-              <p className="text-[10px] text-text-secondary">Open-Meteo · 10분마다 갱신</p>
-            </div>
-            {weather ? (
-              <>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
-                    <p className="text-[9px] text-text-secondary">날씨</p>
-                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
-                      {weather.emoji} {weather.description}
-                    </p>
-                    <p className="text-[9px] text-text-secondary">{weather.temperature}°C</p>
-                  </div>
-                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
-                    <p className="text-[9px] text-text-secondary">물때</p>
-                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
-                      {weather.tideEmoji} {weather.tide}
-                    </p>
-                    <p className="text-[9px] text-text-secondary">{weather.tideDetail}</p>
-                  </div>
-                  <div className="rounded-xl bg-white px-2 py-2 shadow-card">
-                    <p className="text-[9px] text-text-secondary">바람</p>
-                    <p className="mt-0.5 text-xs font-bold text-text-primary leading-tight">
-                      💨 {weather.windLabel}
-                    </p>
-                    <p className="text-[9px] text-text-secondary">{weather.windSpeed}m/s</p>
-                  </div>
-                </div>
-                {weather.precipitation > 0 && (
-                  <p className="mt-2 rounded-lg bg-blue-100 px-3 py-1.5 text-center text-[11px] font-semibold text-blue-700">
-                    ☔ 강수량 {weather.precipitation}mm — 우산 챙기세요!
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-center text-xs text-text-secondary py-3">
-                날씨 정보를 가져올 수 없어요
-              </p>
-            )}
-          </div>
+          {/* 실시간 날씨 (다국어) */}
+          <CctvLiveInfo weather={weather} />
 
           {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthButton } from "@/components/common/AuthButton";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { LangSwitcher } from "@/components/common/LangSwitcher";
 
 export function AppHeader() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export function AppHeader() {
         >
           <span className="text-xl">🔍</span>
         </button>
+        <LangSwitcher compact />
         <AuthButton />
       </div>
     </header>

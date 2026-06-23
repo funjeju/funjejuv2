@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import type { ReactNode } from "react";
@@ -8,6 +9,27 @@ import { CameraIcon } from "@/components/common/CameraIcon";
 import { TubeIcon } from "@/components/common/TubeIcon";
 import { listPublished } from "@/lib/contents";
 import { listGames } from "@/lib/spot";
+
+// 홈 전용 SEO — 브랜드(펀제주) + 핵심 키워드(제주날씨·제주 cctv·실시간제주) 선점
+export const metadata: Metadata = {
+  title: { absolute: "펀제주 — 제주 실시간 CCTV·제주날씨·도민맛집 | 오늘 제주 한눈에" },
+  description:
+    "펀제주(funjeju)에서 제주 실시간 CCTV로 지금 제주날씨·파도·바람을 확인하세요. 제주도날씨, 실시간 제주 영상, 도민맛집, AI 여행일정까지 — 오늘 제주가 한눈에.",
+  alternates: { canonical: "/" },
+  keywords: [
+    "펀제주", "funjeju", "제주날씨", "제주도날씨", "오늘 제주 날씨", "제주 실시간 날씨",
+    "제주 cctv", "제주도 cctv", "제주 실시간 cctv", "제주 라이브캠",
+    "실시간제주", "실시간 제주", "오늘제주", "지금 제주", "제주 가볼만한곳", "도민맛집",
+  ],
+  openGraph: {
+    title: "펀제주 — 제주 실시간 CCTV·제주날씨·도민맛집",
+    description: "지금 제주날씨·실시간 CCTV·도민맛집을 한눈에. 펀제주에서 오늘 제주를 확인하세요.",
+    url: "https://funjeju.com",
+    siteName: "FunJeju",
+    locale: "ko_KR",
+    type: "website",
+  },
+};
 
 export const revalidate = 120; // 20초→120초: 홈 콘텐츠는 그렇게 자주 안 바뀜 → ISR Write 절감
 

@@ -4,17 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { CctvIcon } from "@/components/common/CctvIcon";
+import { useT } from "@/lib/i18n";
 
-const items: ({ href: string; label: string; emoji?: string; icon?: ReactNode } | null)[] = [
-  { href: "/", label: "홈", emoji: "🏠" },
-  { href: "/cctv", label: "CCTV", icon: <CctvIcon size={22} /> },
+const items: ({ href: string; emoji?: string; icon?: ReactNode } | null)[] = [
+  { href: "/", emoji: "🏠" },
+  { href: "/cctv", icon: <CctvIcon size={22} /> },
   null, // center 피드 버튼
-  { href: "/game/spot", label: "틀린그림찾기", emoji: "🔍" },
-  { href: "/mypage", label: "마이", emoji: "👤" },
+  { href: "/game/spot", emoji: "🔍" },
+  { href: "/mypage", emoji: "👤" },
 ];
 
 export function BottomNavigation() {
   const pathname = usePathname();
+  const t = useT();
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -33,7 +35,7 @@ export function BottomNavigation() {
             );
             const label = (
               <span className={["text-[10px] font-medium", feedActive ? "text-brand-orange font-semibold" : "text-text-secondary"].join(" ")}>
-                {feedActive ? "올리기" : "피드"}
+                {feedActive ? t("tab.feed.upload") : t("tab./feed")}
               </span>
             );
             return feedActive ? (
@@ -68,7 +70,7 @@ export function BottomNavigation() {
                   active ? "text-brand-orange font-semibold" : "text-text-secondary",
                 ].join(" ")}
               >
-                {item.label}
+                {t(`tab.${item.href}`)}
               </span>
             </Link>
           );

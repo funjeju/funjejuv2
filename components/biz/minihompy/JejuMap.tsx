@@ -30,16 +30,42 @@ type Sel =
 
 const SPRITE_FALLBACK: Record<string, MiniMiKind> = { yuchae: "hallabong" };
 const tierOf = (l: number) => (l <= 5 ? 0 : l <= 15 ? 1 : l <= 30 ? 2 : l <= 50 ? 3 : 4);
-function balloonHtml(level: number, kind: MiniMiKind) {
-  const tier = tierOf(level);
-  const colors = ["#8fc0ff", "#ff9f9f", "#9fd6a9", "#ffd66b", "#f3b3e0"];
-  const sprite = SPRITE_FALLBACK[kind] ?? kind;
-  const env = tier >= 2 ? `repeating-linear-gradient(90deg, ${colors[tier]} 0 8px, #ffffff 8px 16px)` : colors[tier];
-  return `<div style="position:relative;width:54px;height:78px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));animation:mhbob 2.8s ease-in-out infinite;">
-    <div style="position:absolute;top:0;left:11px;width:32px;height:38px;background:${env};border-radius:50% 50% 46% 46%;border:2px solid rgba(0,0,0,.12);"></div>
-    <div style="position:absolute;top:37px;left:24px;width:6px;height:13px;background:#caa06a;border-radius:2px;border:1px solid #a9824f;"></div>
-    <img src="/minihompy/sprites/${sprite}-front.png" alt="" style="position:absolute;top:34px;left:16px;width:20px;height:auto;" /></div>`;
+const TIER_COLORS = ["#5b9bf3", "#f47272", "#54bd73", "#f5b133", "#d96fd0"];
+
+// 물방울(teardrop) 핀 — viewBox 24×36, 꼭짓점이 정확히 (12,36) = 바닥 중앙.
+// k 배율로 크기 조절, 앵커는 항상 [width/2, height] 이라 줌해도 꼭짓점이 좌표에 고정.
+function pinSvg(color: string, inner: string, k: number) {
+  const w = +(24 * k).toFixed(1), h = +(36 * k).toFixed(1);
+  return {
+    html: `<svg width="${w}" height="${h}" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;filter:drop-shadow(0 3px 3px rgba(0,0,0,.32))">
+      <path d="M12 0.8 C5.7 0.8 0.8 5.7 0.8 12 c0 8.4 9.4 19.6 11.2 22.6 c1.8 -3 11.2 -14.2 11.2 -22.6 C23.2 5.7 18.3 0.8 12 0.8 Z" fill="${color}" stroke="#ffffff" stroke-width="1.6"/>
+      ${inner}
+    </svg>`,
+    anchor: [w / 2, h] as [number, number],
+  };
 }
+
+// 미니홈피 핀 — 동그란 머리 안에 미니미 아바타 + 레벨 배지
+function avatarPin(level: number, kind: MiniMiKind) {
+  const tier = tierOf(level);
+  const sprite = SPRITE_FALLBACK[kind] ?? kind;
+  const id = "mp" + Math.random().toString(36).slice(2, 8);
+  const inner = `
+    <defs><clipPath id="${id}"><circle cx="12" cy="11.5" r="8.4"/></clipPath></defs>
+    <circle cx="12" cy="11.5" r="8.4" fill="#ffffff"/>
+    <image href="/minihompy/sprites/${sprite}-front.png" x="3" y="2.5" width="18" height="18" preserveAspectRatio="xMidYMid meet" clip-path="url(#${id})"/>
+    <g><circle cx="19" cy="5" r="5" fill="${TIER_COLORS[tier]}" stroke="#fff" stroke-width="1.3"/>
+    <text x="19" y="5" fill="#fff" font-size="6" font-weight="700" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">${level}</text></g>`;
+  return pinSvg(TIER_COLORS[tier], inner, 1.6);
+}
+
+// 이모지 핀 (CCTV·맛집·스팟) — 작은 핀 안에 이모지
+function emojiPin(emoji: string, color: string) {
+  const inner = `<circle cx="12" cy="11.5" r="8" fill="#ffffff"/>
+    <text x="12" y="12" font-size="11" text-anchor="middle" dominant-baseline="central">${emoji}</text>`;
+  return pinSvg(color, inner, 1.25);
+}
+
 const emojiIcon = (e: string, size = 24) => `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));">${e}</div>`;
 function esc(s: string) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!)); }
 
@@ -99,14 +125,14 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
   useEffect(() => {
     const L = LRef.current, layer = layerRef.current; if (!L || !layer) return;
     layer.clearLayers();
-    const mk = (lat: number, lng: number, html: string, anchor: [number, number], onClick: () => void, z = 0) =>
-      L.marker([lat, lng], { icon: L.divIcon({ className: "", html, iconSize: [anchor[0] * 2, anchor[1]], iconAnchor: anchor }), zIndexOffset: z }).on("click", onClick).addTo(layer);
+    const mk = (lat: number, lng: number, pin: { html: string; anchor: [number, number] }, onClick: () => void, z = 0) =>
+      L.marker([lat, lng], { icon: L.divIcon({ className: "", html: pin.html, iconSize: [pin.anchor[0] * 2, pin.anchor[1]], iconAnchor: pin.anchor }), zIndexOffset: z }).on("click", onClick).addTo(layer);
     const select = (s: Sel) => { track("map_marker", { kind: s.kind }); setSel(s); };
 
-    if (show.home) flags.forEach((f) => mk(f.lat, f.lng, balloonHtml(f.level, f.minimi), [27, 76], () => select({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
-    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiIcon("📷", 22), [11, 22], () => select({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
-    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiIcon("🍴", 20), [10, 20], () => select({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
-    if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiIcon("⭐", 20), [10, 20], () => select({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
+    if (show.home) flags.forEach((f) => mk(f.lat, f.lng, avatarPin(f.level, f.minimi), () => select({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
+    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiPin("📷", "#3b82f6"), () => select({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
+    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiPin("🍴", "#ef4444"), () => select({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
+    if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiPin("⭐", "#f59e0b"), () => select({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
   }, [show, flags, cctv, food, myspots]);
 
   const toggle = (k: keyof typeof show) => setShow((s) => { if (!s[k]) track("map_layer_on", { layer: k }); return { ...s, [k]: !s[k] }; });
