@@ -1,8 +1,9 @@
 import "server-only";
 import sharp from "sharp";
 import { getAdminDb, uploadPublicImage } from "@/lib/firebase-admin";
-import { fetchVisitjejuSpots, type VisitjejuSpot } from "@/lib/visitjeju-spots";
+import { fetchVisitjejuSpots } from "@/lib/visitjeju-spots";
 import { deriveRegion, deriveThemes, type RegionKey, type ThemeKey } from "@/lib/spot-guide";
+import { ATTRACTIONS_COLL, type Attraction } from "@/lib/attractions-store";
 
 /**
  * 비짓제주 관광지(c1)를 Firestore `attractions`에 적재.
@@ -12,22 +13,6 @@ import { deriveRegion, deriveThemes, type RegionKey, type ThemeKey } from "@/lib
  */
 
 const STATE = ["app_config", "spot_ingest"] as const;
-const COLL = "attractions";
-
-export type Attraction = {
-  contentsid: string;
-  title: string;
-  address: string;
-  lat: number | null;
-  lng: number | null;
-  intro: string;          // 비짓제주 원문(생성단계 참고용 사실)
-  region: RegionKey;
-  themes: ThemeKey[];
-  image: string;          // 우리 스토리지 URL (없으면 "")
-  imageUrl: string;       // 비짓제주 원본 URL (폴백)
-  source: "visitjeju";
-  createdAt: Date;
-};
 
 type IngestState = { cursorPage: number; ingested: string[] };
 
@@ -103,7 +88,7 @@ export async function ingestDailySpots(n = 20): Promise<SpotIngestResult> {
           source: "visitjeju",
           createdAt: new Date(),
         };
-        await db.collection(COLL).doc(id).set(doc, { merge: true });
+        await db.collection(ATTRACTIONS_COLL).doc(id).set(doc, { merge: true });
         added.push({ id, title: s.title, region, themes });
         if (added.length >= n) break;
       } catch {
@@ -116,10 +101,4 @@ export async function ingestDailySpots(n = 20): Promise<SpotIngestResult> {
 
   await saveState({ cursorPage: page, ingested: [...ingestedSet] });
   return { added, scanned, skipped };
-}
-
-/** 적재된 관광지 전체 로드 (생성 토픽 선정용) */
-export async function loadAttractions(): Promise<(Attraction & { id: string })[]> {
-  const snap = await getAdminDb().collection(COLL).get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Attraction) }));
 }

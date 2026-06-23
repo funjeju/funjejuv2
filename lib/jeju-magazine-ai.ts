@@ -1,7 +1,7 @@
 import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { loadAttractions } from "@/lib/spot-ingest";
+import { loadAttractions } from "@/lib/attractions-store";
 import { loadContentRestaurants, restaurantImageUrl, stripHtml } from "@/lib/restaurants";
 import { REGIONS, type RegionKey } from "@/lib/spot-guide";
 import type { Content, ContentSection } from "@/types/content";

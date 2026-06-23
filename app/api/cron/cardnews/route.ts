@@ -69,15 +69,15 @@ export async function GET(req: NextRequest) {
   const slot = req.nextUrl.searchParams.get("slot"); // am | lunch | pm (vercel.json), 없으면 시각 기반
   const results: Record<string, unknown> = { kstHour: hour, slot };
 
-  // 어떤 소스를 만들지 결정 — slot 우선(정시 드리프트 무관), 없으면 시각 기반
+  // 어떤 소스를 만들지 결정 — slot 우선(정시 드리프트 무관), 없으면 시각 기반.
+  // 날씨 카드뉴스는 CCTV 스냅샷 서비스 다운으로 중단 → 가볼만한곳(spotguide)으로 대체.
   const sources: CardNewsSource[] = [];
-  let weatherSlot: "am" | "pm" | undefined;
-  if (slot === "am") { sources.push("weather"); weatherSlot = "am"; }
-  else if (slot === "pm") { sources.push("weather"); weatherSlot = "pm"; }
-  else if (slot === "lunch") { sources.push("webzine"); }
+  if (slot === "am") sources.push("spotguide");
+  else if (slot === "pm") sources.push("spotguide");
+  else if (slot === "lunch") sources.push("webzine");
   else {
-    if (hour >= 6 && hour < 12) { sources.push("weather"); weatherSlot = "am"; }
-    else if (hour >= 16 && hour < 22) { sources.push("weather"); weatherSlot = "pm"; }
+    if (hour >= 6 && hour < 12) sources.push("spotguide");
+    else if (hour >= 16 && hour < 22) sources.push("spotguide");
     if (hour >= 12 && hour < 16) sources.push("webzine");
   }
 
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
   const published: string[] = [];
   for (const source of sources) {
     try {
-      const draft = await generateCardNewsDraft(source, source === "weather" ? weatherSlot : undefined);
+      const draft = await generateCardNewsDraft(source);
       if (!draft) { results[`${source}_skip`] = "소스 부족"; continue; }
       await publishCard(draft, origin);
       published.push(`${source}:${draft.slug}`);

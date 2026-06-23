@@ -1,7 +1,7 @@
 import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { loadAttractions, type Attraction } from "@/lib/spot-ingest";
+import { loadAttractions, type Attraction } from "@/lib/attractions-store";
 import { REGIONS, THEMES, topicLabels, type RegionKey, type ThemeKey } from "@/lib/spot-guide";
 import type { Content, ContentSection } from "@/types/content";
 
@@ -26,6 +26,11 @@ async function markUsed(key: string): Promise<void> {
   await getAdminDb().collection(USED[0]).doc(USED[1]).set(
     { used: { [key]: Date.now() } }, { merge: true },
   );
+}
+
+/** 외부(카드뉴스 등)에서 같은 권역×테마 로테이션을 공유하도록 사용기록 */
+export async function markSpotTopicUsed(region: RegionKey, theme: ThemeKey): Promise<void> {
+  await markUsed(`${region}__${theme}`);
 }
 
 /** 관광지 4곳 이상인 권역×테마 조합 중, 가장 오래전에 쓴(또는 안 쓴) 것 선정 */

@@ -3,6 +3,8 @@ import { generateJSON, analyzeImageJSON } from "@/lib/biz/gemini";
 import { stripHtml, restaurantImageUrl } from "@/lib/restaurants";
 import { listRecentFeedsRich } from "@/lib/feed-server";
 import { pickWebzineTopic } from "@/lib/webzine-ai";
+import { pickSpotTopic, markSpotTopicUsed } from "@/lib/spot-guide-ai";
+import { REGIONS, THEMES } from "@/lib/spot-guide";
 import { getWeatherCamerasForNow } from "@/lib/cardnews-config";
 import { getAdminDb, uploadPublicImage } from "@/lib/firebase-admin";
 import type { Content, ContentSection } from "@/types/content";
@@ -16,7 +18,7 @@ import type { Content, ContentSection } from "@/types/content";
  * 표지(coverImage+title)와 CTA는 og 템플릿이 자동 합성한다.
  */
 
-export type CardNewsSource = "webzine" | "briefing" | "feed" | "weather";
+export type CardNewsSource = "webzine" | "briefing" | "feed" | "weather" | "spotguide";
 
 function slug(): string {
   return `cn-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -90,6 +92,61 @@ JSON 형식:
     region: topic.region,
     menu: topic.menu,
     sourceIds: picks.map((r) => r.id),
+    createdAt: now,
+  };
+}
+
+/** 가볼만한곳(비짓제주 관광지) → 권역×테마 스팟 N곳 카드 */
+async function fromSpotGuide(): Promise<Content | null> {
+  const topic = await pickSpotTopic();
+  if (!topic) return null;
+  const picks = topic.picks.filter((s) => s.image || s.imageUrl).slice(0, 7);
+  if (picks.length < 5) return null; // 스팟 5곳 미만이면 생성 안 함
+
+  const r = REGIONS[topic.region], th = THEMES[topic.theme];
+  const list = picks
+    .map((s) => `- [${s.id}] ${s.title} (제주 ${r.label}) :: ${(s.intro || "").slice(0, 120)}`)
+    .join("\n");
+
+  const prompt = `제주 ${r.label}의 "${th.phrase}" 관광지들로 인스타 카드뉴스를 만들어라.
+관광지 목록 (형식: [id] 이름 (권역) :: 소개):
+${list}
+
+JSON 형식:
+{
+  "coverTitle": "저장 부르는 훅 (예: ${r.label} ${th.label}\\n${picks.length}곳)",
+  "coverSubtitle": "한 줄 보조 (현지인 추천 등)",
+  "keywords": ["제주 ${r.label} 가볼만한곳", "제주 ${th.label}", "..."],
+  "cards": [{ "ref": "위 [id]", "heading": "장소명(12자 이내)", "body": "2~3줄 후킹+특징" }]
+}`;
+
+  const ai = await generateJSON<CardAI>(CARD_SYS, prompt);
+  const byId = new Map(picks.map((s) => [s.id, s]));
+  const sections: ContentSection[] = (ai.cards ?? [])
+    .filter((c) => byId.has(c.ref))
+    .map((c) => {
+      const s = byId.get(c.ref)!;
+      return { heading: c.heading || s.title, body: c.body || "", image: s.image || s.imageUrl, category: `제주 ${r.label}` };
+    });
+  if (sections.length < 5) return null;
+
+  await markSpotTopicUsed(topic.region, topic.theme); // 웹진 엔진과 로테이션 공유
+  const cover = picks.find((s) => s.image || s.imageUrl);
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    type: "card_news",
+    status: "draft",
+    slug: slug(),
+    title: ai.coverTitle || `제주 ${r.label} ${th.label}\n가볼만한곳`,
+    subtitle: ai.coverSubtitle || `${r.search} ${th.phrase}`,
+    intro: "",
+    sections,
+    keywords: [...(ai.keywords ?? []), `제주 ${r.label} 가볼만한곳`, `제주 ${th.label}`, "제주 가볼만한곳", "제주 카드뉴스"],
+    coverImage: cover?.image || cover?.imageUrl,
+    region: `제주 ${r.label}`,
+    menu: th.label,
+    sourceIds: picks.map((s) => s.id),
     createdAt: now,
   };
 }
@@ -282,5 +339,6 @@ export async function generateCardNewsDraft(source: CardNewsSource, slot?: "am" 
   if (source === "feed") return fromFeed();
   if (source === "briefing") return fromBriefing();
   if (source === "weather") return fromWeather(slot);
+  if (source === "spotguide") return fromSpotGuide();
   return fromWebzine();
 }
