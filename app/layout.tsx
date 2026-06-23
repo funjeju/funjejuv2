@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { AppShell } from "@/components/common/AppShell";
+import { NaverAnalytics } from "@/components/common/NaverAnalytics";
 
 // GA4: 별도 GA_ID가 없으면 이미 설정된 Firebase 측정 ID(G-...)를 재사용 → 추가 env 불필요
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
@@ -114,6 +115,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <AppShell>{children}</AppShell>
+        <NaverAnalytics />
       </body>
       {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
     </html>
