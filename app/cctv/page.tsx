@@ -8,20 +8,22 @@ import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { DIRECTION_META } from "@/constants/cctv-directions";
+import { useT } from "@/lib/i18n";
 import type { CctvDirection } from "@/types/cctv";
 
 type DirectionFilter = "전체" | CctvDirection;
 
-const DIR_FILTERS: { id: DirectionFilter; label: string; emoji: string; sub: string }[] = [
-  { id: "전체", label: "전체",  emoji: "📡", sub: "제주 전 지역" },
-  { id: "북",   label: "북쪽",  emoji: DIRECTION_META["북"].emoji, sub: DIRECTION_META["북"].sub },
-  { id: "동",   label: "동쪽",  emoji: DIRECTION_META["동"].emoji, sub: DIRECTION_META["동"].sub },
-  { id: "남",   label: "남쪽",  emoji: DIRECTION_META["남"].emoji, sub: DIRECTION_META["남"].sub },
-  { id: "서",   label: "서쪽",  emoji: DIRECTION_META["서"].emoji, sub: DIRECTION_META["서"].sub },
+const DIR_FILTERS: { id: DirectionFilter; labelKey: string; emoji: string; sub: string }[] = [
+  { id: "전체", labelKey: "cctv.dir.all",   emoji: "📡", sub: "제주 전 지역" },
+  { id: "북",   labelKey: "cctv.dir.north", emoji: DIRECTION_META["북"].emoji, sub: DIRECTION_META["북"].sub },
+  { id: "동",   labelKey: "cctv.dir.east",  emoji: DIRECTION_META["동"].emoji, sub: DIRECTION_META["동"].sub },
+  { id: "남",   labelKey: "cctv.dir.south", emoji: DIRECTION_META["남"].emoji, sub: DIRECTION_META["남"].sub },
+  { id: "서",   labelKey: "cctv.dir.west",  emoji: DIRECTION_META["서"].emoji, sub: DIRECTION_META["서"].sub },
 ];
 
 export default function CctvPage() {
   const { cctvs, loading } = useCctvs();
+  const t = useT();
   const [activeDir, setActiveDir] = useState<DirectionFilter>("전체");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
@@ -35,8 +37,8 @@ export default function CctvPage() {
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <BgmPlayer />
       <PageHeader
-        title="실시간 제주 CCTV"
-        subtitle="지금 제주 현장을 실시간으로 확인하세요"
+        title={t("cctv.list.title")}
+        subtitle={t("cctv.list.subtitle")}
         emoji="📷"
         right={
           <div className="flex items-center gap-1.5">
@@ -51,7 +53,7 @@ export default function CctvPage() {
               href="/cctv/multiview"
               className="flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"
             >
-              📺 <span className="hidden sm:inline">멀티뷰</span>
+              📺 <span className="hidden sm:inline">{t("cctv.multiview")}</span>
             </Link>
             <div className="flex overflow-hidden rounded-full border border-border-soft bg-bg-card text-[11px] font-semibold shadow-card">
               <button
@@ -59,14 +61,14 @@ export default function CctvPage() {
                 onClick={() => setViewMode("grid")}
                 className={["rounded-full px-2.5 py-1.5 transition-colors", viewMode === "grid" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
               >
-                목록
+                {t("cctv.view.list")}
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("map")}
                 className={["px-2.5 py-1.5 transition-colors", viewMode === "map" ? "bg-brand-navy text-white" : "text-text-secondary"].join(" ")}
               >
-                지도
+                {t("cctv.view.map")}
               </button>
             </div>
           </div>
@@ -80,12 +82,12 @@ export default function CctvPage() {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-jeju-green" />
         </span>
         <p className="text-sm font-medium text-text-primary">
-          <span className="font-bold text-jeju-green">{filtered.length}개</span> CCTV 연결 중
+          <span className="font-bold text-jeju-green">{filtered.length}</span>{t("cctv.connected")}
           {youtubeCount > 0 && (
-            <span className="ml-2 text-xs text-red-500 font-medium">▶ YouTube {youtubeCount}개 포함</span>
+            <span className="ml-2 text-xs text-red-500 font-medium">▶ YouTube {youtubeCount}{t("cctv.included")}</span>
           )}
         </p>
-        <span className="ml-auto text-xs text-text-secondary">실시간 업데이트</span>
+        <span className="ml-auto text-xs text-text-secondary">{t("cctv.realtimeUpdate")}</span>
       </div>
 
       {/* 방향 필터 — 컴퍼스 기반 */}
@@ -105,10 +107,10 @@ export default function CctvPage() {
               ].join(" ")}
             >
               <span className="text-base md:text-xl">{f.emoji}</span>
-              <span className="mt-0.5 text-[10px] font-bold md:text-xs">{f.label}</span>
+              <span className="mt-0.5 text-[10px] font-bold md:text-xs">{t(f.labelKey)}</span>
               {/* sub 텍스트: md 이상에서만 표시 */}
               <span className={["hidden text-[9px] leading-tight md:block", activeDir === f.id ? "text-white/70" : "text-text-secondary"].join(" ")}>
-                {f.sub}
+                {f.id === "전체" ? t("cctv.dir.allSub") : f.sub}
               </span>
               <span className={[
                 "mt-0.5 rounded-full px-1 py-0.5 text-[9px] font-bold",
@@ -136,9 +138,9 @@ export default function CctvPage() {
           ) : (
             <div className="flex flex-col items-center py-16 text-center">
               <p className="text-4xl">📷</p>
-              <p className="mt-3 text-sm font-bold text-text-primary">해당 방향의 CCTV가 없어요</p>
+              <p className="mt-3 text-sm font-bold text-text-primary">{t("cctv.empty")}</p>
               <button type="button" onClick={() => setActiveDir("전체")} className="mt-3 text-xs text-brand-orange underline">
-                전체 보기
+                {t("cctv.viewAllBtn")}
               </button>
             </div>
           )}

@@ -5,13 +5,17 @@ import Image from "next/image";
 import { CctvFavoriteButton } from "@/components/common/CctvFavoriteButton";
 import { ShareButton } from "@/components/common/ShareButton";
 import { DIRECTION_META } from "@/constants/cctv-directions";
-import type { CctvEntry } from "@/types/cctv";
+import { useT } from "@/lib/i18n";
+import type { CctvDirection, CctvEntry } from "@/types/cctv";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://funjeju.com";
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
+const DIR_KEY: Record<CctvDirection, string> = { 북: "cctv.dir.north", 동: "cctv.dir.east", 남: "cctv.dir.south", 서: "cctv.dir.west" };
+
 export function CctvCard({ cctv }: { cctv: CctvEntry }) {
+  const t = useT();
   const streamUrl = !cctv.youtubeId && PROXY_BASE ? `${PROXY_BASE}/cctv/${cctv.id}` : null;
 
   return (
@@ -68,7 +72,7 @@ export function CctvCard({ cctv }: { cctv: CctvEntry }) {
 
       <div className="flex items-center gap-2 px-3 py-2">
         <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
-          {DIRECTION_META[cctv.direction].emoji} {cctv.direction}쪽
+          {DIRECTION_META[cctv.direction].emoji} {t(DIR_KEY[cctv.direction])}
         </span>
         <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
           {cctv.category}

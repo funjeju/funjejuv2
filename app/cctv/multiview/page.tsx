@@ -13,6 +13,7 @@ import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import { useAuth } from "@/hooks/useAuth";
 import { getEntitlements } from "@/lib/entitlements";
 import { loadPresets, savePresets, type MvPreset } from "@/lib/multiview-presets";
+import { useT } from "@/lib/i18n";
 import type { Cctv, CctvEntry } from "@/types/cctv";
 import { isMultiviewExcluded } from "@/constants/vurix";
 
@@ -64,6 +65,7 @@ function toView(e: CctvEntry): Cctv {
 
 /** 유튜브형 슬롯 — embed iframe (재생 토글 시에만 로드) */
 function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => void; enabled: boolean }) {
+  const t = useT();
   return (
     <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
       {enabled ? (
@@ -79,7 +81,7 @@ function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => 
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/50">
           <span className="text-2xl">▶</span>
-          <span className="text-[10px]">일괄 재생 대기 중</span>
+          <span className="text-[10px]">{t("mv.waiting")}</span>
         </div>
       )}
 
@@ -94,7 +96,7 @@ function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => 
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
-        title="제거"
+        title={t("mv.remove")}
       >
         ✕
       </button>
@@ -110,6 +112,7 @@ function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => 
  *  initDelay: 봇 탐지 회피용 초기 지연 (0~3000ms 랜덤 권장)
  */
 function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: Cctv | null; onRemove: () => void; initDelay?: number; enabled?: boolean }) {
+  const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "error" | "waiting" | "idle">(
     !enabled ? "idle" : (initDelay > 0 ? "waiting" : "loading")
@@ -342,22 +345,22 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
 
       {status === "waiting" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900/80 text-white/70">
-          <span className="text-xs">⏳ {countdown}초 후 시작</span>
+          <span className="text-xs">⏳ {countdown}{t("mv.startIn")}</span>
         </div>
       )}
 
       {status === "idle" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/50">
           <span className="text-2xl">▶</span>
-          <span className="text-[10px]">일괄 재생 대기 중</span>
+          <span className="text-[10px]">{t("mv.waiting")}</span>
         </div>
       )}
 
       {status === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 px-2 text-center text-white/60">
           <span className="text-2xl">📡</span>
-          <span className="text-[10px]">연결 실패</span>
-          <span className="text-[9px] text-white/40">1분 후 다시 연결을 시도합니다</span>
+          <span className="text-[10px]">{t("mv.connFail")}</span>
+          <span className="text-[9px] text-white/40">{t("mv.retryNote")}</span>
         </div>
       )}
 
@@ -371,7 +374,7 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="absolute right-1 top-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-[8px] leading-none text-white hover:bg-black/80 transition-colors"
-        title="제거"
+        title={t("mv.remove")}
       >
         ✕
       </button>
@@ -396,6 +399,7 @@ function EmptySlot({
   isDragOver: boolean;
   setDragOver: (v: boolean) => void;
 }) {
+  const t = useT();
   function handleDrop(e: DragEvent<HTMLButtonElement>) {
     e.preventDefault();
     const id = e.dataTransfer.getData("cctv-id");
@@ -418,12 +422,13 @@ function EmptySlot({
       ].join(" ")}
     >
       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-orange/15 text-xl font-bold text-brand-orange md:h-10 md:w-10 md:text-2xl">+</span>
-      <p className="text-[9px] text-text-secondary md:text-xs">탭해서 CCTV 추가</p>
+      <p className="text-[9px] text-text-secondary md:text-xs">{t("mv.tapAdd")}</p>
     </button>
   );
 }
 
 export default function MultiviewPage() {
+  const t = useT();
   const { favoriteIds: savedIds } = useCctvFavorite();
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
@@ -570,8 +575,8 @@ export default function MultiviewPage() {
   }
   function savePreset() {
     const chosen = slots.slice(0, 4).filter(Boolean);
-    if (chosen.length === 0) { alert("먼저 슬롯에 CCTV를 채워주세요."); return; }
-    const name = prompt("이 조합 이름 (예: 노을 4종)")?.trim();
+    if (chosen.length === 0) { alert(t("mv.alertFill")); return; }
+    const name = prompt(t("mv.promptName"))?.trim();
     if (!name) return;
     const slots4 = slots.slice(0, 4);
     persistPresets([...presets.filter((p) => p.name !== name), { name, slots: slots4 }].slice(-12));
@@ -666,8 +671,8 @@ export default function MultiviewPage() {
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
       <BgmPlayer />
       <PageHeader
-        title="멀티뷰"
-        subtitle="여러 CCTV를 동시에 시청하세요"
+        title={t("cctv.multiview")}
+        subtitle={t("mv.subtitle")}
         emoji="📺"
         right={
           <div className="flex items-center gap-2">
@@ -678,7 +683,7 @@ export default function MultiviewPage() {
               compact
             />
             <Link href="/cctv" className="text-xs font-medium text-brand-orange">
-              ← CCTV 목록
+              ← {t("mv.backToList")}
             </Link>
           </div>
         }
@@ -696,7 +701,7 @@ export default function MultiviewPage() {
                 key={n}
                 type="button"
                 onClick={() => setSlotCount(n)}
-                title={`${n}분할`}
+                title={`${n}${t("mv.split")}`}
                 className={[
                   "flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-1.5 font-bold transition-colors md:flex-none md:px-3.5 md:py-2",
                   selected
@@ -711,7 +716,7 @@ export default function MultiviewPage() {
                 ) : (
                   <SplitIcon n={n} active={selected} />
                 )}
-                <span className="text-[10px] leading-none md:text-[11px]">{n}분할</span>
+                <span className="text-[10px] leading-none md:text-[11px]">{n}{t("mv.split")}</span>
               </button>
             );
           })}
@@ -723,9 +728,9 @@ export default function MultiviewPage() {
             type="button"
             onClick={savePreset}
             className="flex shrink-0 items-center gap-0.5 rounded-full bg-brand-orange/10 px-2.5 py-1 text-[11px] font-bold text-brand-orange hover:bg-brand-orange/20 transition-colors"
-            title="현재 4분할 조합을 프리셋으로 저장"
+            title={t("mv.savePreset")}
           >
-            💾 조합 저장
+            💾 {t("mv.savePreset")}
           </button>
           {presets.map((p) => (
             <span key={p.name} className="flex shrink-0 items-center rounded-full border border-border-soft bg-bg-secondary pl-2.5 text-[11px] font-semibold text-text-secondary">
@@ -743,9 +748,9 @@ export default function MultiviewPage() {
                   "rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors",
                   rotating ? "bg-brand-navy text-white" : "bg-bg-secondary text-text-secondary hover:text-brand-navy",
                 ].join(" ")}
-                title="저장한 프리셋을 일정 간격으로 자동 전환"
+                title={t("mv.autoRotate")}
               >
-                {rotating ? "⏸ 순환중" : "🔄 자동순환"}
+                {rotating ? `⏸ ${t("mv.rotating")}` : `🔄 ${t("mv.autoRotate")}`}
               </button>
               <select
                 value={rotateSec}
@@ -773,33 +778,33 @@ export default function MultiviewPage() {
                 : "bg-jeju-green hover:bg-jeju-green/90",
             ].join(" ")}
           >
-            <span className="md:hidden">{playing ? "정지" : "재생"}</span>
-            <span className="hidden md:inline">{playing ? "⏸ 정지" : "▶ 재생"}</span>
+            <span className="md:hidden">{playing ? t("mv.stop") : t("mv.play")}</span>
+            <span className="hidden md:inline">{playing ? `⏸ ${t("mv.stop")}` : `▶ ${t("mv.play")}`}</span>
           </button>
           <button
             type="button"
             onClick={autoFill}
             className="rounded-full bg-brand-orange px-0.5 py-1 text-[10px] font-bold text-white hover:bg-brand-orange/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            <span className="md:hidden">채우기</span>
-            <span className="hidden md:inline">⚡ 자동 채우기</span>
+            <span className="md:hidden">{t("mv.fill")}</span>
+            <span className="hidden md:inline">⚡ {t("mv.autoFill")}</span>
           </button>
           <button
             type="button"
             onClick={clearAll}
             className="rounded-full border border-border-soft bg-bg-secondary px-0.5 py-1 text-[10px] font-semibold text-text-secondary hover:bg-bg-primary transition-colors md:px-3 md:py-1.5 md:text-xs"
           >
-            <span className="md:hidden">비우기</span>
-            <span className="hidden md:inline">🗑 전체 비우기</span>
+            <span className="md:hidden">{t("mv.clear")}</span>
+            <span className="hidden md:inline">🗑 {t("mv.clearAll")}</span>
           </button>
           <button
             type="button"
             onClick={toggleFullscreen}
             className="rounded-full bg-brand-navy px-0.5 py-1 text-[10px] font-bold text-white hover:bg-brand-navy/90 transition-colors md:px-3 md:py-1.5 md:text-xs"
-            title="전체화면"
+            title={t("mv.fullscreen")}
           >
-            <span className="md:hidden">{(isFullscreen || pseudoFs) ? "종료" : "전체"}</span>
-            <span className="hidden md:inline">{(isFullscreen || pseudoFs) ? "⛶ 종료" : "⛶ 전체화면"}</span>
+            <span className="md:hidden">{(isFullscreen || pseudoFs) ? t("mv.exit") : t("mv.full")}</span>
+            <span className="hidden md:inline">{(isFullscreen || pseudoFs) ? `⛶ ${t("mv.exit")}` : `⛶ ${t("mv.fullscreen")}`}</span>
           </button>
         </div>
       </div>
@@ -939,14 +944,14 @@ export default function MultiviewPage() {
       <div className="mx-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card md:mx-0">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-bold text-text-primary">
-            {savedIds.size > 0 ? "내 즐겨찾기 CCTV" : "전체 CCTV"}
+            {savedIds.size > 0 ? t("mv.myFav") : t("mv.allCctv")}
             <span className="ml-2 text-xs font-medium text-text-secondary">
-              · 드래그해서 슬롯에 넣으세요
+              {t("mv.dragHint")}
             </span>
           </h2>
           {savedIds.size === 0 && (
             <Link href="/cctv" className="text-[11px] text-brand-orange font-medium">
-              ⭐ 즐겨찾기 추가하기
+              ⭐ {t("mv.addFav")}
             </Link>
           )}
         </div>
@@ -1044,16 +1049,16 @@ export default function MultiviewPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowLoginGate(false)}>
           <div className="w-full max-w-xs rounded-2xl bg-bg-card p-6 text-center shadow-card" onClick={(e) => e.stopPropagation()}>
             <div className="text-4xl">🖥️</div>
-            <h3 className="mt-3 text-base font-black text-text-primary">여러 CCTV를 한눈에!</h3>
+            <h3 className="mt-3 text-base font-black text-text-primary">{t("mv.loginTitle")}</h3>
             <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-              로그인하면 <b className="text-brand-navy">최대 {PUBLIC_MAX_SPLIT}분할</b>로 제주 곳곳을 동시에 볼 수 있어요. <b>무료</b>예요!
+              {t("mv.loginDesc")}
             </p>
             <button
               type="button"
               onClick={() => { setShowLoginGate(false); signInWithGoogle(); }}
               className="mt-5 w-full rounded-full bg-brand-navy py-3 text-sm font-bold text-white hover:bg-brand-navy/90 transition-colors"
             >
-              Google로 1초 로그인 →
+              {t("mv.loginCta")}
             </button>
             <button
               type="button"
