@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
+import { useT } from "@/lib/i18n";
 
 /**
  * 전역 플로팅 챗봇 버튼 (PC·모바일 공통).
@@ -11,6 +12,7 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
  */
 export function FloatingChat() {
   const pathname = usePathname();
+  const t = useT();
 
   // 챗봇 화면 자체나 독립 레이아웃에선 숨김
   if (pathname.startsWith("/chat") || pathname.startsWith("/admin") || pathname.startsWith("/biz/")) {
@@ -24,7 +26,7 @@ export function FloatingChat() {
       className="fixed bottom-20 right-4 z-40 flex items-center gap-2 transition-transform active:scale-95 md:bottom-6"
     >
       <span className="whitespace-nowrap rounded-full bg-white px-3 py-2 text-xs font-bold text-brand-navy shadow-lg ring-1 ring-black/5">
-        무엇이든 물어보살 🔮
+        {t("chat.float")}
       </span>
       <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange shadow-lg ring-2 ring-white/70">
         <DolmangyiIcon size={40} />

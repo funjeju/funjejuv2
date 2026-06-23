@@ -18,6 +18,7 @@ import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
 import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
 import { CctvLiveInfo } from "@/components/cctv/CctvLiveInfo";
 import { listGames } from "@/lib/spot";
+import { T } from "@/lib/i18n";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -193,9 +194,9 @@ export default async function CctvDetailPage({ params }: Props) {
 
       <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
         <ol className="flex flex-wrap items-center gap-1 text-xs text-text-secondary">
-          <li><Link href="/" className="hover:text-text-primary">홈</Link></li>
+          <li><Link href="/" className="hover:text-text-primary"><T k="nav./" /></Link></li>
           <li>›</li>
-          <li><Link href="/cctv" className="hover:text-text-primary">실시간 CCTV</Link></li>
+          <li><Link href="/cctv" className="hover:text-text-primary"><T k="nav./cctv" /></Link></li>
           <li>›</li>
           <li>
             <Link href={`/cctv/region/${encodeURIComponent(cctv.region)}`} className="hover:text-text-primary">
@@ -252,20 +253,23 @@ export default async function CctvDetailPage({ params }: Props) {
               {cctv.youtubeId ? (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-1 text-[11px] font-semibold text-red-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-                  YouTube 라이브
+                  <T k="cctv.badge.youtube" />
                 </span>
               ) : streamProxyUrl ? (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-jeju-green/10 border border-jeju-green/20 px-2.5 py-1 text-[11px] font-semibold text-jeju-green">
                   <span className="h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
-                  연결됨
+                  <T k="cctv.badge.connected" />
                 </span>
               ) : (
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
                   <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  미설정
+                  <T k="cctv.badge.notset" />
                 </span>
               )}
-              {["실시간", cctv.category, cctv.region].map((tag) => (
+              <span className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
+                <T k="cctv.tag.live" />
+              </span>
+              {[cctv.category, cctv.region].map((tag) => (
                 <span key={tag} className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
                   {tag}
                 </span>
@@ -428,7 +432,7 @@ export default async function CctvDetailPage({ params }: Props) {
         </div>
 
         <aside className="w-full space-y-3 lg:w-72 lg:shrink-0">
-          <p className="px-4 text-sm font-bold text-text-primary md:px-0">📷 {cctv.region} CCTV</p>
+          <p className="px-4 text-sm font-bold text-text-primary md:px-0">📷 {cctv.region} <T k="cctv.nearby" /></p>
           {finalNearby.map((c) => (
             <Link
               key={c.id}
@@ -458,10 +462,10 @@ export default async function CctvDetailPage({ params }: Props) {
           ))}
 
           <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
-            <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> 돌AI에게 물어보기</p>
-            <p className="mt-1 text-[11px] text-white/80">이 장소 주변 맛집·카페·코스를 AI가 추천해드려요</p>
+            <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> <T k="cctv.askAi" /></p>
+            <p className="mt-1 text-[11px] text-white/80"><T k="cctv.askAi.sub" /></p>
             <Link href="/chat" className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors">
-              채팅 시작하기 →
+              <T k="cctv.askAi.cta" />
             </Link>
           </div>
 

@@ -9,6 +9,7 @@ import { CameraIcon } from "@/components/common/CameraIcon";
 import { TubeIcon } from "@/components/common/TubeIcon";
 import { listPublished } from "@/lib/contents";
 import { listGames } from "@/lib/spot";
+import { T } from "@/lib/i18n";
 
 // 홈 전용 SEO — 브랜드(펀제주) + 핵심 키워드(제주날씨·제주 cctv·실시간제주) 선점
 export const metadata: Metadata = {
@@ -59,14 +60,14 @@ export default async function HomePage() {
               {/* 텍스트 — 모바일에선 캐릭터 침범 안 받게 max-w 제한 */}
               <div className="absolute inset-y-0 left-0 flex max-w-[60%] flex-col justify-center px-4 md:max-w-none md:px-12">
                 <h1 className="text-lg font-black leading-tight text-gray-800 drop-shadow-sm md:text-4xl">
-                  제주, 지금 이 순간을 담다
+                  <T k="home.hero.title" />
                 </h1>
                 <p className="mt-1 text-[11px] leading-snug text-gray-600 md:text-base">
-                  실시간 제주, 당신의 여행이 콘텐츠가 되는 곳
+                  <T k="home.hero.sub" />
                 </p>
               </div>
               <div className="absolute right-3 top-3 rounded-full border border-yellow-300 bg-white/80 px-2 py-0.5 text-[10px] font-medium text-yellow-700 backdrop-blur md:right-4 md:top-4 md:px-3 md:py-1 md:text-xs">
-                ☀️ 좋은 날씨
+                <T k="home.hero.weatherBadge" />
               </div>
               {/* 마스코트 — 모바일 작게 */}
               <div className="absolute bottom-0 right-2 flex items-end md:right-12">
@@ -85,7 +86,7 @@ export default async function HomePage() {
                     {link.icon ?? link.emoji}
                   </div>
                   <span className={`text-center text-[10px] font-medium leading-tight ${link.color} md:text-xs`}>
-                    {link.label}
+                    <T k={`nav.${link.href}`} />
                   </span>
                 </Link>
               ))}
@@ -98,8 +99,8 @@ export default async function HomePage() {
           {spotGames.length > 0 && (
             <section className="px-4 md:px-0">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-base font-black text-text-primary">🔍 제주 틀린그림찾기</h2>
-                <Link href="/game/spot" className="text-xs font-medium text-brand-orange">더보기 →</Link>
+                <h2 className="text-base font-black text-text-primary"><T k="home.section.spot" /></h2>
+                <Link href="/game/spot" className="text-xs font-medium text-brand-orange"><T k="common.more" /></Link>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {spotGames.map((g) => (
@@ -108,11 +109,11 @@ export default async function HomePage() {
                     <div className="relative aspect-square bg-bg-secondary">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={g.variantImage} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
-                      <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">틀린곳 {g.diffCount}</span>
+                      <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white"><T k="game.diff" /> {g.diffCount}</span>
                     </div>
                     <div className="p-2.5">
                       <p className="line-clamp-1 text-[13px] font-bold text-text-primary">{g.title}</p>
-                      <p className="text-[10px] text-text-secondary">플레이 {g.playCount ?? 0}회</p>
+                      <p className="text-[10px] text-text-secondary">{g.playCount ?? 0} <T k="game.plays" /></p>
                     </div>
                   </Link>
                 ))}
@@ -124,8 +125,8 @@ export default async function HomePage() {
           {webzines.length > 0 && (
             <section className="px-4 md:px-0">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-base font-black text-text-primary">📖 제주 여행 웹진</h2>
-                <Link href="/webzine" className="text-xs font-medium text-brand-orange">더보기 →</Link>
+                <h2 className="text-base font-black text-text-primary"><T k="home.section.webzine" /></h2>
+                <Link href="/webzine" className="text-xs font-medium text-brand-orange"><T k="common.more" /></Link>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {webzines.map((w) => (
@@ -154,16 +155,16 @@ export default async function HomePage() {
               <DolmangyiIcon size={48} className="shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-text-primary">
-                  안녕! 나는 제주 여행 AI 도슨트야 😎
+                  <T k="home.mascot.title" />
                 </p>
-                <p className="text-xs text-text-secondary">지금 어디야? 내가 딱 맞는 여행을 추천해줄게!</p>
+                <p className="text-xs text-text-secondary"><T k="home.mascot.sub" /></p>
               </div>
             </div>
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-              {["지금 날씨에 좋은 코스", "아이랑 가기 좋은 곳", "비 오는 날 추천 장소", "혼자 여행 코스 추천"].map((t) => (
-                <button key={t} type="button"
+              {["home.chip.weather", "home.chip.kids", "home.chip.rainy", "home.chip.solo"].map((k) => (
+                <button key={k} type="button"
                   className="shrink-0 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-text-primary shadow-card hover:bg-white transition-colors">
-                  {t}
+                  <T k={k} />
                 </button>
               ))}
             </div>
@@ -179,13 +180,13 @@ export default async function HomePage() {
           <div className="rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-sm font-bold">AI 여행 일정 만들기</h3>
+                <h3 className="text-sm font-bold"><T k="home.planner.title" /></h3>
                 <p className="mt-1 text-[11px] text-white/80 leading-relaxed">
-                  나만의 맞춤 여행 일정을<br />AI가 설계해드려요!
+                  <T k="home.planner.sub" />
                 </p>
                 <Link href="/trip-ai"
                   className="mt-3 inline-block rounded-lg bg-brand-yellow px-3 py-1.5 text-xs font-bold text-brand-navy hover:bg-brand-yellow/90 transition-colors">
-                  일정 만들기 →
+                  <T k="home.planner.cta" />
                 </Link>
               </div>
               <DolmangyiIcon size={56} className="shrink-0" />

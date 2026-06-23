@@ -74,6 +74,56 @@ const DICT: Record<string, Entry> = {
   "wind.moderate": { ko: "적당", en: "Moderate", ja: "適度", zh: "适中" },
   "wind.strong": { ko: "강풍", en: "Strong", ja: "強風", zh: "强风" },
   "wind.verystrong": { ko: "매우 강함", en: "Very strong", ja: "非常に強い", zh: "非常强" },
+
+  // ── 공통 ────────────────────────────────────────────────
+  "common.more": { ko: "더보기 →", en: "More →", ja: "もっと見る →", zh: "更多 →" },
+  "common.viewAll": { ko: "전체보기", en: "View all", ja: "すべて見る", zh: "查看全部" },
+  "auth.logout": { ko: "로그아웃", en: "Log out", ja: "ログアウト", zh: "退出" },
+  "auth.loginShort": { ko: "로그인", en: "Sign in", ja: "ログイン", zh: "登录" },
+
+  // ── 내비 추가 ───────────────────────────────────────────
+  "nav./card": { ko: "카드뉴스", en: "Card News", ja: "カードニュース", zh: "卡片新闻" },
+
+  // ── 사이드바 마스코트 ───────────────────────────────────
+  "sidebar.greeting": { ko: "안녕하세요!", en: "Hello!", ja: "こんにちは！", zh: "您好！" },
+  "sidebar.docent": { ko: "제주 여행 AI 도슨트", en: "Jeju Travel AI Guide", ja: "済州旅行AIガイド", zh: "济州旅行AI向导" },
+  "sidebar.haveFun": { ko: "오늘도 즐거운 여행 되세요!", en: "Have a great trip today!", ja: "今日も良い旅を！", zh: "祝您旅途愉快！" },
+  "sidebar.askDocent": { ko: "도슨트에게 물어보기 💬", en: "Ask the guide 💬", ja: "ガイドに聞く 💬", zh: "向向导提问 💬" },
+
+  // ── 플로팅 챗봇 ─────────────────────────────────────────
+  "chat.float": { ko: "무엇이든 물어보살 🔮", en: "Ask me anything 🔮", ja: "何でも聞いてね 🔮", zh: "什么都可以问我 🔮" },
+
+  // ── 홈 ──────────────────────────────────────────────────
+  "home.hero.title": { ko: "제주, 지금 이 순간을 담다", en: "Jeju, captured right now", ja: "済州、今この瞬間を", zh: "济州，定格此刻" },
+  "home.hero.sub": { ko: "실시간 제주, 당신의 여행이 콘텐츠가 되는 곳", en: "Live Jeju — where your trip becomes content", ja: "リアルタイム済州 — あなたの旅がコンテンツになる場所", zh: "实时济州 — 让你的旅行成为内容" },
+  "home.hero.weatherBadge": { ko: "☀️ 좋은 날씨", en: "☀️ Nice weather", ja: "☀️ 良い天気", zh: "☀️ 好天气" },
+  "home.section.spot": { ko: "🔍 제주 틀린그림찾기", en: "🔍 Spot the Difference", ja: "🔍 済州まちがい探し", zh: "🔍 济州找不同" },
+  "home.section.webzine": { ko: "📖 제주 여행 웹진", en: "📖 Jeju Travel Webzine", ja: "📖 済州旅行ウェブマガジン", zh: "📖 济州旅行杂志" },
+  "home.mascot.title": { ko: "안녕! 나는 제주 여행 AI 도슨트야 😎", en: "Hi! I'm your Jeju travel AI guide 😎", ja: "やあ！済州旅行AIガイドだよ 😎", zh: "嗨！我是济州旅行AI向导 😎" },
+  "home.mascot.sub": { ko: "지금 어디야? 내가 딱 맞는 여행을 추천해줄게!", en: "Where are you? I'll recommend the perfect trip!", ja: "今どこ？ぴったりの旅をおすすめするよ！", zh: "你在哪？我来推荐最合适的行程！" },
+  "home.chip.weather": { ko: "지금 날씨에 좋은 코스", en: "Best for today's weather", ja: "今日の天気に合うコース", zh: "适合今天天气的路线" },
+  "home.chip.kids": { ko: "아이랑 가기 좋은 곳", en: "Great with kids", ja: "子連れにおすすめ", zh: "适合带孩子" },
+  "home.chip.rainy": { ko: "비 오는 날 추천 장소", en: "Rainy-day picks", ja: "雨の日のおすすめ", zh: "雨天推荐" },
+  "home.chip.solo": { ko: "혼자 여행 코스 추천", en: "Solo travel routes", ja: "一人旅コース", zh: "独自旅行路线" },
+  "home.planner.title": { ko: "AI 여행 일정 만들기", en: "Make an AI trip plan", ja: "AI旅行プランを作成", zh: "制作AI行程" },
+  "home.planner.sub": { ko: "나만의 맞춤 여행 일정을 AI가 설계해드려요!", en: "AI designs your custom trip itinerary!", ja: "あなただけの旅程をAIが設計！", zh: "AI为你定制专属行程！" },
+  "home.planner.cta": { ko: "일정 만들기 →", en: "Plan now →", ja: "プラン作成 →", zh: "开始制定 →" },
+
+  // ── 게임 배너 ───────────────────────────────────────────
+  "game.banner.title": { ko: "🔍 틀린그림찾기 · 최근 게시물", en: "🔍 Spot the Difference · Recent", ja: "🔍 まちがい探し · 最近", zh: "🔍 找不同 · 最近" },
+  "game.diff": { ko: "틀린곳", en: "Diffs", ja: "違い", zh: "不同处" },
+  "game.plays": { ko: "회 플레이", en: "plays", ja: "回プレイ", zh: "次游玩" },
+  "game.banner.cta": { ko: "눌러서 틀린그림 찾고 보상 받기 🎁", en: "Tap to play & earn rewards 🎁", ja: "タップして遊んで報酬ゲット 🎁", zh: "点击游玩领奖励 🎁" },
+
+  // ── CCTV 상세 크롬 ──────────────────────────────────────
+  "cctv.badge.youtube": { ko: "YouTube 라이브", en: "YouTube Live", ja: "YouTubeライブ", zh: "YouTube直播" },
+  "cctv.badge.connected": { ko: "연결됨", en: "Connected", ja: "接続中", zh: "已连接" },
+  "cctv.badge.notset": { ko: "미설정", en: "Not set", ja: "未設定", zh: "未设置" },
+  "cctv.tag.live": { ko: "실시간", en: "Live", ja: "ライブ", zh: "实时" },
+  "cctv.askAi": { ko: "돌AI에게 물어보기", en: "Ask Dol AI", ja: "Dol AIに聞く", zh: "问Dol AI" },
+  "cctv.askAi.sub": { ko: "이 장소 주변 맛집·카페·코스를 AI가 추천해드려요", en: "AI recommends nearby eats, cafés & routes", ja: "周辺のグルメ・カフェ・コースをAIが提案", zh: "AI推荐周边美食·咖啡·路线" },
+  "cctv.askAi.cta": { ko: "채팅 시작하기 →", en: "Start chat →", ja: "チャット開始 →", zh: "开始聊天 →" },
+  "cctv.nearby": { ko: "주변 CCTV", en: "Nearby CCTV", ja: "周辺CCTV", zh: "周边CCTV" },
 };
 
 /** WMO 날씨 코드 → 번역 키 */
@@ -153,4 +203,14 @@ export function useI18n() {
 /** 짧게 t 만 필요할 때 */
 export function useT() {
   return useContext(I18nContext).t;
+}
+
+/**
+ * 서버 컴포넌트에서도 번역 텍스트를 렌더하는 다리.
+ * 서버는 ko로 SSR(SEO 유지) → 클라이언트에서 선택 언어로 하이드레이션.
+ * 예) <T k="home.hero.title" />
+ */
+export function T({ k }: { k: string }) {
+  const t = useT();
+  return <>{t(k)}</>;
 }

@@ -123,14 +123,14 @@ export function Sidebar() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center">
             <DolmangyiIcon size={56} />
           </div>
-          <p className="mt-2 text-xs font-medium text-text-primary">안녕하세요!</p>
-          <p className="text-[10px] text-text-secondary">제주 여행 AI 도슨트</p>
-          <p className="text-[10px] text-text-secondary">오늘도 즐거운 여행 되세요!</p>
+          <p className="mt-2 text-xs font-medium text-text-primary">{t("sidebar.greeting")}</p>
+          <p className="text-[10px] text-text-secondary">{t("sidebar.docent")}</p>
+          <p className="text-[10px] text-text-secondary">{t("sidebar.haveFun")}</p>
           <Link
             href="/chat"
             className="mt-3 block w-full rounded-full border border-border-soft bg-bg-secondary py-1.5 text-center text-[11px] font-medium text-text-secondary hover:bg-bg-primary transition-colors"
           >
-            도슨트에게 물어보기 💬
+            {t("sidebar.askDocent")}
           </Link>
           <a
             href="mailto:naggu1999@naver.com"
