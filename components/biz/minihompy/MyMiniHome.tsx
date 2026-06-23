@@ -23,11 +23,15 @@ interface GuestPost { name: string; text: string; }
 interface Visitor { uid: string; name: string; lastVisit: number; }
 interface ScrapItem { id: string; type: "link" | "spot"; category: string; title: string; url: string; address: string; }
 interface Grow { id: string; advertiser: string; link: string; crop: "hallabong" | "heukdwaeji" | "galchi" | "jeonbok"; growthDays: number; stage: number; cheers: number; completed: boolean; }
-type Tab = "diary" | "photo" | "guestbook" | "scrap" | "visitor" | "bgm" | "grow" | "chat";
+interface Ilchon { uid: string; name: string; nickname: string; since: number; }
+interface IlchonReq { id: string; from: string; fromName: string; to: string; createdAt: number; }
+interface Note { id: string; from: string; fromName: string; text: string; createdAt: number; }
+type Tab = "diary" | "photo" | "guestbook" | "scrap" | "ilchon" | "note" | "visitor" | "bgm" | "grow" | "chat";
 
-const ALL_MENU: { id: Tab; ko: string; en: string }[] = [
+const ALL_MENU: { id: Tab; ko: string; en: string; ownerOnly?: boolean }[] = [
   { id: "diary", ko: "다이어리", en: "DIARY" }, { id: "photo", ko: "사진첩", en: "PHOTO" }, { id: "guestbook", ko: "방명록", en: "BOARD" },
-  { id: "scrap", ko: "스크랩", en: "SCRAP" }, { id: "visitor", ko: "방문자", en: "VISITOR" }, { id: "bgm", ko: "BGM", en: "MUSIC" },
+  { id: "ilchon", ko: "일촌", en: "FRIEND", ownerOnly: true }, { id: "note", ko: "쪽지", en: "NOTE", ownerOnly: true },
+  { id: "scrap", ko: "스크랩", en: "SCRAP" }, { id: "visitor", ko: "방문자", en: "VISITOR", ownerOnly: true }, { id: "bgm", ko: "BGM", en: "MUSIC" },
   { id: "grow", ko: "키우기", en: "GROW" }, { id: "chat", ko: "채팅", en: "CHAT" },
 ];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -85,6 +89,10 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [grows, setGrows] = useState<Grow[]>([]);
   const [bgmInput, setBgmInput] = useState("");
+  const [ilchons, setIlchons] = useState<Ilchon[]>([]);
+  const [ireqs, setIreqs] = useState<IlchonReq[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [relating, setRelating] = useState(false); // 일촌신청/선물 진행중
   const [loaded, setLoaded] = useState<Record<string, boolean>>({});
 
   const tok = useCallback(async () => (user ? user.getIdToken() : ""), [user]);
@@ -129,8 +137,17 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
       if (tab === "scrap" && !loaded.scrap) { const d = await get(`${base}/scrap`); setScraps(d.scraps ?? []); setLoaded((s) => ({ ...s, scrap: true })); }
       if (tab === "visitor" && isOwner && !loaded.vis) { const d = await get(`/api/minihome/me/visitors`); setVisitors(d.visitors ?? []); setLoaded((s) => ({ ...s, vis: true })); }
       if (tab === "grow" && !isOwner && !loaded.grow) { const d = await get(`/api/minihome/u/${ownerUid}/grow`); setGrows(d.grows ?? []); setLoaded((s) => ({ ...s, grow: true })); }
+      if (tab === "ilchon" && isOwner && user && !loaded.ilchon) { const d = await get("/api/minihome/ilchon"); setIlchons(d.ilchons ?? []); setIreqs(d.requests ?? []); setLoaded((s) => ({ ...s, ilchon: true })); }
+      if (tab === "note" && isOwner && user && !loaded.note) { const d = await get("/api/minihome/message"); setNotes(d.messages ?? []); setLoaded((s) => ({ ...s, note: true })); }
     })();
   }, [tab, ownerUid, isOwner, user, tok, loaded]);
+
+  // 소셜 액션
+  const reqIlchon = async () => { if (!user) { signInWithGoogle(); return; } setRelating(true); try { const t = await tok(); const r = await fetch("/api/minihome/ilchon", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ to: ownerUid }) }); const d = await r.json(); alert(r.ok ? (d.message || "일촌 신청을 보냈어요! 🤝") : (d.error || "실패")); } finally { setRelating(false); } };
+  const acceptReq = async (from: string) => { const t = await tok(); await fetch("/api/minihome/ilchon/accept", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ from }) }); setIreqs((p) => p.filter((r) => r.from !== from)); setLoaded((s) => ({ ...s, ilchon: false })); };
+  const sendNote = async () => { if (!user) { signInWithGoogle(); return; } const text = window.prompt("쪽지 내용을 입력하세요"); if (!text?.trim()) return; const t = await tok(); const r = await fetch("/api/minihome/message", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ to: ownerUid, text }) }); alert(r.ok ? "쪽지를 보냈어요! ✉️" : "전송 실패"); };
+  const sendGift = async () => { if (!user) { signInWithGoogle(); return; } const amt = window.prompt("선물할 보말 수량"); if (!amt) return; const msg = window.prompt("메시지(선택)") || ""; setRelating(true); try { const t = await tok(); const r = await fetch("/api/minihome/gift", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ to: ownerUid, bomal: Number(amt), msg }) }); const d = await r.json(); alert(r.ok ? "보말을 선물했어요! 🎁" : (d.error || "실패")); } finally { setRelating(false); } };
+  const wave = async () => { const d = await (await fetch("/api/minihome/wave")).json(); if (d.uid) window.location.href = `/minihome/u/${d.uid}`; else alert("아직 탐험할 미니홈피가 없어요 🌊"); };
 
   const onRoomClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rr = roomRef.current?.getBoundingClientRect(); if (!rr) return;
@@ -196,7 +213,7 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
   const scrapCats = useMemo(() => Array.from(new Set(scraps.map((s) => s.category))), [scraps]);
   const filteredScraps = catFilter === "전체" ? scraps : scraps.filter((s) => s.category === catFilter);
   const embed = home?.bgmUrl ? ytEmbed(home.bgmUrl) : null;
-  const menu = isOwner ? ALL_MENU : ALL_MENU.filter((t) => t.id !== "visitor");
+  const menu = ALL_MENU.filter((t) => isOwner || !t.ownerOnly);
 
   if (isOwner && !loading && !user) {
     return (
@@ -244,6 +261,7 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
           {isOwner && <span>🐚 {(home?.bomal ?? 0).toLocaleString()}</span>}
           {isOwner ? <Link href="/minihome/shop" style={{ color: "#fff", textDecoration: "underline" }}>상점</Link> : <Link href="/minihome/me" style={{ color: "#fff", textDecoration: "underline" }}>내 홈피</Link>}
           <Link href="/minihome/map" style={{ color: "#fff", textDecoration: "underline" }}>지도</Link>
+          <button onClick={wave} style={{ background: "rgba(255,255,255,.2)", color: "#fff", border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 12, cursor: "pointer" }}>🌊 파도타기</button>
         </span>
       </div>
 
@@ -273,9 +291,16 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
         <div className="mh-book">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 10 }}>
             <div><div className="mh-title">{home?.displayName ?? "My"} Minihome</div><div style={{ fontSize: 9, letterSpacing: 2, color: "#b0a486" }}>WELCOME TO MY MINIHOME</div></div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button className="mh-btn" onClick={() => setSpeakOpen((s) => !s)} style={{ background: "var(--accent)", color: "#fff", border: "1px solid var(--accent)" }}>💬 말하기</button>
               {isOwner && <button className="mh-btn" onClick={() => setDecorate((d) => !d)} style={{ background: decorate ? "#ff7aa2" : "#fff", color: decorate ? "#fff" : "var(--accent)", border: "1px solid var(--accent)" }}>🎨 {decorate ? "완료" : "꾸미기"}</button>}
+              {!isOwner && (
+                <>
+                  <button className="mh-btn" onClick={reqIlchon} disabled={relating} style={{ background: "#fff", color: "var(--accent)", border: "1px solid var(--accent)" }}>🤝 일촌신청</button>
+                  <button className="mh-btn" onClick={sendNote} style={{ background: "#fff", color: "var(--accent)", border: "1px solid var(--accent)" }}>✉️ 쪽지</button>
+                  <button className="mh-btn" onClick={sendGift} disabled={relating} style={{ background: "#e0890a", color: "#fff", border: "1px solid #e0890a" }}>🎁 선물</button>
+                </>
+              )}
             </div>
           </div>
 
@@ -383,6 +408,48 @@ export function MyMiniHome({ viewUid }: { viewUid?: string } = {}) {
               <div>
                 <div className="mh-card-h">👣 방문자 ({visitors.length})</div>
                 {visitors.length === 0 ? <p style={{ fontSize: 12, color: "#a89878", padding: "16px 0", textAlign: "center" }}>아직 다녀간 회원이 없어요.<br />(로그인 방문자만 기록돼요)</p> : <div style={{ fontSize: 12 }}>{visitors.map((v) => <div key={v.uid} className="mh-row"><span>🙋 {v.name}</span><span style={{ color: "#a89878" }}>{new Date(v.lastVisit).toLocaleDateString()}</span></div>)}</div>}
+              </div>
+            )}
+
+            {tab === "ilchon" && isOwner && (
+              <div>
+                <div className="mh-card-h">🤝 일촌 ({ilchons.length})</div>
+                {ireqs.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: "#c44b73", fontWeight: 700, marginBottom: 4 }}>받은 일촌 신청 {ireqs.length}</div>
+                    {ireqs.map((r) => (
+                      <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px dashed #eee", padding: "4px 0", fontSize: 12 }}>
+                        <span>🙋 {r.fromName}</span>
+                        <span style={{ display: "flex", gap: 6 }}>
+                          <Link href={`/minihome/u/${r.from}`} style={{ fontSize: 11, color: "var(--accent)" }}>방문</Link>
+                          <button className="mh-btn" onClick={() => acceptReq(r.from)} style={{ background: "var(--accent)", color: "#fff", border: "none", padding: "3px 10px" }}>수락</button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ilchons.length === 0 ? <p style={{ fontSize: 12, color: "#a89878", padding: "12px 0", textAlign: "center" }}>아직 일촌이 없어요. 파도타기로 친구를 만들어보세요! 🌊</p> : (
+                  <div style={{ fontSize: 12 }}>{ilchons.map((il) => (
+                    <div key={il.uid} className="mh-row">
+                      <Link href={`/minihome/u/${il.uid}`} style={{ color: "var(--accent)", textDecoration: "none" }}>🤝 {il.name} <span style={{ color: "#a89878", fontSize: 10 }}>({il.nickname})</span></Link>
+                      <button onClick={async () => { const nn = window.prompt("일촌명(별명)", il.nickname); if (nn == null) return; const t = await tok(); await fetch("/api/minihome/ilchon/nickname", { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: JSON.stringify({ uid: il.uid, nickname: nn }) }); setIlchons((p) => p.map((x) => x.uid === il.uid ? { ...x, nickname: nn } : x)); }} style={{ fontSize: 10, color: "#a89878", border: "none", background: "none", cursor: "pointer" }}>일촌명✎</button>
+                    </div>
+                  ))}</div>
+                )}
+              </div>
+            )}
+
+            {tab === "note" && isOwner && (
+              <div>
+                <div className="mh-card-h">✉️ 쪽지함 ({notes.length})</div>
+                {notes.length === 0 ? <p style={{ fontSize: 12, color: "#a89878", padding: "16px 0", textAlign: "center" }}>받은 쪽지가 없어요.</p> : (
+                  <div style={{ fontSize: 12 }}>{notes.map((n) => (
+                    <div key={n.id} style={{ borderBottom: "1px dashed #eee", padding: "6px 0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between" }}><Link href={`/minihome/u/${n.from}`} style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}>{n.fromName}</Link><span style={{ color: "#a89878", fontSize: 10 }}>{new Date(n.createdAt).toLocaleDateString()}</span></div>
+                      <div style={{ color: "#5a4a32", marginTop: 2 }}>{n.text}</div>
+                    </div>
+                  ))}</div>
+                )}
               </div>
             )}
 
