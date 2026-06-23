@@ -11,6 +11,9 @@ import { GROUP_HUB } from "@/types/cctv-location";
 // canonical 도메인(non-www, 네이버 등록 도메인)으로 통일 — 색인 신호 분산 방지
 const BASE = "https://funjeju.com";
 
+// 1시간 캐시 — 크롤러가 자주 때려도 Firestore 대량 읽기는 시간당 1회로 제한
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -38,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 카드뉴스 (발행된 것만)
   let cardPages: MetadataRoute.Sitemap = [];
   try {
-    const cards = await listPublished("card_news", 200);
+    const cards = await listPublished("card_news", 1000);
     cardPages = cards.map((c) => ({
       url: `${BASE}/card/${c.slug}`,
       lastModified: c.publishedAt ? new Date(c.publishedAt) : now,
@@ -62,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // 웹진 (콘텐츠 엔진 2단계 — 발행된 것만)
   let webzinePages: MetadataRoute.Sitemap = [];
   try {
-    const published = await listPublished("webzine", 200);
+    const published = await listPublished("webzine", 2000);
     webzinePages = published.map((c) => ({
       url: `${BASE}/webzine/${c.slug}`,
       lastModified: c.publishedAt ? new Date(c.publishedAt) : now,
