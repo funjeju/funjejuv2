@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { SpotGame } from "@/types/spot";
 import { track } from "@/lib/analytics";
 import { useT } from "@/lib/i18n";
@@ -23,8 +24,7 @@ export function RecentGameBanner({ games, className = "" }: { games: SpotGame[];
         {games.slice(0, 3).map((g) => (
           <Link key={g.id} href={`/game/spot/${g.id}`} onClick={() => track("cctv_to_game_click", { game_id: g.id })} className="group overflow-hidden rounded-xl border border-border-soft bg-bg-card transition-transform hover:scale-[1.02]">
             <div className="relative aspect-square bg-bg-secondary">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={g.variantImage} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
+              <Image src={g.variantImage} alt={g.title} fill sizes="(max-width:768px) 33vw, 120px" className="object-cover" loading="lazy" />
               <span className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">{t("game.diff")} {g.diffCount}</span>
             </div>
             <p className="line-clamp-1 px-1.5 py-1 text-[11px] font-bold text-text-primary">{g.title}</p>

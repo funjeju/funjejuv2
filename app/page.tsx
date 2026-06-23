@@ -107,8 +107,7 @@ export default async function HomePage() {
                   <Link key={g.id} href={`/game/spot/${g.id}`}
                     className="group overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card transition-transform hover:scale-[1.01]">
                     <div className="relative aspect-square bg-bg-secondary">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={g.variantImage} alt={g.title} className="h-full w-full object-cover" loading="lazy" />
+                      <Image src={g.variantImage} alt={g.title} fill sizes="(max-width:768px) 50vw, 300px" className="object-cover" loading="lazy" />
                       <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white"><T k="game.diff" /> {g.diffCount}</span>
                     </div>
                     <div className="p-2.5">

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       await createContent(draft);
       return NextResponse.json({ ok: true, draftOnly: true, id: draft.id, slug: draft.slug, title: draft.title });
     }
-    const r = await publishWithReview(draft); // 2차 검수 게이트 → 통과만 발행
+    const r = await publishWithReview(draft, req.nextUrl.origin); // 2차 검수 게이트 → 통과만 발행
     return NextResponse.json({ ok: true, title: draft.title, sections: draft.sections.length, ...r });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });

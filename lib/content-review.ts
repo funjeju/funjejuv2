@@ -60,8 +60,25 @@ ${body}
 
 export type ReviewOutcome = { published: boolean; verdict: "approved" | "flagged"; issues: string[]; id: string; slug: string };
 
-/** 검수 게이트 — 통과만 발행, 반려는 draft 보류(이슈 첨부) */
-export async function publishWithReview(draft: Content): Promise<ReviewOutcome> {
+/**
+ * 이미지 엣지캐시 프리워밍 — 발행 직후 Next 이미지 최적화(webp·리사이즈) 결과를
+ * 미리 한번 요청해 Vercel 엣지에 적재 → 첫 방문자가 콜드 비용을 안 떠안음.
+ * 베스트에포트(실패 무시).
+ */
+async function warmImages(origin: string, imgs: (string | undefined)[]): Promise<void> {
+  const urls = [...new Set(imgs.filter((u): u is string => !!u))].slice(0, 7);
+  await Promise.allSettled(
+    urls.flatMap((u, i) => {
+      const ws = i === 0 ? [1080, 640] : [640]; // 커버는 큰사이즈도, 나머지는 본문폭만
+      return ws.map((w) =>
+        fetch(`${origin}/_next/image?url=${encodeURIComponent(u)}&w=${w}&q=75`, { signal: AbortSignal.timeout(15000) }).catch(() => undefined),
+      );
+    }),
+  );
+}
+
+/** 검수 게이트 — 통과만 발행, 반려는 draft 보류(이슈 첨부). origin 주면 발행 후 이미지 프리워밍. */
+export async function publishWithReview(draft: Content, origin?: string): Promise<ReviewOutcome> {
   const now = new Date().toISOString();
   const pre = precheck(draft);
   let issues = pre;
@@ -83,6 +100,9 @@ export async function publishWithReview(draft: Content): Promise<ReviewOutcome> 
     draft.status = "draft";
   }
   await createContent(draft);
+  if (verdict === "approved" && origin) {
+    await warmImages(origin, [draft.coverImage, ...(draft.sections || []).map((s) => s.image)]);
+  }
   return { published: verdict === "approved", verdict, issues, id: draft.id, slug: draft.slug };
 }
 
