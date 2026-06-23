@@ -17,12 +17,21 @@ const USED = ["app_config", "itinerary_post"] as const;
 type Persona = { key: string; label: string; companions: string[]; nights: number; days: number; style: string };
 
 const PERSONAS: Persona[] = [
-  { key: "fam40", label: "40대 가족 4인", companions: ["40대 부부", "초중생 자녀"], nights: 2, days: 3, style: "가족 친화 · 여유로운 템포 · 아이도 즐길 거리" },
-  { key: "couple", label: "20·30대 커플", companions: ["연인"], nights: 2, days: 3, style: "감성 카페·노을·드라이브 중심 데이트" },
-  { key: "parents", label: "부모님 모시고", companions: ["부모님"], nights: 1, days: 2, style: "걷기 적은 편안한 명소·맛집 위주" },
-  { key: "friends", label: "친구끼리", companions: ["친구"], nights: 2, days: 3, style: "액티비티·핫플·맛집 알차게" },
-  { key: "kids", label: "아이와 (유아동반)", companions: ["배우자", "유아"], nights: 3, days: 4, style: "체험·동물·실내 위주, 이동 짧게" },
-  { key: "solo", label: "혼자 여행", companions: ["혼자"], nights: 1, days: 2, style: "오름·바다·카페로 사색하는 뚜벅이 가능 동선" },
+  { key: "fam40_23", label: "40대 가족 4인", companions: ["40대 부부", "초중생 자녀"], nights: 2, days: 3, style: "가족 친화 · 여유로운 템포 · 아이도 즐길 거리" },
+  { key: "fam_34", label: "가족 (아이와 길게)", companions: ["부부", "초등 자녀"], nights: 3, days: 4, style: "체험·동물·테마파크 위주, 하루 동선 짧게" },
+  { key: "couple_23", label: "20·30대 커플", companions: ["연인"], nights: 2, days: 3, style: "감성 카페·노을·드라이브 중심 데이트" },
+  { key: "couple_12", label: "커플 짧은 휴식", companions: ["연인"], nights: 1, days: 2, style: "한 권역 집중, 카페·노을·맛집 알차게" },
+  { key: "honeymoon", label: "신혼여행", companions: ["신혼 부부"], nights: 3, days: 4, style: "프리미엄 뷰·근사한 식사·노을·여유로운 동선" },
+  { key: "parents", label: "부모님 모시고 (효도)", companions: ["부모님"], nights: 2, days: 3, style: "걷기 적은 편안한 명소·전망 좋은 카페·맛집 위주" },
+  { key: "threegen", label: "3대 가족여행", companions: ["조부모", "부모", "아이"], nights: 2, days: 3, style: "남녀노소 함께·이동 짧게·휠체어/유모차 편한 곳 우선" },
+  { key: "friends_23", label: "친구끼리", companions: ["친구"], nights: 2, days: 3, style: "액티비티·핫플·맛집 알차게" },
+  { key: "friends_girls", label: "여자끼리 우정여행", companions: ["친구 여럿"], nights: 2, days: 3, style: "사진맛집·감성카페·소품샵·맛집 중심" },
+  { key: "kids_baby", label: "아기와 (유아 동반)", companions: ["배우자", "영유아"], nights: 3, days: 4, style: "수유·기저귀 편의·실내·동물 위주, 이동 최소" },
+  { key: "pet", label: "반려견 동반", companions: ["반려견"], nights: 2, days: 3, style: "반려동물 동반 가능한 해변·카페·오름 위주 동선" },
+  { key: "solo", label: "혼자 여행", companions: ["혼자"], nights: 1, days: 2, style: "오름·바다·카페로 사색하는 동선" },
+  { key: "tukbeoki", label: "뚜벅이 (대중교통)", companions: ["혼자"], nights: 2, days: 3, style: "버스·도보 가능 권역 집중, 이동 부담 적게" },
+  { key: "workation", label: "워케이션 (한 달 살기 맛보기)", companions: ["혼자"], nights: 3, days: 4, style: "한 권역 거점·카페·오름·로컬 맛집으로 천천히" },
+  { key: "daytrip", label: "당일치기", companions: ["친구"], nights: 0, days: 1, style: "공항 근처 한 권역만 알차게 도는 루프 동선" },
 ];
 
 type UsedState = { used: Record<string, number> };
@@ -111,6 +120,7 @@ function buildTripLd(title: string, intro: string, plan: TripPlan) {
 
 export async function buildItineraryPost(): Promise<Content | null> {
   const persona = await pickPersona();
+  const period = persona.nights === 0 ? "당일치기" : `${persona.nights}박${persona.days}일`;
   let plan: TripPlan;
   try {
     plan = await generateTripPlanCore(reqFor(persona));
@@ -121,13 +131,13 @@ export async function buildItineraryPost(): Promise<Content | null> {
 
   let ai: ItinAI;
   try {
-    ai = await generateJSON<ItinAI>(SYS, `페르소나: ${persona.label} (${persona.companions.join(", ")}), ${persona.nights}박 ${persona.days}일, 렌터카.\n확정 일정 데이터:\n${planToText(plan)}\n\n위 일정으로 여행일정 글의 머리말(제목·intro·일차별 lead·FAQ·키워드)을 JSON으로 작성하라. dayLeads는 ${plan.days.length}개 일차 전부.`);
+    ai = await generateJSON<ItinAI>(SYS, `페르소나: ${persona.label} (${persona.companions.join(", ")}), ${period}, 렌터카.\n확정 일정 데이터:\n${planToText(plan)}\n\n위 일정으로 여행일정 글의 머리말(제목·intro·일차별 lead·FAQ·키워드)을 JSON으로 작성하라. dayLeads는 ${plan.days.length}개 일차 전부.`);
   } catch {
     // AI 실패(과부하 등) — 이미 생성된 일정 데이터로 결정적 폴백(비싼 일정 생성을 버리지 않음)
     ai = {
-      title: `제주 ${persona.nights}박 ${persona.days}일 ${persona.label} 여행 코스`,
+      title: `제주 ${period} ${persona.label} 여행 코스`,
       subtitle: plan.overview?.slice(0, 40) || `${persona.label} 맞춤 동선`,
-      intro: plan.overview || `제주 ${persona.nights}박 ${persona.days}일 ${persona.label} 여행 추천 코스입니다.`,
+      intro: plan.overview || `제주 ${period} ${persona.label} 여행 추천 코스입니다.`,
       faqs: [],
       keywords: [],
     };
@@ -135,7 +145,7 @@ export async function buildItineraryPost(): Promise<Content | null> {
   // FAQ 폴백 (AEO — 비면 기본 질문 1개라도)
   let faqs = (ai.faqs ?? []).filter((f) => f?.q && f?.a).slice(0, 5);
   if (faqs.length === 0) {
-    faqs = [{ q: `제주 ${persona.nights}박${persona.days}일 ${persona.label} 코스 추천?`, a: (ai.intro || plan.overview || "").slice(0, 60) || `${persona.label}에 맞춘 ${persona.days}일 렌터카 동선을 추천합니다.` }];
+    faqs = [{ q: `제주 ${period} ${persona.label} 코스 추천?`, a: (ai.intro || plan.overview || "").slice(0, 60) || `${persona.label}에 맞춘 ${persona.days}일 렌터카 동선을 추천합니다.` }];
   }
 
   // 이미지: 일정 아이템 썸네일(도민맛집) + 관광지 매칭(attractions)
@@ -163,12 +173,12 @@ export async function buildItineraryPost(): Promise<Content | null> {
     heading: `${d.day}일차: ${d.theme}`,
     body: dayBody(d.items, leadByDay.get(d.day)),
     image: dayImage(i),
-    category: `${persona.nights}박 ${persona.days}일`,
+    category: `${period}`,
   }));
   if (sections.length === 0) return null;
 
   await markPersona(persona.key);
-  const title = ai.title || `제주 ${persona.nights}박 ${persona.days}일 ${persona.label} 여행 코스`;
+  const title = ai.title || `제주 ${period} ${persona.label} 여행 코스`;
   const intro = ai.intro || plan.overview || "";
   const cover = sections.find((s) => s.image)?.image;
   const now = new Date().toISOString();
@@ -178,13 +188,13 @@ export async function buildItineraryPost(): Promise<Content | null> {
     status: "draft",
     slug: `it-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
     title,
-    subtitle: ai.subtitle || `${persona.label} 맞춤 ${persona.nights}박 ${persona.days}일 동선`,
+    subtitle: ai.subtitle || `${persona.label} 맞춤 ${period} 동선`,
     intro,
     sections,
     keywords: [
       ...(ai.keywords ?? []),
-      `제주 ${persona.nights}박${persona.days}일`,
-      `제주 ${persona.nights}박${persona.days}일 코스`,
+      `제주 ${period}`,
+      `제주 ${period} 코스`,
       `제주 여행일정`, `제주 여행 코스`, `제주 ${persona.label} 여행`,
     ],
     faqs,
