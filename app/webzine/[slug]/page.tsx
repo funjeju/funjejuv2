@@ -90,6 +90,7 @@ export default async function WebzineDetailPage({
     <article className="mx-auto max-w-3xl px-0 md:px-4 md:py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />}
+      {c.extraLd != null && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(c.extraLd) }} />}
 
       {c.coverImage && (
         <div className="relative aspect-[16/9] overflow-hidden bg-bg-secondary md:rounded-2xl">

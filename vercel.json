@@ -30,6 +30,14 @@
       "schedule": "30 4,8 * * *"
     },
     {
+      "path": "/api/cron/itinerary",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/seasonal-spots",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/cardnews?slot=am",
       "schedule": "0 23 * * *"
     },

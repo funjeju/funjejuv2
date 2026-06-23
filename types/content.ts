@@ -36,4 +36,6 @@ export type Content = {
   sourceIds: string[]; // 근거가 된 맛집/CCTV id (내부링크 그래프 — 트랙 C)
   createdAt: string;
   publishedAt?: string;
+  /** 추가 JSON-LD (예: 여행일정 TouristTrip) — webzine 페이지가 그대로 출력 */
+  extraLd?: unknown;
 };
