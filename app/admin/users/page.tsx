@@ -39,6 +39,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+  const [sortBy, setSortBy] = useState<"recent" | "signup">("recent");
 
   async function load() {
     setLoading(true);
@@ -90,6 +91,12 @@ export default function AdminUsersPage() {
   const new7d = users.filter((u) => u.createdAt && now - u.createdAt < 7 * DAY).length;
   const bizCount = users.filter((u) => u.isBusiness).length;
 
+  const sorted = [...users].sort((a, b) =>
+    sortBy === "signup"
+      ? (b.createdAt ?? 0) - (a.createdAt ?? 0)               // 가입일 최신순
+      : (b.lastSeenAt ?? b.createdAt ?? 0) - (a.lastSeenAt ?? a.createdAt ?? 0), // 최근접속순
+  );
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6">
@@ -122,13 +129,27 @@ export default function AdminUsersPage() {
       <div className="rounded-2xl border border-border-soft bg-bg-card shadow-card overflow-hidden">
         <div className="border-b border-border-soft px-5 py-4 flex items-center justify-between">
           <h2 className="text-sm font-bold text-text-primary">사용자 목록 (총 {users.length}명)</h2>
-          <button
-            type="button"
-            onClick={load}
-            className="rounded-full bg-bg-secondary px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-border-soft transition-colors"
-          >
-            🔄 새로고침
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex overflow-hidden rounded-full border border-border-soft text-[11px] font-semibold">
+              {([["recent", "최근접속순"], ["signup", "가입일순"]] as const).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setSortBy(k)}
+                  className={`px-2.5 py-1.5 transition-colors ${sortBy === k ? "bg-brand-navy text-white" : "bg-bg-card text-text-secondary hover:bg-bg-secondary"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={load}
+              className="rounded-full bg-bg-secondary px-3 py-1.5 text-xs font-semibold text-text-secondary hover:bg-border-soft transition-colors"
+            >
+              🔄 새로고침
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -143,7 +164,7 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <div className="divide-y divide-border-soft">
-            {users.map((u) => (
+            {sorted.map((u) => (
               <div key={u.uid} className="flex items-center gap-3 px-5 py-3 hover:bg-bg-secondary transition-colors">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-bg-secondary">
                   {u.photoURL ? (
