@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Map as LMap, LayerGroup, Marker as LMarker, LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MiniMiKind, RoomConcept } from "@/lib/biz/types";
@@ -19,7 +19,7 @@ const CCTV_PROXY = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC
 
 interface Flag { id: string; name: string; lat: number; lng: number; minimi: MiniMiKind; concept: RoomConcept; level: number; message?: string; }
 interface CctvPt { id: string; name: string; lat: number; lng: number; }
-interface FoodPt { id: string; title: string; lat: number; lng: number; address: string; img: string; summary?: string; }
+interface FoodPt { id: string; title: string; lat: number; lng: number; address: string; img: string; summary?: string; menu?: string; }
 interface SpotPt { name: string; lat: number; lng: number; category?: string; address?: string; }
 
 type Sel =
@@ -82,6 +82,14 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
   const [flags, setFlags] = useState<Flag[]>([]);
   const [myspots, setMyspots] = useState<SpotPt[]>([]);
   const [show, setShow] = useState({ home: true, cctv: false, food: false, spot: false });
+  const [foodMenu, setFoodMenu] = useState("all");
+
+  // 메뉴 목록(많은 순) — 드롭다운 필터용
+  const foodMenus = useMemo(() => {
+    const cnt = new Map<string, number>();
+    for (const f of food) { const m = (f.menu || "").trim(); if (m) cnt.set(m, (cnt.get(m) ?? 0) + 1); }
+    return [...cnt.entries()].sort((a, b) => b[1] - a[1]);
+  }, [food]);
   const [sel, setSel] = useState<Sel | null>(null);
 
   // 깃발 꽂기
@@ -131,9 +139,9 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
 
     if (show.home) flags.forEach((f) => mk(f.lat, f.lng, avatarPin(f.level, f.minimi), () => select({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
     if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiPin("📷", "#3b82f6"), () => select({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
-    if (show.food) food.forEach((f) => mk(f.lat, f.lng, emojiPin("🍴", "#ef4444"), () => select({ kind: "food", title: f.title, sub: f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
+    if (show.food) food.filter((f) => foodMenu === "all" || (f.menu || "").trim() === foodMenu).forEach((f) => mk(f.lat, f.lng, emojiPin("🍴", "#ef4444"), () => select({ kind: "food", title: f.title, sub: f.menu ? `${f.menu} · ${f.address}` : f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
     if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiPin("⭐", "#f59e0b"), () => select({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
-  }, [show, flags, cctv, food, myspots]);
+  }, [show, flags, cctv, food, myspots, foodMenu]);
 
   const toggle = (k: keyof typeof show) => setShow((s) => { if (!s[k]) track("map_layer_on", { layer: k }); return { ...s, [k]: !s[k] }; });
 
@@ -175,6 +183,20 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
           <button key={k} onClick={() => toggle(k)} style={{ fontSize: 12, fontWeight: 700, border: "1px solid #cdd8e2", borderRadius: 999, padding: "6px 11px", cursor: "pointer", background: show[k] ? "#3f8fc4" : "rgba(255,255,255,.95)", color: show[k] ? "#fff" : "#5a6a7a", boxShadow: "0 1px 4px rgba(0,0,0,.15)" }}>{label}</button>
         ))}
         {plantMode && <span style={{ fontSize: 11, alignSelf: "center", background: "rgba(255,255,255,.95)", borderRadius: 8, padding: "5px 9px", color: "#3f8fc4" }}>지도를 눌러 깃발 위치 선택 ✨</span>}
+
+        {/* 도민맛집 메뉴 필터 (레이어 ON일 때만) */}
+        {show.food && (
+          <select
+            value={foodMenu}
+            onChange={(e) => setFoodMenu(e.target.value)}
+            style={{ fontSize: 12, fontWeight: 700, border: "1px solid #ef4444", borderRadius: 999, padding: "6px 11px", cursor: "pointer", background: "rgba(255,255,255,.97)", color: "#ef4444", boxShadow: "0 1px 4px rgba(0,0,0,.15)", maxWidth: 180 }}
+          >
+            <option value="all">🍴 메뉴 전체 ({food.length})</option>
+            {foodMenus.map(([m, c]) => (
+              <option key={m} value={m}>{m} ({c})</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* 깃발 꽂기 버튼 */}

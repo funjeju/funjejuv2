@@ -5,7 +5,7 @@ import foodRaw from "@/data/domin_food.json";
 export const dynamic = "force-dynamic";
 
 type RawCctv = { id: string; formal?: string; short?: string; lat?: number; lng?: number };
-type RawFood = { id: string; title?: string; address?: string; lat?: string | number; lng?: string | number; images?: string[]; content?: string };
+type RawFood = { id: string; title?: string; address?: string; lat?: string | number; lng?: string | number; images?: string[]; content?: string; menu?: string };
 
 const summarize = (html?: string) =>
   (html || "").replace(/<[^>]+>/g, " ").replace(/&[^;]+;/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
@@ -16,7 +16,7 @@ const CCTV = (cctvRaw as RawCctv[])
 
 const FOOD = (foodRaw as RawFood[])
   .filter((f) => f.lat && f.lng)
-  .map((f) => ({ id: f.id, title: f.title || "", lat: Number(f.lat), lng: Number(f.lng), address: f.address || "", img: f.images?.[0] || "", summary: summarize(f.content) }));
+  .map((f) => ({ id: f.id, title: f.title || "", lat: Number(f.lat), lng: Number(f.lng), address: f.address || "", img: f.images?.[0] || "", summary: summarize(f.content), menu: f.menu || "" }));
 
 /** 어드민 — 제주 지도 테스트(런칭 전 레이어·모달 점검용). */
 export default function AdminMapPage() {

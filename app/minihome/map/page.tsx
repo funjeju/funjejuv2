@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 type RawCctv = { id: string; formal?: string; short?: string; lat?: number; lng?: number };
-type RawFood = { id: string; title?: string; address?: string; lat?: string | number; lng?: string | number; images?: string[]; content?: string };
+type RawFood = { id: string; title?: string; address?: string; lat?: string | number; lng?: string | number; images?: string[]; content?: string; menu?: string };
 
 const summarize = (html?: string) =>
   (html || "").replace(/<[^>]+>/g, " ").replace(/&[^;]+;/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
@@ -23,7 +23,7 @@ const CCTV = (cctvRaw as RawCctv[])
 
 const FOOD = (foodRaw as RawFood[])
   .filter((f) => f.lat && f.lng)
-  .map((f) => ({ id: f.id, title: f.title || "", lat: Number(f.lat), lng: Number(f.lng), address: f.address || "", img: f.images?.[0] || "", summary: summarize(f.content) }));
+  .map((f) => ({ id: f.id, title: f.title || "", lat: Number(f.lat), lng: Number(f.lng), address: f.address || "", img: f.images?.[0] || "", summary: summarize(f.content), menu: f.menu || "" }));
 
 /** 제주 OSM 지도 + 레이어(미니홈피 깃발·CCTV·도민맛집·내 스팟) + 모달→더보기. */
 export default function MiniHomeMapPage() {
