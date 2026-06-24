@@ -98,6 +98,19 @@ const DICT: Record<string, Entry> = {
 
   // ── 플로팅 챗봇 ─────────────────────────────────────────
   "chat.float": { ko: "무엇이든 물어보살 🔮", en: "Ask me anything 🔮", ja: "何でも聞いてね 🔮", zh: "什么都可以问我 🔮" },
+  "chat.greeting": {
+    ko: "혼저옵서예! 제주 여행 도슨트 돌AI우다. 🗿\n\n🍽️ 도민맛집광 🏞️ 가볼만한 디를 곹이 추천해드리쿠다.\n지역이름이영 메뉴를 골아주민 더 정확허우다!",
+    en: "Welcome to Jeju! I'm Dol AI, your Jeju travel guide. 🗿\n\nI recommend 🍽️ local restaurants and 🏞️ must-visit spots.\nTell me an area or what you're craving for better picks!",
+    ja: "ようこそ済州へ！済州旅行ガイドのDol AIです。🗿\n\n🍽️ 地元グルメと 🏞️ おすすめスポットをご案内します。\n地域名や食べたいものを教えてくれると、より正確です！",
+    zh: "欢迎来济州！我是济州旅行向导Dol AI。🗿\n\n为您推荐 🍽️ 本地美食和 🏞️ 必去景点。\n告诉我地区或想吃什么，推荐会更精准！",
+  },
+  "chat.placeholder": { ko: "지금 어디야? 뭐가 궁금해?", en: "Where are you? Ask me anything!", ja: "今どこ？何でも聞いてね！", zh: "你在哪？有什么想问的？" },
+  "chat.sug.heuk": { ko: "흑돼지 맛집 추천", en: "Black pork restaurants", ja: "黒豚グルメのおすすめ", zh: "推荐黑猪肉餐厅" },
+  "chat.sug.cafe": { ko: "감성 카페 추천", en: "Recommend cozy cafés", ja: "雰囲気の良いカフェ", zh: "推荐文艺咖啡馆" },
+  "chat.sug.spot": { ko: "가볼만한 곳 추천", en: "Must-visit spots", ja: "おすすめスポット", zh: "值得去的景点" },
+  "chat.sug.halla": { ko: "한라산 코스 추천", en: "Hallasan hiking course", ja: "漢拏山コース", zh: "汉拿山路线" },
+  "chat.sug.sunset": { ko: "노을 명소 추천", en: "Best sunset spots", ja: "夕日の名所", zh: "看日落的地方" },
+  "chat.sug.rainy": { ko: "비 오는 날 가볼 곳", en: "Rainy-day spots", ja: "雨の日に行ける所", zh: "雨天去处" },
 
   // ── 홈 ──────────────────────────────────────────────────
   "home.hero.title": { ko: "제주, 지금 이 순간을 담다", en: "Jeju, captured right now", ja: "済州、今この瞬間を", zh: "济州，定格此刻" },

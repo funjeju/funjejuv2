@@ -5,6 +5,7 @@ import {
   cleanupStaleSessions,
   getTodayViews,
   getRecentViews,
+  getSectionStats,
 } from "@/lib/firestore-stats";
 
 export const runtime = "nodejs";
@@ -20,10 +21,11 @@ export async function GET() {
     // 만료 세션 정리 (백그라운드)
     cleanupStaleSessions().catch(() => { /* ignore */ });
 
-    const [activeSessions, todayViews, recentViews] = await Promise.all([
+    const [activeSessions, todayViews, recentViews, sectionStats] = await Promise.all([
       getActiveSessions(),
       getTodayViews(),
       getRecentViews(7),
+      getSectionStats(7).catch(() => []),
     ]);
 
     // 활성 세션 집계
@@ -94,6 +96,7 @@ export async function GET() {
         byTier: todayByTier,
       },
       daily,
+      sections: sectionStats,
     });
   } catch (e) {
     return NextResponse.json(

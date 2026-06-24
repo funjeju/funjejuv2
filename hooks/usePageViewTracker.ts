@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getAnonId } from "@/lib/client-usage";
 
 const ADMIN_EMAIL = "naggu1999@gmail.com";
 
@@ -15,7 +16,7 @@ export function usePageViewTracker() {
     if (!pathname) return;
     if (pathname.startsWith("/admin")) return; // admin은 통계 제외
 
-    const userId = user?.uid ?? "anonymous";
+    const userId = user?.uid ?? getAnonId(); // 익명도 기기별 UUID로 → 고유 방문자 집계 정확
     const userTier = user?.email === ADMIN_EMAIL
       ? "admin"
       : user

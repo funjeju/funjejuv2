@@ -427,11 +427,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { messages, lat, lng, jejuMode } = (await req.json()) as {
+  const { messages, lat, lng, jejuMode, lang } = (await req.json()) as {
     messages: Message[];
     lat?: number;
     lng?: number;
     jejuMode?: boolean;
+    lang?: string;
   };
 
   const hasGps = typeof lat === "number" && typeof lng === "number";
@@ -515,8 +516,15 @@ export async function POST(req: NextRequest) {
   const restaurantCtx = buildRestaurantContext(ctxRestaurants);
   let systemPrompt    = buildSystemPrompt({ restaurantCtx, intent, hasGps, gpsInfo, gpsOutsideJeju, hasDominCards: dominCards.length > 0 });
 
-  // 돌AI 제주어 모드 — 검증된 제주어 사전·예문을 프롬프트에 주입 (가짜 제주어 방지)
-  if (jejuMode) {
+  // 외국어 사용자 — 해당 언어로 답변 (제주어 모드는 한국어 전용이라 무시)
+  const LANG_NAME: Record<string, string> = { en: "English", ja: "Japanese (日本語)", zh: "Chinese (简体中文)" };
+  const foreignLang = lang && lang !== "ko" ? LANG_NAME[lang] : null;
+  if (foreignLang) {
+    systemPrompt = `${systemPrompt}\n\n[LANGUAGE] The user's language is ${foreignLang}. Write your ENTIRE reply in ${foreignLang}, naturally and friendly. Keep Jeju place names/restaurant names in Korean with a short ${foreignLang} gloss in parentheses on first mention. Ignore any Jeju-dialect instruction.`;
+  }
+
+  // 돌AI 제주어 모드 — 검증된 제주어 사전·예문을 프롬프트에 주입 (가짜 제주어 방지). 외국어면 제주어 비활성.
+  if (jejuMode && !foreignLang) {
     try {
       const grounding = await buildDialectGrounding(lastUserText, restaurantCtx);
       systemPrompt = `${grounding}\n\n${systemPrompt}`;

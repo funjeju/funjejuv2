@@ -370,6 +370,49 @@ export async function getRecentPageViews(limit = 200): Promise<PageViewLog[]> {
   });
 }
 
+// ── 섹션(유입 영역)별 집계 ────────────────────────────
+const SECTION_RULES: { key: string; label: string; test: (p: string) => boolean }[] = [
+  { key: "cctv",     label: "실시간 CCTV",   test: (p) => p.startsWith("/cctv") },
+  { key: "food",     label: "도민맛집",      test: (p) => p.startsWith("/food") },
+  { key: "game",     label: "틀린그림찾기",  test: (p) => p.startsWith("/game") },
+  { key: "weather",  label: "제주 날씨",     test: (p) => p.startsWith("/weather") },
+  { key: "content",  label: "매거진·웹진·카드", test: (p) => /^\/(webzine|magazine|card|daily|guide|qna)/.test(p) },
+  { key: "minihome", label: "미니홈피",      test: (p) => p.startsWith("/minihome") || p.startsWith("/biz") },
+  { key: "ai",       label: "제주여행 AI",   test: (p) => /^\/(jeju-ai|trip-ai|chat)/.test(p) },
+  { key: "feed",     label: "라이브 피드",   test: (p) => p.startsWith("/feed") },
+  { key: "youtube",  label: "제주tube",      test: (p) => p.startsWith("/youtube") },
+  { key: "home",     label: "홈",            test: (p) => p === "/" },
+];
+
+export type SectionStat = { key: string; label: string; views: number; uniqueUsers: number };
+
+/** 최근 N일 페이지뷰를 섹션별(CCTV·맛집·틀린그림 등)로 집계 */
+export async function getSectionStats(days = 7): Promise<SectionStat[]> {
+  const db = getAdminDb();
+  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+  const snap = await db.collection("stats_pageviews").where("date", ">=", since).limit(50000).get();
+
+  const agg = new Map<string, { views: number; users: Set<string> }>();
+  for (const doc of snap.docs) {
+    const d = doc.data() as { path?: string; userId?: string };
+    const path = d.path ?? "";
+    const rule = SECTION_RULES.find((r) => r.test(path));
+    const key = rule?.key ?? "etc";
+    const cur = agg.get(key) ?? { views: 0, users: new Set<string>() };
+    cur.views++;
+    if (d.userId) cur.users.add(d.userId);
+    agg.set(key, cur);
+  }
+
+  const out: SectionStat[] = SECTION_RULES.map((r) => {
+    const a = agg.get(r.key);
+    return { key: r.key, label: r.label, views: a?.views ?? 0, uniqueUsers: a?.users.size ?? 0 };
+  });
+  const etc = agg.get("etc");
+  if (etc && etc.views > 0) out.push({ key: "etc", label: "기타", views: etc.views, uniqueUsers: etc.users.size });
+  return out.sort((a, b) => b.uniqueUsers - a.uniqueUsers);
+}
+
 export async function getRecentViewLogs(limit = 200): Promise<ViewLog[]> {
   const db = getAdminDb();
   const snap = await db.collection("stats_views")

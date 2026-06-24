@@ -16,6 +16,7 @@ type StatsData = {
     byTier: Record<string, { count: number; totalSec: number }>;
   };
   daily: { date: string; views: number; uniqueUsers: number; totalSec: number }[];
+  sections?: { key: string; label: string; views: number; uniqueUsers: number }[];
 };
 
 const TIER_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
@@ -248,6 +249,31 @@ export default function AdminStatsPage() {
                 <span className="w-16 text-right text-[10px] text-text-secondary">{d.uniqueUsers}명</span>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── 영역별 유입 (최근 7일) ── */}
+      <section className="rounded-2xl border border-border-soft bg-bg-card p-5 shadow-card">
+        <h2 className="mb-1 text-sm font-bold text-text-primary">📊 영역별 유입 (최근 7일)</h2>
+        <p className="mb-3 text-[11px] text-text-secondary">CCTV·도민맛집·틀린그림찾기 등 어디로 들어왔는지 (페이지뷰 기준 · 명=고유 방문자)</p>
+        {!data.sections || data.sections.length === 0 ? (
+          <p className="py-8 text-center text-xs text-text-secondary">아직 페이지뷰 기록이 없어요</p>
+        ) : (
+          <div className="space-y-2">
+            {(() => {
+              const maxU = Math.max(1, ...data.sections.map((s) => s.uniqueUsers));
+              return data.sections.filter((s) => s.views > 0).map((s) => (
+                <div key={s.key} className="flex items-center gap-3">
+                  <span className="w-28 shrink-0 truncate text-[11px] font-medium text-text-secondary">{s.label}</span>
+                  <div className="h-3 flex-1 rounded-full bg-bg-secondary">
+                    <div className="h-full rounded-full bg-jeju-green" style={{ width: `${(s.uniqueUsers / maxU) * 100}%` }} />
+                  </div>
+                  <span className="w-16 text-right text-xs font-bold text-text-primary">{s.uniqueUsers}명</span>
+                  <span className="w-14 text-right text-[10px] text-text-secondary">{s.views}회</span>
+                </div>
+              ));
+            })()}
           </div>
         )}
       </section>

@@ -85,8 +85,10 @@ const TYPE_LABEL: Record<string, string> = { 맛집: "🍽", 카페: "☕", 관�
 
 /** 일정 데이터로 그날 본문을 결정적으로 구성 (장소·시간·코멘트 — 그라운드된 사실) */
 function dayBody(items: TripPlan["days"][number]["items"], lead?: string): string {
-  const lines = items.map((it) => `${it.time} ${TYPE_LABEL[it.type] ?? "•"} ${it.name}${it.duration ? ` (${it.duration})` : ""}${it.comment ? ` — ${it.comment}` : ""}`);
-  return [lead?.trim(), ...lines].filter(Boolean).join("\n");
+  // 코스별로 한 줄씩(시간·장소·코멘트). 리드 문장 뒤에 빈 줄로 단락 분리.
+  const lines = items.map((it) => `${it.time}  ${TYPE_LABEL[it.type] ?? "•"} ${it.name}${it.duration ? ` (${it.duration})` : ""}${it.comment ? `\n   ${it.comment}` : ""}`);
+  const head = lead?.trim() ? [lead.trim(), ""] : [];
+  return [...head, ...lines].join("\n\n");
 }
 
 function planToText(plan: TripPlan): string {

@@ -144,7 +144,7 @@ export default async function WebzineDetailPage({
                 )}
                 <div className="min-w-0">
                   <h2 className="text-sm font-black text-text-primary">{s.heading}</h2>
-                  <p className="mt-1 text-[13px] leading-6 text-text-secondary">{s.body}</p>
+                  <p className="mt-1 whitespace-pre-line text-[13px] leading-6 text-text-secondary">{s.body}</p>
                   {s.restaurantId && (
                     <Link href={`/food/${s.restaurantId}`} className="mt-1.5 inline-block text-[12px] font-bold text-brand-orange">
                       맛집 상세 보기 →

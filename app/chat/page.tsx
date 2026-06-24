@@ -6,16 +6,11 @@ import Image from "next/image";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { usageHeaders } from "@/lib/client-usage";
+import { useI18n } from "@/lib/i18n";
 import type { DominCard, AiSpotCard } from "@/types/chat";
 
-const SUGGESTIONS = [
-  { label: "성산 흑돼지 맛집 추천",    emoji: "🍽️" },
-  { label: "애월 카페 추천해줘",       emoji: "☕" },
-  { label: "협재 근처 가볼 곳",       emoji: "🏖️" },
-  { label: "한라산 코스 추천",         emoji: "⛰️" },
-  { label: "노을 명소 추천",          emoji: "🌅" },
-  { label: "비 오는 날 가볼 곳",       emoji: "🌧️" },
-];
+const SUG_KEYS = ["chat.sug.heuk", "chat.sug.cafe", "chat.sug.spot", "chat.sug.halla", "chat.sug.sunset", "chat.sug.rainy"] as const;
+const SUG_EMOJI = ["🍽️", "☕", "🏖️", "⛰️", "🌅", "🌧️"];
 
 type Message = { role: "user" | "model"; text: string; domin?: DominCard[]; aiSpots?: AiSpotCard[] };
 type GPS = { lat: number; lng: number } | null;
@@ -114,6 +109,7 @@ const INITIAL: Message[] = [
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const { lang, t } = useI18n();
   const [messages, setMessages] = useState<Message[]>(INITIAL);
   const [input,    setInput]    = useState("");
   const [loading,  setLoading]  = useState(false);
@@ -122,6 +118,13 @@ export default function ChatPage() {
   const [jejuMode, setJejuMode] = useState(true); // 돌AI 제주어 모드 (디폴트 ON)
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+
+  // 외국어면 인사말을 해당 언어로 + 제주어 모드 OFF (대화 시작 전에만)
+  useEffect(() => {
+    if (lang === "ko") return;
+    setJejuMode(false);
+    setMessages((prev) => (prev.length === 1 && prev[0].role === "model" ? [{ role: "model", text: t("chat.greeting") }] : prev));
+  }, [lang, t]);
 
   // 자동 스크롤
   useEffect(() => {
@@ -177,6 +180,7 @@ export default function ChatPage() {
           lat: gps?.lat,
           lng: gps?.lng,
           jejuMode,
+          lang,
         }),
       });
 
@@ -329,24 +333,28 @@ export default function ChatPage() {
         {/* 초기 제안 칩 */}
         {messages.length === 1 && !loading && (
           <div className="grid grid-cols-2 gap-1.5 pl-10">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s.label}
-                type="button"
-                onClick={() => sendMessage(s.label)}
-                style={{ fontSize: "11px" }}
-                className="rounded-xl border border-border-soft bg-bg-card px-2.5 py-1.5 text-left font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
-              >
-                <span className="mr-1">{s.emoji}</span>{s.label}
-              </button>
-            ))}
+            {SUG_KEYS.map((k, i) => {
+              const label = t(k);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => sendMessage(label)}
+                  style={{ fontSize: "11px" }}
+                  className="rounded-xl border border-border-soft bg-bg-card px-2.5 py-1.5 text-left font-medium text-text-primary hover:bg-bg-secondary transition-colors shadow-card"
+                >
+                  <span className="mr-1">{SUG_EMOJI[i]}</span>{label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* 입력창 */}
       <div className="shrink-0 border-t border-border-soft bg-bg-card px-4 py-3 md:rounded-b-2xl">
-        {/* 돌AI 제주어 모드 토글 */}
+        {/* 돌AI 제주어 모드 토글 — 한국어일 때만 (외국어는 의미 없음) */}
+        {lang === "ko" && (
         <div className="mb-2 flex items-center justify-end gap-2">
           <span className="text-[11px] font-bold text-text-secondary">🗿 돌AI 제주어 모드</span>
           <button
@@ -360,7 +368,8 @@ export default function ChatPage() {
             <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${jejuMode ? "left-[18px]" : "left-0.5"}`} />
           </button>
         </div>
-        {jejuMode && (
+        )}
+        {jejuMode && lang === "ko" && (
           <p className="mb-2 text-center text-[11px] text-text-secondary">
             💬 제주어가 어려우시면 위 <span className="font-bold text-brand-orange">‘제주어 모드’</span>를 꺼주세요. 표준어로 답해드려요!
           </p>
@@ -373,7 +382,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             disabled={loading}
-            placeholder={loading ? (jejuMode ? "돌AI가 생각 중..." : "돌AI가 생각 중...") : (jejuMode ? "제주어로 답해줄게, 뭐가 궁금허우꽈?" : "지금 어디야? 뭐가 궁금해?")}
+            placeholder={loading ? "돌AI가 생각 중..." : (lang !== "ko" ? t("chat.placeholder") : (jejuMode ? "제주어로 답해줄게, 뭐가 궁금허우꽈?" : "지금 어디야? 뭐가 궁금해?"))}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary outline-none disabled:opacity-50"
           />
           <button
@@ -389,17 +398,20 @@ export default function ChatPage() {
         {/* 대화 중 빠른 칩 */}
         {messages.length > 1 && (
           <div className="mt-2 flex gap-2 overflow-x-auto pb-0.5 no-scrollbar">
-            {["흑돼지 맛집", "감성 카페", "노을 명소", "오름 추천", "비 오는 날"].map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => sendMessage(t)}
-                disabled={loading}
-                className="shrink-0 rounded-full bg-bg-secondary px-3 py-1 text-[11px] font-medium text-text-secondary hover:bg-border-soft transition-colors disabled:opacity-50"
-              >
-                {t}
-              </button>
-            ))}
+            {SUG_KEYS.map((k) => {
+              const label = t(k);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => sendMessage(label)}
+                  disabled={loading}
+                  className="shrink-0 rounded-full bg-bg-secondary px-3 py-1 text-[11px] font-medium text-text-secondary hover:bg-border-soft transition-colors disabled:opacity-50"
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
