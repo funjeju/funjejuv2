@@ -19,6 +19,7 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [origAspect, setOrigAspect] = useState<number | null>(null); // 원본 비율 — 변형도 같은 박스에 맞춰 정렬
   const [commentText, setCommentText] = useState("");
   const [commentSending, setCommentSending] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false); // 크게 보기(전체화면 모달)
   const imgRef = useRef<HTMLImageElement>(null);
 
   const foundCount = found.filter(Boolean).length;
@@ -168,10 +169,19 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   );
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
-      <div className="bg-brand-navy px-5 py-3 text-center text-white">
+    <div className={fullscreen ? "fixed inset-0 z-[80] overflow-auto bg-black/90 p-2 md:p-4" : "contents"}>
+    <div className={`overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card ${fullscreen ? "mx-auto w-full max-w-6xl" : ""}`}>
+      <div className="relative bg-brand-navy px-5 py-3 text-center text-white">
         <h1 className="text-lg font-black tracking-wide">{game.title}</h1>
         <p className="text-[12px] text-white/70">다른 <span className="font-bold text-brand-yellow">{game.markers.length}</span>곳을 찾아보세요!</p>
+        <button
+          type="button"
+          onClick={() => setFullscreen((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-white/25 transition-colors"
+          title={fullscreen ? "닫기" : "크게 보기"}
+        >
+          {fullscreen ? "✕ 닫기" : "🔍 크게 보기"}
+        </button>
       </div>
 
       <div className={`grid gap-[3px] bg-brand-navy p-[3px] ${game.layout === "stack" ? "grid-cols-1" : "grid-cols-2"}`}>
@@ -258,6 +268,7 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           </>
         )}
       </div>
+    </div>
     </div>
   );
 }
