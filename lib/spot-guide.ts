@@ -39,6 +39,13 @@ export function deriveRegion(lat?: number, lng?: number): RegionKey {
   return "jungsangan";
 }
 
+/** 자동 콘텐츠에 쓸 수 있는 스팟인지 — 추자도(본섬 밖)·오름은 제외(RAG 큐레이션 전까지) */
+export function isContentEligible(a: { lat?: number | null; title?: string }): boolean {
+  if (typeof a.lat === "number" && a.lat >= 33.7) return false; // 추자도 일대 제외
+  if (/오름/.test(a.title ?? "")) return false;                  // 오름 제외 (사용자 지시)
+  return true;
+}
+
 /** 명칭+소개+태그로 테마 다중 분류 */
 export function deriveThemes(text: string): ThemeKey[] {
   const out: ThemeKey[] = [];

@@ -1,8 +1,9 @@
 import "server-only";
 import { generateJSON, generateWithSearch } from "@/lib/biz/gemini";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { loadAttractions, type Attraction } from "@/lib/attractions-store";
-import { REGIONS, type ThemeKey } from "@/lib/spot-guide";
+import { loadAttractions } from "@/lib/attractions-store";
+import { REGIONS, isContentEligible, type ThemeKey } from "@/lib/spot-guide";
+import { ragCurate } from "@/lib/rag-curate";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -104,19 +105,13 @@ export async function buildSeasonalPost(): Promise<Content | null> {
     seasonCtx = r.text.slice(0, 1200);
   } catch { /* 검색 실패 시 시즌 라벨만 사용 */ }
 
-  // 2) 관광지 풀에서 앵글 테마 매칭 스팟 (이미지 보유, 권역 분산)
-  const all = await loadAttractions();
+  // 2) 관광지 풀에서 앵글 테마 매칭 (추자·오름 제외) → RAG로 이 달·주제에 맞는 곳만 검증
+  const all = (await loadAttractions()).filter(isContentEligible);
   const matched = all.filter((a) => (a.image || a.imageUrl) && Array.isArray(a.themes) && a.themes.some((t) => themes.includes(t)));
   if (matched.length < 5) return null;
-  const byRegion = new Map<string, (Attraction & { id: string })[]>();
-  for (const a of matched) { const arr = byRegion.get(a.region) ?? []; arr.push(a); byRegion.set(a.region, arr); }
-  const picks: (Attraction & { id: string })[] = [];
-  let round = 0;
-  while (picks.length < 7 && round < 5) {
-    for (const arr of byRegion.values()) { if (arr[round]) picks.push(arr[round]); if (picks.length >= 7) break; }
-    round++;
-  }
-  if (picks.length < 5) return null;
+  const rag = await ragCurate(`${month}월 제주 ${angle.phrase}`, matched, 5);
+  if (!rag) return null; // 검증 통과 못함 → 스킵
+  const picks = rag.picks.slice(0, 7);
 
   const list = picks.map((s) => `- [${s.id}] ${s.title} (제주 ${REGIONS[s.region]?.label ?? ""}) :: ${(s.intro || "").slice(0, 140)}`).join("\n");
 

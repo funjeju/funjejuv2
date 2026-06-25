@@ -2,7 +2,8 @@ import "server-only";
 import { generateJSON } from "@/lib/biz/gemini";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { loadAttractions, type Attraction } from "@/lib/attractions-store";
-import { REGIONS, THEMES, topicLabels, type RegionKey, type ThemeKey } from "@/lib/spot-guide";
+import { REGIONS, THEMES, topicLabels, isContentEligible, type RegionKey, type ThemeKey } from "@/lib/spot-guide";
+import { ragCurate } from "@/lib/rag-curate";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -13,7 +14,7 @@ import type { Content, ContentSection } from "@/types/content";
 
 const USED = ["app_config", "spot_guide"] as const;
 
-export type SpotTopic = { region: RegionKey; theme: ThemeKey; picks: (Attraction & { id: string })[] };
+export type SpotTopic = { region: RegionKey; theme: ThemeKey; picks: (Attraction & { id: string })[]; context: string };
 
 type UsedState = { used: Record<string, number> }; // "region__theme" → 마지막 사용 ms
 
@@ -33,14 +34,15 @@ export async function markSpotTopicUsed(region: RegionKey, theme: ThemeKey): Pro
   await markUsed(`${region}__${theme}`);
 }
 
-/** 관광지 4곳 이상인 권역×테마 조합 중, 가장 오래전에 쓴(또는 안 쓴) 것 선정 */
+/** 권역×테마 조합을 LRU 순으로 → RAG(웹검색)로 적합한 곳만 검증 통과한 첫 토픽 반환 */
 export async function pickSpotTopic(): Promise<SpotTopic | null> {
-  const all = await loadAttractions();
+  const all = (await loadAttractions()).filter(isContentEligible); // 추자·오름 제외
   if (all.length === 0) return null;
 
   const groups = new Map<string, (Attraction & { id: string })[]>();
   for (const a of all) {
     if (!a.region || !Array.isArray(a.themes)) continue;
+    if (!(a.image || a.imageUrl)) continue;
     for (const theme of a.themes) {
       const key = `${a.region}__${theme}`;
       const arr = groups.get(key) ?? [];
@@ -49,21 +51,20 @@ export async function pickSpotTopic(): Promise<SpotTopic | null> {
     }
   }
 
-  const candidates = [...groups.entries()].filter(([, arr]) => arr.filter((x) => x.image || x.imageUrl).length >= 4);
+  const candidates = [...groups.entries()].filter(([, arr]) => arr.length >= 5);
   if (candidates.length === 0) return null;
 
   const { used } = await getUsed();
   candidates.sort((a, b) => (used[a[0]] ?? 0) - (used[b[0]] ?? 0)); // 오래전에 쓴 순
-  const [key, arr] = candidates[0];
-  const [region, theme] = key.split("__") as [RegionKey, ThemeKey];
 
-  // 이미지 있는 것 우선, 최대 6곳
-  const picks = arr
-    .filter((x) => x.image || x.imageUrl)
-    .sort((a, b) => (b.image ? 1 : 0) - (a.image ? 1 : 0))
-    .slice(0, 6);
-
-  return { region, theme, picks };
+  // LRU 상위 몇 개를 RAG 검증 시도(검색콜 제한). 통과한 첫 토픽 사용.
+  for (const [key, arr] of candidates.slice(0, 3)) {
+    const [region, theme] = key.split("__") as [RegionKey, ThemeKey];
+    const { title: topicTitle } = topicLabels(region, theme);
+    const rag = await ragCurate(topicTitle, arr, 5);
+    if (rag) return { region, theme, picks: rag.picks.slice(0, 6), context: rag.context };
+  }
+  return null;
 }
 
 type SpotAIResult = {
@@ -103,7 +104,7 @@ export async function generateSpotGuideDraft(topic: SpotTopic): Promise<Content>
 
   const prompt = `다음 제주 ${r.label} 지역의 "${t.phrase}" 관광지들로 여행 큐레이션 웹진 글을 JSON으로 작성하라.
 전체 글(intro + 각 섹션 body 합산)은 반드시 1,500자 이상이어야 한다.
-
+${topic.context ? `\n[웹검색으로 확인된 이 주제의 핵심 맥락 — 사실에 활용]\n${topic.context}\n` : ""}
 관광지 목록 (형식: [id] 이름 (권역, 주소) :: 소개):
 ${list}
 

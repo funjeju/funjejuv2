@@ -3,7 +3,8 @@ import { generateJSON } from "@/lib/biz/gemini";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { loadAttractions } from "@/lib/attractions-store";
 import { loadContentRestaurants, restaurantImageUrl, stripHtml } from "@/lib/restaurants";
-import { REGIONS, type RegionKey } from "@/lib/spot-guide";
+import { REGIONS, isContentEligible, type RegionKey } from "@/lib/spot-guide";
+import { ragCurate } from "@/lib/rag-curate";
 import type { Content, ContentSection } from "@/types/content";
 
 /**
@@ -28,7 +29,6 @@ type MagTopicDef = {
 export const MAG_TOPICS: MagTopicDef[] = [
   { key: "course",  head: "제주 여행 코스",  noun: "여행 코스",       format: "course", source: "attractions" },
   { key: "cafe",    head: "제주 카페",       noun: "카페",            format: "best",   source: "restaurants", match: /카페|베이커리|디저트|브런치|로스터/ },
-  { key: "oreum",   head: "제주 오름",       noun: "오름",            format: "best",   source: "attractions", match: /오름/ },
   { key: "beach",   head: "제주 해변",       noun: "해변·해수욕장",   format: "best",   source: "attractions", match: /해변|해수욕|바다|포구|해안|등대/ },
   { key: "photo",   head: "제주 포토스팟",   noun: "포토스팟",        format: "best",   source: "attractions", match: /전망|노을|일몰|정원|벽화|미술관|숲|등대|폭포/ },
   { key: "healing", head: "제주 힐링 명소",  noun: "자연·힐링 명소",  format: "best",   source: "attractions", match: /숲|곶자왈|폭포|계곡|수목원|정원|습지|둘레길|올레|치유/ },
@@ -36,7 +36,7 @@ export const MAG_TOPICS: MagTopicDef[] = [
 
 type Place = { id: string; title: string; address: string; intro: string; image?: string; lng?: number };
 
-export type MagTopic = { def: MagTopicDef; regionLabel: string | null; places: Place[] };
+export type MagTopic = { def: MagTopicDef; regionLabel: string | null; places: Place[]; context: string };
 
 type UsedState = { used: Record<string, number> };
 async function getUsed(): Promise<UsedState> {
@@ -64,7 +64,8 @@ function magLabels(t: MagTopicDef, regionLabel: string | null) {
 
 /** 후보(테마×지역) 중 가장 오래전에 쓴 것 선정. 데이터 4곳 이상만. */
 export async function pickMagazineTopic(): Promise<MagTopic | null> {
-  const [attractions, restaurants] = await Promise.all([loadAttractions(), loadContentRestaurants()]);
+  const [attractionsRaw, restaurants] = await Promise.all([loadAttractions(), loadContentRestaurants()]);
+  const attractions = attractionsRaw.filter(isContentEligible); // 추자·오름 제외
   const { used } = await getUsed();
 
   type Cand = { def: MagTopicDef; regionLabel: string | null; places: Place[]; usedAt: number };
@@ -112,11 +113,17 @@ export async function pickMagazineTopic(): Promise<MagTopic | null> {
   const topicLast: Record<string, number> = {};
   for (const x of cands) topicLast[x.def.key] = Math.max(topicLast[x.def.key] ?? 0, x.usedAt);
   cands.sort((a, b) => (topicLast[a.def.key] - topicLast[b.def.key]) || (a.usedAt - b.usedAt));
-  const c = cands[0];
 
-  // course면 동선 자연스럽게 서→동 정렬, 최대 6곳
-  const places = [...c.places].sort((a, b) => (a.lng ?? 0) - (b.lng ?? 0)).slice(0, 6);
-  return { def: c.def, regionLabel: c.regionLabel, places };
+  // LRU 상위 후보를 RAG로 검증 → 통과한 첫 토픽 사용 (검색콜 제한 3회)
+  for (const c of cands.slice(0, 3)) {
+    const topicLabel = `제주 ${c.regionLabel ? c.regionLabel + " " : ""}${c.def.noun}`;
+    const rag = await ragCurate(topicLabel, c.places, c.def.format === "course" ? 4 : 5);
+    if (!rag) continue;
+    // course면 동선 자연스럽게 서→동 정렬, 최대 6곳
+    const places = [...rag.picks].sort((a, b) => (a.lng ?? 0) - (b.lng ?? 0)).slice(0, 6);
+    return { def: c.def, regionLabel: c.regionLabel, places, context: rag.context };
+  }
+  return null;
 }
 
 type MagAI = {
@@ -150,7 +157,7 @@ export async function generateMagazineDraft(topic: MagTopic): Promise<Content> {
 
   const prompt = `다음 ${regTxt} "${def.noun}" 장소들로 ${def.format === "course" ? "여행 코스(동선) 글" : "BEST 추천 글"}을 JSON으로 작성하라.
 전체 글(intro + 섹션 body 합산)은 반드시 1,500자 이상.
-
+${topic.context ? `\n[웹검색으로 확인된 이 주제의 핵심 맥락 — 사실에 활용]\n${topic.context}\n` : ""}
 장소 목록 (형식: [id] 이름 (주소) :: 소개):
 ${list}
 
