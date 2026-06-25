@@ -820,8 +820,8 @@ export default function MultiviewPage() {
         <BetaPlanNotice />
       </div>
 
-      {/* 멀티뷰 → 최근 틀린그림찾기 송객 배너 */}
-      <RecentGameBanner games={spotGames} className="mb-3" />
+      {/* 멀티뷰 → 최근 틀린그림찾기 송객 배너 (좌측 소형 — CCTV 사이드처럼) */}
+      <RecentGameBanner games={spotGames} className="mb-3 max-w-xs" />
 
       {/* 어드민/무제한 — 차단 없이 오늘 누적 사용량 위로 카운트 */}
       {budget.unlimited && budget.usedSeconds > 0 && (
