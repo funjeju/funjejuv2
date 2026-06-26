@@ -120,12 +120,10 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
 
   const fmtTime = (ms: number) => `${(ms / 1000).toFixed(1)}초`;
 
-  const renderImg = (src: string, side: "L" | "R", label: string) => (
-    <div className="leading-none">
-      {/* 이미지 위 라벨 — 겹치지 않게 헤더로 표시 */}
-      <p className="bg-brand-navy pb-1.5 text-center text-[11px] font-bold tracking-wide text-white md:text-xs">{label}</p>
-      <div className="relative cursor-crosshair overflow-hidden bg-white leading-none" onClick={(e) => handleClick(e, side)}
-        style={origAspect ? { aspectRatio: String(origAspect) } : undefined}>
+  const renderImg = (src: string, side: "L" | "R", label: string, fit = false) => {
+    const box = (
+      <div className={`relative cursor-crosshair overflow-hidden bg-white leading-none ${fit ? "h-full w-full" : ""}`} onClick={(e) => handleClick(e, side)}
+        style={!fit && origAspect ? { aspectRatio: String(origAspect) } : undefined}>
         <img
           ref={side === "L" ? imgRef : undefined}
           src={src}
@@ -134,6 +132,7 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           className="block h-full w-full select-none"
           style={{ objectFit: "fill", pointerEvents: "none" }}
         />
+        {fit && <span className="absolute left-1.5 top-1.5 z-10 rounded bg-brand-navy/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{label}</span>}
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         <defs>
           <style>{`
@@ -172,22 +171,32 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
         ))}
       </svg>
       </div>
-    </div>
-  );
+    );
+    if (fit) return box;
+    return (
+      <div className="leading-none">
+        <p className="bg-brand-navy pb-1.5 text-center text-[11px] font-bold tracking-wide text-white md:text-xs">{label}</p>
+        {box}
+      </div>
+    );
+  };
+
+  // 크게보기 화면맞춤용 — 한 패널의 종횡비(없으면 layout 기본값)
+  const fsA = origAspect ?? (game.layout === "stack" ? 1.6 : 0.7);
 
   return (
-    <div className={fullscreen ? "fixed inset-0 z-[80] overflow-auto bg-black/90 p-2 md:p-4" : "contents"}>
-    <div className={`overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card ${fullscreen ? "mx-auto w-full max-w-6xl" : ""}`}>
+    <>
+    <div className="overflow-hidden rounded-2xl border border-border-soft bg-bg-card shadow-card">
       <div className="relative bg-brand-navy px-5 py-3 text-center text-white">
         <h1 className="text-lg font-black tracking-wide">{game.title}</h1>
         <p className="text-[12px] text-white/70">다른 <span className="font-bold text-brand-yellow">{game.markers.length}</span>곳을 찾아보세요!</p>
         <button
           type="button"
-          onClick={() => setFullscreen((v) => !v)}
+          onClick={() => setFullscreen(true)}
           className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-white/25 transition-colors"
-          title={fullscreen ? "닫기" : "크게 보기"}
+          title="크게 보기"
         >
-          {fullscreen ? "✕ 닫기" : "🔍 크게 보기"}
+          🔍 크게 보기
         </button>
       </div>
 
@@ -285,6 +294,25 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
         )}
       </div>
     </div>
-    </div>
+
+    {/* 크게 보기 — 화면에 두 패널 꽉 맞춤(스크롤 없이). 좌우=가로2배, 상하=세로2배 종횡비 */}
+    {fullscreen && (
+      <div className="fixed inset-0 z-[80] flex flex-col bg-black/95">
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-2 text-white">
+          <span className="min-w-0 truncate text-sm font-bold">{game.title} · 발견 {foundCount}/{game.markers.length} · ⏱ {fmtTime(elapsed)}</span>
+          <button type="button" onClick={() => setFullscreen(false)} className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25 transition-colors">✕ 닫기</button>
+        </div>
+        <div className="flex min-h-0 flex-1 items-center justify-center p-1">
+          <div
+            style={{ aspectRatio: String(game.layout === "stack" ? fsA / 2 : fsA * 2) }}
+            className={`grid max-h-full max-w-full gap-[2px] bg-brand-navy ${game.layout === "stack" ? "grid-rows-2" : "grid-cols-2"}`}
+          >
+            {renderImg(game.origImage, "L", "원본", true)}
+            {renderImg(game.variantImage, "R", "틀린그림", true)}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
