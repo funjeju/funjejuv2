@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import type { SpotGame, SpotScore, SpotComment } from "@/types/spot";
 
 const RING_R = 5.5;      // 발견 표시 원 반지름 (%)
 const HIT_RADIUS = 6.0;  // 클릭 허용 반경 (%) — 정답 범위 타이트하게
 
 export function SpotGamePlay({ game }: { game: SpotGame }) {
+  const { user } = useAuth();
   const [found, setFound] = useState<boolean[]>(() => game.markers.map(() => false));
   const [misses, setMisses] = useState<{ side: "L" | "R"; x: number; y: number; key: number }[]>([]);
   const [startAt] = useState(() => Date.now());
@@ -106,6 +108,11 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
     } catch { /* ignore */ }
   }
 
+  // 로그인 사용자는 계정 닉네임 자동 사용 (랭킹·댓글에 본인 닉네임 표시)
+  useEffect(() => {
+    if (user?.displayName) setName((n) => n || user.displayName!);
+  }, [user?.displayName]);
+
   // 랭킹 미리 로드
   useEffect(() => {
     fetch(`/api/spot/${game.id}/score`).then((r) => r.json()).then((d) => setRankings(d.rankings ?? [])).catch(() => {});
@@ -201,7 +208,13 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           <p className="mt-1 text-sm font-black text-text-primary">{fmtTime(elapsed)} 만에 모두 찾았어요!</p>
           {!submitted ? (
             <div className="mx-auto mt-3 flex max-w-sm items-center gap-2">
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={12} placeholder="닉네임" className="min-w-0 flex-1 rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-sm" />
+              {user ? (
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full border border-brand-orange/30 bg-brand-orange/5 px-4 py-2 text-sm font-bold text-brand-orange">
+                  👤 <span className="truncate">{user.displayName ?? "회원"}</span>
+                </span>
+              ) : (
+                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={12} placeholder="닉네임" className="min-w-0 flex-1 rounded-full border border-border-soft bg-bg-secondary px-4 py-2 text-sm" />
+              )}
               <button onClick={submit} className="shrink-0 whitespace-nowrap rounded-full bg-brand-orange px-4 py-2 text-sm font-bold text-white">랭킹 등록</button>
             </div>
           ) : <p className="mt-2 text-xs text-jeju-green">✅ 기록 등록 완료!</p>}
@@ -233,6 +246,9 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           </div>
         ) : (
           <>
+            {user && (
+              <p className="mb-1.5 text-[11px] font-semibold text-brand-orange">👤 {user.displayName ?? "회원"} 님으로 작성됩니다</p>
+            )}
             <div className="mb-3 flex gap-2">
               <input
                 value={commentText}
