@@ -78,7 +78,8 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const id = req.nextUrl.searchParams.get("id");
+  // id는 쿼리(?id=) 또는 body { id } 둘 다 허용 (호출부마다 방식이 달라 400 나던 버그)
+  const id = req.nextUrl.searchParams.get("id") || (await req.json().catch(() => ({} as { id?: string }))).id;
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   await deleteContent(id);
   return NextResponse.json({ ok: true, id });
