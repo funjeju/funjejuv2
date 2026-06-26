@@ -22,6 +22,8 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
   const [commentText, setCommentText] = useState("");
   const [commentSending, setCommentSending] = useState(false);
   const [fullscreen, setFullscreen] = useState(false); // 크게 보기(전체화면 모달)
+  const fsAreaRef = useRef<HTMLDivElement>(null);       // 크게보기 가용영역
+  const [fsGrid, setFsGrid] = useState<{ w: number; h: number } | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
 
   const foundCount = found.filter(Boolean).length;
@@ -118,6 +120,25 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
     fetch(`/api/spot/${game.id}/score`).then((r) => r.json()).then((d) => setRankings(d.rankings ?? [])).catch(() => {});
   }, [game.id]);
 
+  // 크게보기: 가용영역에 합산 종횡비(좌우=한패널×2, 상하=÷2)를 꽉 채우는 크기를 직접 계산
+  useEffect(() => {
+    if (!fullscreen) return;
+    const compute = () => {
+      const el = fsAreaRef.current;
+      if (!el) return;
+      const { width: Aw, height: Ah } = el.getBoundingClientRect();
+      if (!Aw || !Ah) return;
+      const a = origAspect ?? (game.layout === "stack" ? 1.6 : 0.7);
+      const R = game.layout === "stack" ? a / 2 : a * 2; // 두 패널 합친 종횡비
+      const grid = Aw / Ah > R ? { w: Ah * R, h: Ah } : { w: Aw, h: Aw / R };
+      setFsGrid({ w: Math.floor(grid.w), h: Math.floor(grid.h) });
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    const t = setTimeout(compute, 60); // 오버레이 레이아웃 후 1회 재계산
+    return () => { window.removeEventListener("resize", compute); clearTimeout(t); };
+  }, [fullscreen, origAspect, game.layout]);
+
   const fmtTime = (ms: number) => `${(ms / 1000).toFixed(1)}초`;
 
   const renderImg = (src: string, side: "L" | "R", label: string, fit = false) => {
@@ -180,9 +201,6 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
       </div>
     );
   };
-
-  // 크게보기 화면맞춤용 — 한 패널의 종횡비(없으면 layout 기본값)
-  const fsA = origAspect ?? (game.layout === "stack" ? 1.6 : 0.7);
 
   return (
     <>
@@ -302,10 +320,10 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
           <span className="min-w-0 truncate text-sm font-bold">{game.title} · 발견 {foundCount}/{game.markers.length} · ⏱ {fmtTime(elapsed)}</span>
           <button type="button" onClick={() => setFullscreen(false)} className="shrink-0 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25 transition-colors">✕ 닫기</button>
         </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center p-1">
+        <div ref={fsAreaRef} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1">
           <div
-            style={{ aspectRatio: String(game.layout === "stack" ? fsA / 2 : fsA * 2) }}
-            className={`grid max-h-full max-w-full gap-[2px] bg-brand-navy ${game.layout === "stack" ? "grid-rows-2" : "grid-cols-2"}`}
+            style={fsGrid ? { width: fsGrid.w, height: fsGrid.h } : undefined}
+            className={`grid gap-[2px] bg-brand-navy ${game.layout === "stack" ? "grid-rows-2" : "grid-cols-2"}`}
           >
             {renderImg(game.origImage, "L", "원본", true)}
             {renderImg(game.variantImage, "R", "틀린그림", true)}
