@@ -71,12 +71,11 @@ export default async function SpotPlayPage({
         <Link href="/game/spot" className="inline-block text-xs font-medium text-brand-orange">← 게임 갤러리</Link>
         <ShareButton title={`${g.title} — 제주 틀린그림찾기 | 펀제주`} url={`https://funjeju.com/game/spot/${id}`} description={`다른 ${g.diffCount}곳을 찾아보세요!`} />
       </div>
-      <SpotGamePlay game={game} />
-
-      {/* 연결 업체 홈페이지 CTA + 마이스팟 찜 — 게임 바로 아래 (게임 → 홈피 유입·재방문 고리) */}
-      {g.homepageUrl && (
-        <GameHomepageCta homepageUrl={g.homepageUrl} homepageName={g.homepageName} spot={spot} />
-      )}
+      {/* 홈페이지 CTA를 게임 카드 안(이미지 바로 아래·댓글/랭킹 위)으로 주입 */}
+      <SpotGamePlay
+        game={game}
+        cta={g.homepageUrl ? <GameHomepageCta homepageUrl={g.homepageUrl} homepageName={g.homepageName} spot={spot} /> : undefined}
+      />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import type { SpotGame, SpotScore, SpotComment } from "@/types/spot";
 const RING_R = 5.5;      // 발견 표시 원 반지름 (%)
 const HIT_RADIUS = 6.0;  // 클릭 허용 반경 (%) — 정답 범위 타이트하게
 
-export function SpotGamePlay({ game }: { game: SpotGame }) {
+export function SpotGamePlay({ game, cta }: { game: SpotGame; cta?: React.ReactNode }) {
   const { user } = useAuth();
   const [found, setFound] = useState<boolean[]>(() => game.markers.map(() => false));
   const [misses, setMisses] = useState<{ side: "L" | "R"; x: number; y: number; key: number }[]>([]);
@@ -227,6 +227,9 @@ export function SpotGamePlay({ game }: { game: SpotGame }) {
         <span className="text-sm font-black text-text-primary">발견 <span className="text-brand-orange">{foundCount}</span> / {game.markers.length}</span>
         <span className="text-sm font-bold text-text-secondary">⏱ {fmtTime(elapsed)}</span>
       </div>
+
+      {/* 연결 업체 홈페이지 CTA — 이미지 바로 아래 (댓글·랭킹 위) */}
+      {cta && <div className="border-t border-border-soft px-4 pb-4">{cta}</div>}
 
       {/* 클리어 → 기록 입력 */}
       {cleared && (
