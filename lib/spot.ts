@@ -1,5 +1,6 @@
 import "server-only";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getAdminDb, getAdminApp } from "@/lib/firebase-admin";
+import { getStorage } from "firebase-admin/storage";
 import { FieldValue } from "firebase-admin/firestore";
 import type { SpotGame, SpotScore, SpotComment } from "@/types/spot";
 
@@ -15,6 +16,29 @@ const COMMENTS = "spot_comments";
 
 export async function createGame(g: SpotGame): Promise<void> {
   await getAdminDb().collection(GAMES).doc(g.id).set(g);
+}
+
+/** 서버사이드 Storage 업로드 (크론·자동생성용 — 클라 업로드 API와 동일 형식 URL 반환) */
+export async function saveSpotImageBuffer(buffer: Buffer, label: string, mime = "image/jpeg"): Promise<string> {
+  const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (!bucketName) throw new Error("Storage bucket 미설정");
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const path = `spot/${Date.now()}-${label}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const token = crypto.randomUUID();
+  const file = getStorage(getAdminApp()).bucket(bucketName).file(path);
+  await file.save(buffer, { metadata: { contentType: mime, metadata: { firebaseStorageDownloadTokens: token } } });
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+}
+
+/** 이미 틀린그림으로 생성된 피드 id 집합 — 크론 중복 생성 방지 */
+export async function listUsedFeedIds(): Promise<Set<string>> {
+  const snap = await getAdminDb().collection(GAMES).limit(500).get();
+  const ids = new Set<string>();
+  for (const d of snap.docs) {
+    const fid = (d.data() as SpotGame).sourceFeedId;
+    if (fid) ids.add(fid);
+  }
+  return ids;
 }
 
 export async function updateGame(

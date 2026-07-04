@@ -78,6 +78,21 @@ export default function AdminSpotDiffPage() {
     } finally { setBusy(null); }
   }
 
+  // 크론 로직 수동 실행 — 라이브 피드(맛집·카페)에서 즉시 N건 생성 (검수 큐에 draft로 쌓임)
+  async function runIngest(n: number) {
+    setBusy("ingest"); setMsg(`⏳ 피드에서 ${n}건 생성 중… (포스터 생성+슬라이스, 건당 40~70초)`);
+    try {
+      const r = await fetch(`/api/cron/spot-diff?n=${n}`, { cache: "no-store" });
+      const d = await r.json().catch(() => ({ error: `서버 오류 (HTTP ${r.status})` }));
+      if (!r.ok) throw new Error(d.error || "생성 실패");
+      const errs = (d.errors ?? []).length;
+      setMsg(`✅ ${d.created?.length ?? 0}건 생성 완료 → 아래 검수 큐에서 틀린 곳 표시 후 발행${errs ? ` · 실패 ${errs}건` : ""}`);
+      await loadGames();
+    } catch (e) {
+      setMsg(`❌ ${e instanceof Error ? e.message : "생성 실패"}`);
+    } finally { setBusy(null); }
+  }
+
   function addMarker(e: React.MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -143,6 +158,13 @@ export default function AdminSpotDiffPage() {
   }
 
   async function publish(id: string, on: boolean) {
+    if (on) {
+      const g = games.find((x) => x.id === id);
+      if (g && (g.markers?.length ?? 0) === 0) {
+        setMsg("❌ 틀린 곳이 0개입니다 — '검수'를 눌러 5곳을 표시한 뒤 발행하세요");
+        return;
+      }
+    }
     await fetch("/api/admin/spot", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, published: on }) });
     await loadGames();
   }
@@ -186,9 +208,31 @@ export default function AdminSpotDiffPage() {
 
       {msg && <p className="mb-4 rounded-xl bg-bg-secondary px-4 py-2 text-xs text-text-primary">{msg}</p>}
 
-      {/* STEP 0: 원본 */}
+      {/* 자동 파이프라인 — 라이브 피드(맛집·카페) → 포스터+틀린그림+슬라이스 → 검수 큐 */}
+      {step === 0 && (
+        <div className="mb-4 rounded-2xl border border-jeju-green/40 bg-jeju-green/5 p-5">
+          <p className="text-sm font-black text-text-primary">🤖 라이브 피드 자동 생성</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-text-secondary">
+            매일 06시 크론이 <b>라이브 피드의 맛집·카페 글</b>에서 사진·상호·카피를 가져와 포스터+틀린그림을 만들고,
+            좌·우(또는 상·하)로 잘라 <b>아래 검수 큐에 draft</b>로 쌓습니다. 관리자는 잘린 결과물을 열어
+            <b> 틀린 곳 5군데만 클릭하고 발행</b>하면 됩니다. (자동발행 아님)
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button onClick={() => runIngest(1)} disabled={busy === "ingest"} className="rounded-full bg-jeju-green px-4 py-2 text-xs font-bold text-white disabled:opacity-40">
+              {busy === "ingest" ? "생성 중…" : "지금 1건 생성 (테스트)"}
+            </button>
+            <button onClick={() => runIngest(3)} disabled={busy === "ingest"} className="rounded-full border border-jeju-green/40 px-4 py-2 text-xs font-bold text-jeju-green disabled:opacity-40">
+              3건 생성
+            </button>
+            <span className="text-[10px] text-text-secondary">크론을 기다리지 않고 즉시 큐 채우기</span>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 0: 원본 (직접 출제 — 수동) */}
       {step === 0 && (
         <div className="rounded-2xl border border-border-soft bg-bg-card p-5">
+          <p className="mb-3 text-[11px] font-bold text-text-secondary">✋ 직접 출제 (수동) — 원본 1장 올려 AI 변형</p>
           <label className="block cursor-pointer rounded-xl border-2 border-dashed border-border-soft p-8 text-center hover:border-brand-orange">
             <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onOrigFile(e.target.files[0])} />
             {orig ? <img src={orig} alt="원본" className="mx-auto max-h-72 rounded-lg" /> : <div className="text-sm text-text-secondary">🖼️ 원본 이미지 클릭 업로드<br /><span className="text-[11px]">가로면 상하배치 / 세로면 좌우배치 자동</span></div>}
@@ -268,19 +312,28 @@ export default function AdminSpotDiffPage() {
         </div>
       )}
 
-      {/* 출제 목록 */}
-      <h2 className="mb-2 mt-8 text-sm font-black text-text-primary">출제된 문제 ({games.length})</h2>
+      {/* 검수 큐 / 출제 목록 */}
+      <h2 className="mb-2 mt-8 text-sm font-black text-text-primary">
+        검수 큐 · 출제 문제 ({games.length})
+        {(() => { const n = games.filter((g) => g.status !== "published" && (g.markers?.length ?? 0) === 0).length; return n ? <span className="ml-2 rounded-full bg-live-red/15 px-2 py-0.5 text-[10px] font-bold text-live-red">검수 필요 {n}</span> : null; })()}
+      </h2>
       <div className="space-y-2">
-        {games.map((g) => (
-          <div key={g.id} className="rounded-2xl border border-border-soft bg-bg-card p-3">
+        {games.map((g) => {
+          const needsReview = g.status !== "published" && (g.markers?.length ?? 0) === 0;
+          const isAuto = g.autoStatus === "pending_review" || !!g.sourceFeedId;
+          return (
+          <div key={g.id} className={`rounded-2xl border bg-bg-card p-3 ${needsReview ? "border-live-red/40" : "border-border-soft"}`}>
             <div className="flex items-center gap-3">
               <img src={g.variantImage} alt={g.title} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-text-primary">{g.title}</p>
-                <p className="text-[11px] text-text-secondary">틀린곳 {g.diffCount} · {g.status === "published" ? "🟢 발행" : "⚪ 검수대기"} · 플레이 {g.playCount ?? 0}</p>
+                <p className="truncate text-sm font-bold text-text-primary">{isAuto && <span className="mr-1 text-[10px] text-jeju-green">🤖자동</span>}{g.title}</p>
+                <p className="text-[11px] text-text-secondary">
+                  {needsReview ? <span className="font-bold text-live-red">⚠️ 틀린곳 미표시 — 검수 필요</span> : <>틀린곳 {g.diffCount}</>}
+                  {" · "}{g.status === "published" ? "🟢 발행" : "⚪ 검수대기"} · 플레이 {g.playCount ?? 0}
+                </p>
               </div>
-              <button onClick={() => startEdit(g)} className="shrink-0 rounded-full border border-brand-orange/40 px-3 py-1 text-[11px] font-semibold text-brand-orange">수정</button>
-              <button onClick={() => publish(g.id, g.status !== "published")} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white">{g.status === "published" ? "비공개" : "발행"}</button>
+              <button onClick={() => startEdit(g)} className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold ${needsReview ? "bg-live-red text-white" : "border border-brand-orange/40 text-brand-orange"}`}>{needsReview ? "검수" : "수정"}</button>
+              <button onClick={() => publish(g.id, g.status !== "published")} disabled={needsReview && g.status !== "published"} className="shrink-0 rounded-full bg-jeju-green px-3 py-1 text-[11px] font-bold text-white disabled:opacity-40">{g.status === "published" ? "비공개" : "발행"}</button>
               <button onClick={() => remove(g.id)} className="shrink-0 rounded-full border border-border-soft px-3 py-1 text-[11px] font-semibold text-text-secondary">삭제</button>
             </div>
             {/* 연결 업체 홈페이지 (게임 아래 CTA로 노출) */}
@@ -303,7 +356,8 @@ export default function AdminSpotDiffPage() {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

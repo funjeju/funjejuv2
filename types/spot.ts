@@ -23,6 +23,10 @@ export type SpotGame = {
   bizId?: string;         // 비즈계정 연동 (차후)
   homepageUrl?: string;   // 연결 업체 홈페이지 (내부 /biz/slug 또는 외부 URL) — 게임 아래 CTA
   homepageName?: string;  // CTA에 표시할 업체명
+  // 라이브피드 자동 생성 출처 (크론). 중복 생성 방지 + 검수 큐 표시용.
+  sourceFeedId?: string;  // 원본 피드 문서 id
+  sourceImageUrl?: string;// 원본 피드 사진 URL
+  autoStatus?: "pending_review"; // 자동 생성 후 관리자 검수 대기 (마커 미표시 상태)
 };
 
 /** 플레이 기록 (문제별 최단시간 랭킹) */
