@@ -3,6 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // sharp(libvips) 네이티브 .so가 Vercel 함수 번들에서 누락돼 sharp 라우트 전체가
+  // FUNCTION_INVOCATION_FAILED(즉시 500)로 죽는 문제 수정 — @img/*(libvips 포함) 강제 포함.
+  // 오류: ERR_DLOPEN_FAILED: libvips-cpp.so.8.18.3: cannot open shared object file
+  outputFileTracingIncludes: {
+    "/api/admin/spot/variant":  ["./node_modules/@img/**"],
+    "/api/cron/spot-diff":      ["./node_modules/@img/**"],
+    "/api/cron/spot-ingest":    ["./node_modules/@img/**"],
+    "/api/cron/spot-guide":     ["./node_modules/@img/**"],
+    "/api/cron/seasonal-spots": ["./node_modules/@img/**"],
+  },
+
   // 비즈 홈페이지(/biz/*)는 캐시 금지 — 생성 직후 옛 404가 브라우저/엣지에 박히는 문제 방지
   async headers() {
     return [
