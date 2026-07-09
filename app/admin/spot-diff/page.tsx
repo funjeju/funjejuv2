@@ -330,6 +330,7 @@ export default function AdminSpotDiffPage() {
                 <p className="text-[11px] text-text-secondary">
                   {needsReview ? <span className="font-bold text-live-red">⚠️ 틀린곳 미표시 — 검수 필요</span> : <>틀린곳 {g.diffCount}</>}
                   {" · "}{g.status === "published" ? "🟢 발행" : "⚪ 검수대기"} · 플레이 {g.playCount ?? 0}
+                  {g.posterStyle && <span className="ml-1 rounded-full bg-brand-navy/10 px-1.5 py-0.5 text-[10px] font-semibold text-brand-navy">🎨 {g.posterStyle}</span>}
                 </p>
               </div>
               <button onClick={() => startEdit(g)} className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold ${needsReview ? "bg-live-red text-white" : "border border-brand-orange/40 text-brand-orange"}`}>{needsReview ? "검수" : "수정"}</button>

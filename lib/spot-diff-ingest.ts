@@ -1,6 +1,6 @@
 import "server-only";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { generatePoster } from "@/lib/spot-poster";
+import { generatePoster, pickPosterStyle } from "@/lib/spot-poster";
 import { sliceCombined } from "@/lib/spot-slice";
 import { createGame, saveSpotImageBuffer, listUsedFeedIds } from "@/lib/spot";
 import type { SpotGame } from "@/types/spot";
@@ -62,10 +62,14 @@ async function fetchImageBase64(url: string): Promise<{ base64: string; mime: st
 export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
   const { base64, mime } = await fetchImageBase64(c.imageUrl);
 
-  const { combinedBase64 } = await generatePoster({
+  // 포스터 스타일 로테이션 — feedId 해시로 결정(같은 피드=같은 스타일, 피드별 골고루 분산)
+  const style = pickPosterStyle(c.feedId);
+
+  const { combinedBase64, styleName } = await generatePoster({
     foodBase64: base64,
     mimeType: mime,
     shop: { shopName: c.placeName, copy: c.aiCopy },
+    style,
   });
 
   const sliced = await sliceCombined({ combinedBase64, mimeType: "image/png" });
@@ -88,6 +92,7 @@ export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
     sourceFeedId: c.feedId,
     sourceImageUrl: c.imageUrl,
     autoStatus: "pending_review",
+    posterStyle: styleName,
     ...(c.homepageUrl ? { homepageUrl: c.homepageUrl } : {}),
     ...(c.homepageName ? { homepageName: c.homepageName } : {}),
   };

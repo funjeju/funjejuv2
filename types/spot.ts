@@ -27,6 +27,7 @@ export type SpotGame = {
   sourceFeedId?: string;  // 원본 피드 문서 id
   sourceImageUrl?: string;// 원본 피드 사진 URL
   autoStatus?: "pending_review"; // 자동 생성 후 관리자 검수 대기 (마커 미표시 상태)
+  posterStyle?: string;   // 포스터 스타일 프리셋 이름 (스타일별 성과 추적용)
 };
 
 /** 플레이 기록 (문제별 최단시간 랭킹) */
