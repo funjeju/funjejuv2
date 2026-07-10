@@ -80,7 +80,7 @@ export default function AdminSpotDiffPage() {
 
   // 크론 로직 수동 실행 — 라이브 피드(맛집·카페)에서 즉시 N건 생성 (검수 큐에 draft로 쌓임)
   async function runIngest(n: number) {
-    setBusy("ingest"); setMsg(`⏳ 피드에서 ${n}건 생성 중… (포스터 생성+슬라이스, 건당 40~70초)`);
+    setBusy("ingest"); setMsg(`⏳ 피드에서 ${n}건 생성 중… (포스터 생성+변형, 건당 40~70초)`);
     try {
       const r = await fetch(`/api/cron/spot-diff?n=${n}`, { cache: "no-store" });
       const d = await r.json().catch(() => ({ error: `서버 오류 (HTTP ${r.status})` }));
@@ -208,7 +208,7 @@ export default function AdminSpotDiffPage() {
 
       {msg && <p className="mb-4 rounded-xl bg-bg-secondary px-4 py-2 text-xs text-text-primary">{msg}</p>}
 
-      {/* 자동 파이프라인 — 라이브 피드(맛집·카페) → 포스터+틀린그림+슬라이스 → 검수 큐 */}
+      {/* 자동 파이프라인 — 라이브 피드(맛집·카페) → 포스터(실사진 유지)+변형 → 검수 큐 */}
       {step === 0 && (
         <div className="mb-4 rounded-2xl border border-jeju-green/40 bg-jeju-green/5 p-5">
           <p className="text-sm font-black text-text-primary">🤖 라이브 피드 자동 생성</p>

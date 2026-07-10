@@ -1,15 +1,17 @@
 import "server-only";
+import sharp from "sharp";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { generatePoster, pickPosterStyle } from "@/lib/spot-poster";
-import { sliceCombined } from "@/lib/spot-slice";
+import { generateVariant } from "@/lib/spot-ai";
 import { createGame, saveSpotImageBuffer, listUsedFeedIds } from "@/lib/spot";
 import type { SpotGame } from "@/types/spot";
 
 /**
  * 라이브 피드(맛집·카페) → 틀린그림 draft 자동 생성 (완전 무인 크론).
- *  피드 사진 + placeName + aiCopy 로 포스터+틀린그림 합본을 만들고 → 좌·우/상·하로 슬라이스 →
- *  마커는 비운 채(markers=[]) draft 로 적재. 관리자는 검수 큐에서 잘린 결과물만 열어
- *  틀린 곳 5개를 클릭하고 발행한다. (자동발행 아님)
+ *  ① 피드 실사진 + placeName + aiCopy 로 "포스터 1장" 생성 (원본 음식 유지 + 보정 + 스타일 8종 로테이션)
+ *  ② 그 포스터를 generateVariant(영역 우선 마스크 편집)에 넘겨 변형 5곳 + 정답 마커 자동 생성
+ *     → 원본 쪽은 100% 포스터(실사진), 변형 쪽도 5곳 빼면 동일 (음식 재생성 안 함)
+ *  ③ 마커까지 채운 채 draft 적재. 관리자는 검수 큐에서 자동 마커를 검수하고 발행. (자동발행 아님)
  */
 
 const FOOD_CATEGORIES = new Set(["맛집", "카페"]);
@@ -58,25 +60,31 @@ async function fetchImageBase64(url: string): Promise<{ base64: string; mime: st
   return { base64: buf.toString("base64"), mime };
 }
 
-/** 후보 1건 → 포스터 생성 → 슬라이스 → draft 적재. 생성된 게임 id 반환. */
+/** 후보 1건 → 포스터 생성(원본 유지) → generateVariant 변형+마커 → draft 적재. 생성된 게임 id 반환. */
 export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
   const { base64, mime } = await fetchImageBase64(c.imageUrl);
 
   // 포스터 스타일 로테이션 — feedId 해시로 결정(같은 피드=같은 스타일, 피드별 골고루 분산)
   const style = pickPosterStyle(c.feedId);
 
-  const { combinedBase64, styleName } = await generatePoster({
+  // ① 실사진 → 포스터 1장 (음식 그대로, 보정 + 스타일 디자인)
+  const { posterBase64, styleName } = await generatePoster({
     foodBase64: base64,
     mimeType: mime,
     shop: { shopName: c.placeName, copy: c.aiCopy },
     style,
   });
 
-  const sliced = await sliceCombined({ combinedBase64, mimeType: "image/png" });
+  // ② 포스터 → 변형 5곳 + 정답 마커 (영역 우선 편집, 원본 픽셀 보존)
+  const v = await generateVariant({ origBase64: posterBase64, mimeType: "image/png", count: 5, level: "medium" });
+
+  // 원본(정규화된 포스터) 비율로 배치 결정 — 세로=좌우(side), 가로=상하(stack)
+  const meta = await sharp(Buffer.from(v.origBase64, "base64")).metadata();
+  const layout = (meta.width ?? 0) >= (meta.height ?? 1) ? "stack" : "side";
 
   const [origUrl, varUrl] = await Promise.all([
-    saveSpotImageBuffer(Buffer.from(sliced.origBase64, "base64"), "orig", sliced.mimeType),
-    saveSpotImageBuffer(Buffer.from(sliced.variantBase64, "base64"), "var", sliced.mimeType),
+    saveSpotImageBuffer(Buffer.from(v.origBase64, "base64"), "orig", v.mimeType),
+    saveSpotImageBuffer(Buffer.from(v.variantBase64, "base64"), "var", v.mimeType),
   ]);
 
   const game: SpotGame = {
@@ -84,9 +92,9 @@ export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
     title: `${c.placeName} 틀린그림찾기`,
     origImage: origUrl,
     variantImage: varUrl,
-    layout: sliced.layout,
-    markers: [],            // 관리자가 검수 단계에서 클릭
-    diffCount: 0,
+    layout,
+    markers: v.markers,           // 자동 생성된 정답 (관리자 검수)
+    diffCount: v.markers.length,
     status: "draft",
     createdAt: Date.now(),
     sourceFeedId: c.feedId,
