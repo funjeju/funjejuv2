@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { generateCardNewsDraft, type CardNewsSource } from "@/lib/cardnews-ai";
 import { createContent } from "@/lib/contents";
+import { renderAndStoreCards } from "@/lib/cardnews-render";
 import { countFeedsSince } from "@/lib/feed-server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import type { Content } from "@/types/content";
@@ -30,16 +31,7 @@ function kstHour(): number {
   return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }).format(new Date())) % 24;
 }
 
-/** og 카드 전체를 미리 렌더해 CDN 캐시 워밍 (첫 방문자도 캐시 히트) */
-async function warmCardOg(origin: string, slug: string, total: number): Promise<void> {
-  await Promise.allSettled(
-    Array.from({ length: total }, (_, i) =>
-      fetch(`${origin}/api/og/cardnews?slug=${encodeURIComponent(slug)}&i=${i}`, { signal: AbortSignal.timeout(15000) }).catch(() => undefined)
-    )
-  );
-}
-
-/** 생성된 draft를 발행 + 캐시 무효화 + CDN 워밍 */
+/** 생성된 draft를 발행 + 캐시 무효화 + 카드 사전 렌더→Storage 저장 */
 async function publishCard(draft: Content, origin: string) {
   if (process.env.CARDNEWS_AUTO_PUBLISH !== "false") {
     draft.status = "published";
@@ -52,8 +44,13 @@ async function publishCard(draft: Content, origin: string) {
     revalidatePath("/magazine");
     revalidatePath("/card/[slug]", "page");
     if (draft.slug) {
-      const total = (draft.sections?.length ?? 0) + 2;
-      await warmCardOg(origin, draft.slug, total);
+      // 카드 N장을 지금 한 번 렌더해 Storage에 저장 → 뷰어는 정적 URL만 로드(즉시).
+      // 실패해도 발행은 유지 (뷰어가 og 라우트로 폴백 렌더).
+      try {
+        await renderAndStoreCards(origin, draft);
+      } catch (e) {
+        console.error("[cardnews] renderAndStoreCards 실패:", draft.slug, e);
+      }
     }
   }
 }

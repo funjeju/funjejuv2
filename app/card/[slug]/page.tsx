@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const url = `${SITE}/card/${slug}`;
   const title = `${c.title.replace(/\n/g, " ")} | 펀제주 카드뉴스`;
   const description = c.subtitle || "제주 카드뉴스 — 펀제주";
-  const ogImage = `${SITE}/api/og/cardnews?slug=${slug}&i=0`; // 표지 카드
+  const ogImage = c.cardImages?.[0] ?? `${SITE}/api/og/cardnews?slug=${slug}&i=0`; // 표지 카드(사전렌더 우선)
   return {
     title,
     description,
@@ -32,5 +32,5 @@ export default async function CardNewsPage({ params }: { params: Promise<{ slug:
   if (!c || c.type !== "card_news") notFound();
   // 카드 수: 표지(1) + 본문(sections) + CTA(1)
   const total = 1 + c.sections.length + 1;
-  return <CardNewsViewer slug={slug} total={total} title={c.title.replace(/\n/g, " ")} subtitle={c.subtitle} />;
+  return <CardNewsViewer slug={slug} total={total} title={c.title.replace(/\n/g, " ")} subtitle={c.subtitle} images={c.cardImages} />;
 }

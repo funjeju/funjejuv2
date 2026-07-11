@@ -1,5 +1,6 @@
 import "server-only";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { getAdminDb, getAdminApp } from "@/lib/firebase-admin";
+import { getStorage } from "firebase-admin/storage";
 import type { Content, ContentType, ContentStatus } from "@/types/content";
 
 /**
@@ -32,6 +33,28 @@ export async function publishContent(id: string): Promise<void> {
 
 export async function deleteContent(id: string): Promise<void> {
   await getAdminDb().collection(COLLECTION).doc(id).delete();
+}
+
+/** 카드 PNG를 Storage에 저장 (영구 캐시). 발행/백필 시 1회. */
+export async function saveCardImage(buffer: Buffer, slug: string, i: number): Promise<string> {
+  const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (!bucketName) throw new Error("Storage bucket 미설정");
+  const path = `cardnews/${slug}/${String(i).padStart(2, "0")}-${Math.random().toString(36).slice(2, 7)}.png`;
+  const token = crypto.randomUUID();
+  const file = getStorage(getAdminApp()).bucket(bucketName).file(path);
+  await file.save(buffer, {
+    metadata: {
+      contentType: "image/png",
+      cacheControl: "public, max-age=31536000, immutable", // 정적 카드 = 1년 캐시
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+}
+
+/** 사전 렌더된 카드 URL들을 콘텐츠 문서에 기록 */
+export async function setContentCardImages(id: string, cardImages: string[]): Promise<void> {
+  await getAdminDb().collection(COLLECTION).doc(id).update({ cardImages });
 }
 
 /** 어드민 목록 (status 필터, 최신순) — 복합 인덱스 회피 위해 메모리 정렬 */

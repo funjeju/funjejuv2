@@ -8,11 +8,14 @@ import { ShareButton } from "@/components/common/ShareButton";
  * 카드뉴스 뷰어 — og 라우트로 렌더된 카드 N장을 캐러셀로 보여주고
  * 장별/전체 PNG 다운로드 + 공유. (인스타/스레드 업로드용)
  */
-export function CardNewsViewer({ slug, total, title, subtitle }: { slug: string; total: number; title: string; subtitle?: string }) {
+export function CardNewsViewer({ slug, total, title, subtitle, images }: { slug: string; total: number; title: string; subtitle?: string; images?: string[] }) {
   const [idx, setIdx] = useState(0);
   const [downloading, setDownloading] = useState(false);
 
-  const src = (i: number) => `/api/og/cardnews?slug=${slug}&i=${i}`;
+  // 표시/프리로드: 사전 렌더된 정적 PNG(있으면) → CDN 즉시 로드. 없으면 og 라우트 폴백 렌더.
+  const src = (i: number) => images?.[i] ?? `/api/og/cardnews?slug=${slug}&i=${i}`;
+  // 다운로드: 동일오리진 og 라우트로 fetch(Storage 교차오리진 CORS 회피). 사용자 클릭 시에만.
+  const dlSrc = (i: number) => `/api/og/cardnews?slug=${slug}&i=${i}`;
 
   // 전체 카드를 백그라운드로 미리 로드 → 캐시에 올려 캐러셀 이동을 즉각 반응하게
   useEffect(() => {
@@ -26,7 +29,7 @@ export function CardNewsViewer({ slug, total, title, subtitle }: { slug: string;
   }, [slug, total]);
 
   async function downloadOne(i: number) {
-    const res = await fetch(src(i));
+    const res = await fetch(dlSrc(i));
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

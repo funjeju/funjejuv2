@@ -31,6 +31,8 @@ export type Content = {
   /** AEO — 자주 묻는 질문 (FAQPage JSON-LD + 본문 FAQ 섹션). q=질문형, a=40~60자 직답 */
   faqs?: { q: string; a: string }[];
   coverImage?: string;
+  /** 사전 렌더된 카드 PNG URL들 (index=카드순서). 있으면 뷰어가 og 재렌더 없이 정적 로드. */
+  cardImages?: string[];
   region?: string;
   menu?: string;
   sourceIds: string[]; // 근거가 된 맛집/CCTV id (내부링크 그래프 — 트랙 C)
