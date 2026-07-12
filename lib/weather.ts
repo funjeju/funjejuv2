@@ -103,8 +103,34 @@ function estimateCongestion(
   return { level: isWeekend ? "보통" : "한산", emoji: isWeekend ? "🟡" : "🟢" };
 }
 
+type FetchOpts = { noStore?: boolean };
+
+/**
+ * 실패(비정상 응답·네트워크 오류·타임아웃)를 캐시에 굳히지 않기 위한 fetch 헬퍼.
+ * - 성공: revalidate 600초 캐시 (기본)
+ * - noStore: 항상 fresh (API 라우트/클라 폴백용)
+ * - 8초 타임아웃 (Open-Meteo 지연 시 페이지 렌더가 무한 대기하지 않도록)
+ * ⚠️ !res.ok(예: 429/5xx)면 실패로 취급해 캐시 오염을 막는다 → 다음 렌더에서 재시도.
+ */
+async function fetchJson(url: string, opts?: FetchOpts): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      ...(opts?.noStore ? { cache: "no-store" } : { next: { revalidate: 600 } }),
+    });
+    if (!res.ok) throw new Error(`open-meteo ${res.status}`);
+    return await res.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** 위경도로 현재 날씨 가져오기 */
-export async function fetchWeather(lat: number, lng: number): Promise<Weather | null> {
+export async function fetchWeather(lat: number, lng: number, opts?: FetchOpts): Promise<Weather | null> {
   const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", String(lat));
   url.searchParams.set("longitude", String(lng));
@@ -116,12 +142,10 @@ export async function fetchWeather(lat: number, lng: number): Promise<Weather | 
   url.searchParams.set("forecast_days", "1");
 
   try {
-    const res = await fetch(url.toString(), {
-      next: { revalidate: 600 }, // 10분 캐시
-    });
-    if (!res.ok) return null;
+    const raw = await fetchJson(url.toString(), opts);
+    if (!raw) return null;
 
-    const data = await res.json() as {
+    const data = raw as {
       current: {
         temperature_2m: number;
         apparent_temperature: number;
@@ -198,7 +222,7 @@ function kstParts(): { date: string; hourKey: string } {
   return { date, hourKey: `${date}T${hh}` };
 }
 
-export async function fetchTide(lat: number, lng: number): Promise<TideInfo | null> {
+export async function fetchTide(lat: number, lng: number, opts?: FetchOpts): Promise<TideInfo | null> {
   const url = new URL("https://marine-api.open-meteo.com/v1/marine");
   url.searchParams.set("latitude", String(lat));
   url.searchParams.set("longitude", String(lng));
@@ -207,9 +231,9 @@ export async function fetchTide(lat: number, lng: number): Promise<TideInfo | nu
   url.searchParams.set("forecast_days", "2");
 
   try {
-    const res = await fetch(url.toString(), { next: { revalidate: 600 } });
-    if (!res.ok) return null;
-    const data = await res.json() as { hourly?: { time: string[]; sea_level_height_msl: (number | null)[] } };
+    const raw = await fetchJson(url.toString(), opts);
+    if (!raw) return null;
+    const data = raw as { hourly?: { time: string[]; sea_level_height_msl: (number | null)[] } };
     const time = data.hourly?.time ?? [];
     const h = data.hourly?.sea_level_height_msl ?? [];
     if (time.length < 3 || h.length < 3) return null;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Weather, TideInfo } from "@/lib/weather";
 import { useT, weatherKey, windKey } from "@/lib/i18n";
 
@@ -9,9 +10,41 @@ const hhmm = (iso: string) => iso.slice(11, 16);
  * CCTV 라이브 날씨·조위 위젯 (다국어).
  * 서버에서 fetch 한 weather/tide 데이터를 받아 클라이언트에서 언어별로 렌더.
  * → CCTV 상세는 정적/ISR 유지, 외국인은 토글로 즉시 번역.
+ *
+ * ⚠️ 서버 prop(weather)이 null이면 ISR 캐시에 실패값이 굳은 상태 → 클라이언트가
+ *    /api/weather(항상 라이브)로 재요청해 채운다. "날씨 못 가져옴" 고정 노출 방지.
  */
-export function CctvLiveInfo({ weather, tide }: { weather: Weather | null; tide?: TideInfo | null }) {
+export function CctvLiveInfo({
+  weather: serverWeather,
+  tide: serverTide,
+  lat,
+  lng,
+}: {
+  weather: Weather | null;
+  tide?: TideInfo | null;
+  lat?: number;
+  lng?: number;
+}) {
   const t = useT();
+  const [weather, setWeather] = useState(serverWeather);
+  const [tide, setTide] = useState<TideInfo | null | undefined>(serverTide);
+
+  // 서버가 null을 내려줬고 좌표가 있으면 클라에서 라이브로 보강
+  useEffect(() => {
+    if (serverWeather || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    let alive = true;
+    fetch(`/api/weather?lat=${lat}&lng=${lng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { weather?: Weather | null; tide?: TideInfo | null } | null) => {
+        if (!alive || !d?.weather) return;
+        setWeather(d.weather);
+        setTide(d.tide ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [serverWeather, lat, lng]);
 
   return (
     <div className="mx-4 rounded-2xl border border-brand-navy/20 bg-brand-navy/5 p-4 md:mx-0">

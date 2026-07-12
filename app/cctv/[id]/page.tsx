@@ -279,7 +279,7 @@ export default async function CctvDetailPage({ params }: Props) {
           </div>
 
           {/* 실시간 날씨 (다국어) */}
-          <CctvLiveInfo weather={weather} tide={tide} />
+          <CctvLiveInfo weather={weather} tide={tide} lat={cctv.lat} lng={cctv.lng} />
 
           {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (
