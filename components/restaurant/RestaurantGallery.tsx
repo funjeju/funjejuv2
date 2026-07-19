@@ -244,6 +244,8 @@ export function RestaurantGallery({ restaurants, regions, menus }: Props) {
                         lng: r.lng!,
                         address: r.region,
                         source: "food",
+                        imageUrl: r.thumbnail || undefined,
+                        detailUrl: `/food/${r.id}`,
                       });
                     }}
                     className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-base shadow transition-transform active:scale-90"

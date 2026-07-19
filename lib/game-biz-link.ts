@@ -10,6 +10,8 @@ export type GameSpot = {
   lat: number;
   lng: number;
   address?: string;
+  imageUrl?: string;
+  detailUrl?: string;
 };
 
 export function toMySpotCategory(cat?: string): MySpotCategory {
@@ -45,6 +47,8 @@ export async function resolveGameSpot(opts: {
       lat: co.lat,
       lng: co.lng,
       address: site.merchantInfo.address,
+      imageUrl: site.contentAssets?.heroImage || site.contentAssets?.logoImage || undefined,
+      detailUrl: `/biz/${slug}`,
     };
   } catch {
     return null;

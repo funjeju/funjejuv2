@@ -10,6 +10,8 @@ type GameSpot = {
   lat: number;
   lng: number;
   address?: string;
+  imageUrl?: string;
+  detailUrl?: string;
 };
 
 /** 틀린그림찾기 게임 아래: 연결 업체 홈페이지 CTA + 마이스팟 찜하기 */
@@ -46,6 +48,8 @@ export function GameHomepageCta({
               lng: spot.lng,
               address: spot.address,
               source: "game",
+              imageUrl: spot.imageUrl,
+              detailUrl: spot.detailUrl,
             })
           }
           className={[

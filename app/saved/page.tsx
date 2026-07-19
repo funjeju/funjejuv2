@@ -112,61 +112,84 @@ export default function SavedPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 gap-3 px-4 md:grid-cols-2 md:px-0 lg:grid-cols-3">
-            {filtered.map((spot) => (
-              <div
-                key={spot.id}
-                className="flex gap-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card"
-              >
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-bg-secondary text-3xl">
-                  {CATEGORY_EMOJI[spot.category]}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-bold text-text-primary">{spot.name}</p>
-                      {spot.address && (
-                        <p className="truncate text-[11px] text-text-secondary">{spot.address}</p>
-                      )}
+            {filtered.map((spot) => {
+              const cardInner = (
+                <>
+                  <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-bg-secondary">
+                    {spot.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={spot.imageUrl} alt={spot.name} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center text-3xl">
+                        {CATEGORY_EMOJI[spot.category]}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-text-primary">{spot.name}</p>
+                        {spot.address && (
+                          <p className="truncate text-[11px] text-text-secondary">{spot.address}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(spot.id); }}
+                        className="shrink-0 text-xs text-text-secondary hover:text-live-red transition-colors"
+                        aria-label="삭제"
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(spot.id)}
-                      className="shrink-0 text-xs text-text-secondary hover:text-live-red transition-colors"
-                      aria-label="삭제"
-                    >
-                      ✕
-                    </button>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                        {CATEGORY_EMOJI[spot.category]} {spot.category}
+                      </span>
+                      <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
+                        {SOURCE_LABEL[spot.source]}
+                      </span>
+                      <span className="text-[10px] text-text-secondary">
+                        {spot.direction}쪽
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                      <a
+                        href={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-semibold !text-white hover:bg-brand-navy/90 transition-colors"
+                      >
+                        지도 보기
+                      </a>
+                      <ShareButton
+                        title={`${spot.name} — 제주 스팟 | FunJeju`}
+                        url={spot.detailUrl ? `https://funjeju.com${spot.detailUrl}` : `https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
+                        description={spot.address}
+                        compact
+                      />
+                    </div>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
-                      {CATEGORY_EMOJI[spot.category]} {spot.category}
-                    </span>
-                    <span className="rounded-full bg-bg-secondary px-2 py-0.5 text-[10px] font-medium text-text-secondary">
-                      {SOURCE_LABEL[spot.source]}
-                    </span>
-                    <span className="text-[10px] text-text-secondary">
-                      {spot.direction}쪽
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <a
-                      href={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full bg-brand-navy px-3 py-1 text-[11px] font-semibold !text-white hover:bg-brand-navy/90 transition-colors"
-                    >
-                      지도 보기
-                    </a>
-                    <ShareButton
-                      title={`${spot.name} — 제주 스팟 | FunJeju`}
-                      url={`https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
-                      description={spot.address}
-                      compact
-                    />
-                  </div>
+                </>
+              );
+
+              return spot.detailUrl ? (
+                <Link
+                  key={spot.id}
+                  href={spot.detailUrl}
+                  className="flex gap-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card transition-transform hover:scale-[1.01]"
+                >
+                  {cardInner}
+                </Link>
+              ) : (
+                <div
+                  key={spot.id}
+                  className="flex gap-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card"
+                >
+                  {cardInner}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {filtered.length === 0 && (

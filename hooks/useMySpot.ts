@@ -16,6 +16,8 @@ export type SpotInfo = {
   lng: number;
   address?: string;
   source: MySpot["source"];
+  imageUrl?: string;
+  detailUrl?: string;
 };
 
 /**

@@ -30,6 +30,8 @@ export async function addMySpot(
     address?: string;
     source?: MySpot["source"];
     spotId?: string; // 피드/맛집 등 외부 id 기반 저장 시 지정
+    imageUrl?: string;
+    detailUrl?: string;
   }
 ): Promise<string> {
   const ref = spot.spotId
@@ -43,6 +45,8 @@ export async function addMySpot(
     lat: spot.lat,
     lng: spot.lng,
     source: spot.source ?? "search",
+    ...(spot.imageUrl ? { imageUrl: spot.imageUrl } : {}),
+    ...(spot.detailUrl ? { detailUrl: spot.detailUrl } : {}),
     createdAt: serverTimestamp(),
   });
   return ref.id;
@@ -56,6 +60,8 @@ type RawSpot = {
   lat?: number;
   lng?: number;
   source?: MySpot["source"];
+  imageUrl?: string;
+  detailUrl?: string;
   createdAt?: Timestamp;
 };
 
@@ -76,6 +82,8 @@ export async function listMySpots(uid: string, max = 100): Promise<MySpot[]> {
         lat: data.lat,
         lng: data.lng,
         source: data.source ?? "search",
+        imageUrl: data.imageUrl || undefined,
+        detailUrl: data.detailUrl || undefined,
         createdAt: data.createdAt?.toMillis() ?? 0,
       } as MySpot;
     })

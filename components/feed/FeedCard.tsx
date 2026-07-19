@@ -281,6 +281,7 @@ export function FeedCard({ feed, onDeleted }: { feed: Feed; onDeleted?: () => vo
               lng: feed.gps!.lng,
               address: feed.regionName,
               source: "feed",
+              imageUrl: (feed.images?.[0] || feed.imageUrl) ?? undefined,
             })}
             className="text-[11px] transition-transform active:scale-125"
             title={spotSaved ? "마이스팟에서 제거" : "마이스팟에 저장"}

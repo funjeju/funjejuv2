@@ -145,7 +145,7 @@ export function MiniHompy({ site, initialPosts }: { site: SiteSchema; initialPos
   const addToMySpot = async () => {
     if (!user) { signInWithGoogle(); return; }
     if (savedSpot || !m.coordinates) return;
-    try { await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address }); setSavedSpot(true); track("myspot_add", { source: "minihome", slug: site.slug }); } catch { /* */ }
+    try { await addMySpot(user.uid, { name: m.name, category: guessCat(m.category || ""), lat: m.coordinates.lat, lng: m.coordinates.lng, address: m.address, imageUrl: photo || undefined, detailUrl: `/biz/${site.slug}` }); setSavedSpot(true); track("myspot_add", { source: "minihome", slug: site.slug }); } catch { /* */ }
   };
 
   const diaryByDate = useMemo(() => { const map: Record<string, DiaryEntry[]> = {}; for (const e of diary) (map[e.date] ??= []).push(e); return map; }, [diary]);

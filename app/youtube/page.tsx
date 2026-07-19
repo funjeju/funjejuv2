@@ -157,6 +157,7 @@ export default function JejutubePage() {
         lng: spot.lng,
         address: spot.address,
         source: "jejutube",
+        imageUrl: selected?.thumbnail || undefined,
       });
       setSavedNames((prev) => new Set([...prev, spot.name]));
     } catch { /* ignore */ } finally {

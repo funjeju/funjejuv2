@@ -122,6 +122,7 @@ export async function generatePoster(opts: {
   shop: PosterInput;
   /** 미지정 시 기본 다크 프리미엄 */
   style?: PosterStyle;
+  quality?: "low" | "medium" | "high" | "auto";
 }): Promise<{ posterBase64: string; mimeType: string; styleName: string }> {
   const style = opts.style ?? POSTER_STYLES[0];
   const prompt = buildPosterPrompt(opts.shop, style);
@@ -132,7 +133,8 @@ export async function generatePoster(opts: {
     image: await toFile(Buffer.from(opts.foodBase64, "base64"), ext, { type: opts.mimeType ?? "image/png" }),
     prompt,
     n: 1,
-    size: "1024x1536", // 세로형 포스터 → 게임 좌우 배치(side)
+    size: "1024x1536",
+    ...(opts.quality ? { quality: opts.quality } : {}),
   });
 
   const b64 = res.data?.[0]?.b64_json;
