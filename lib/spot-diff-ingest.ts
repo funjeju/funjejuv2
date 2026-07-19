@@ -9,7 +9,7 @@ import type { SpotGame } from "@/types/spot";
 /**
  * 라이브 피드(맛집·카페) → 틀린그림 draft 자동 생성 (완전 무인 크론).
  *  ① 피드 실사진 + placeName + aiCopy 로 "포스터 1장" 생성 (원본 음식 유지 + 보정 + 스타일 8종 로테이션)
- *  ② 그 포스터를 generateVariant(영역 우선 마스크 편집)에 넘겨 변형 5곳 + 정답 마커 자동 생성
+ *  ② 그 포스터를 generateVariant에 넘겨 gpt-image-2가 변형 5곳 생성 (마커는 어드민이 직접 체크)
  *     → 원본 쪽은 100% 포스터(실사진), 변형 쪽도 5곳 빼면 동일 (음식 재생성 안 함)
  *  ③ 마커까지 채운 채 draft 적재. 관리자는 검수 큐에서 자동 마커를 검수하고 발행. (자동발행 아님)
  */
@@ -60,7 +60,7 @@ async function fetchImageBase64(url: string): Promise<{ base64: string; mime: st
   return { base64: buf.toString("base64"), mime };
 }
 
-/** 후보 1건 → 포스터 생성(원본 유지) → generateVariant 변형+마커 → draft 적재. 생성된 게임 id 반환. */
+/** 후보 1건 → 포스터 생성(원본 유지) → generateVariant 변형 → draft 적재 (마커는 어드민 검수). */
 export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
   const { base64, mime } = await fetchImageBase64(c.imageUrl);
 
@@ -75,7 +75,7 @@ export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
     style,
   });
 
-  // ② 포스터 → 변형 5곳 + 정답 마커 (영역 우선 편집, 원본 픽셀 보존)
+  // ② 포스터 → 변형 5곳 (gpt-image-2 통째로 생성, 마커 없음 → 어드민 체크)
   const v = await generateVariant({ origBase64: posterBase64, mimeType: "image/png", count: 5, level: "medium" });
 
   // 원본(정규화된 포스터) 비율로 배치 결정 — 세로=좌우(side), 가로=상하(stack)
@@ -93,7 +93,7 @@ export async function ingestOneSpotDiff(c: Candidate): Promise<string> {
     origImage: origUrl,
     variantImage: varUrl,
     layout,
-    markers: v.markers,           // 자동 생성된 정답 (관리자 검수)
+    markers: [],                  // 어드민이 직접 마킹
     diffCount: v.markers.length,
     status: "draft",
     createdAt: Date.now(),

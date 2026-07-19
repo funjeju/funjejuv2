@@ -12,8 +12,8 @@ import OpenAI, { toFile } from "openai";
  *  - 스타일 슬롯: POSTER_STYLES 프리셋(색감·타이포·무드·레이아웃 자유) — feedId 해시로 로테이션.
  *  - 불변 코어: 원본 음식 절대 보존 + 화질 보정 + 상호·카피·메뉴·아이콘 배치.
  *
- * 틀린그림(변형 5곳)은 이 포스터를 lib/spot-ai.ts 의 generateVariant(영역 우선 마스크 편집)에
- * 넘겨 만든다 — 원본 픽셀을 보존한 채 5곳만 바꾸고 정답 마커까지 자동 반환.
+ * 틀린그림(변형 5곳)은 이 포스터를 lib/spot-ai.ts 의 generateVariant에 넘겨
+ * gpt-image-2가 통째로 생성한다. 마커(정답)는 어드민이 직접 체크.
  */
 
 let client: OpenAI | null = null;
