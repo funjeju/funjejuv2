@@ -18,6 +18,12 @@ const SOURCE_LABEL: Record<MySpot["source"], string> = {
 
 const categories = ["전체", ...MY_SPOT_CATEGORIES] as const;
 
+function deriveDetailUrl(spot: MySpot): string | undefined {
+  if (spot.detailUrl) return spot.detailUrl;
+  if (spot.id.startsWith("food_")) return `/food/${spot.id.slice(5)}`;
+  return undefined;
+}
+
 export default function SavedPage() {
   const { user, signInWithGoogle } = useAuth();
   const [spots, setSpots] = useState<MySpot[]>([]);
@@ -26,7 +32,28 @@ export default function SavedPage() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    listMySpots(user.uid).then((s) => { setSpots(s); setLoading(false); });
+    listMySpots(user.uid).then(async (s) => {
+      setSpots(s);
+      setLoading(false);
+      const foodIds = s
+        .filter((sp) => !sp.imageUrl && sp.id.startsWith("food_"))
+        .map((sp) => sp.id.slice(5));
+      if (foodIds.length === 0) return;
+      try {
+        const res = await fetch("/api/myspot/enrich", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ foodIds }),
+        });
+        const map = (await res.json()) as Record<string, string>;
+        setSpots((prev) =>
+          prev.map((sp) => {
+            const rid = sp.id.startsWith("food_") ? sp.id.slice(5) : "";
+            return rid && map[rid] && !sp.imageUrl ? { ...sp, imageUrl: map[rid] } : sp;
+          }),
+        );
+      } catch { /* 썸네일 로드 실패 시 이모지 폴백 */}
+    });
   }, [user]);
 
   async function handleDelete(id: string) {
@@ -113,6 +140,7 @@ export default function SavedPage() {
         <>
           <div className="grid grid-cols-1 gap-3 px-4 md:grid-cols-2 md:px-0 lg:grid-cols-3">
             {filtered.map((spot) => {
+              const detailUrl = deriveDetailUrl(spot);
               const cardInner = (
                 <>
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-bg-secondary">
@@ -164,7 +192,7 @@ export default function SavedPage() {
                       </a>
                       <ShareButton
                         title={`${spot.name} — 제주 스팟 | FunJeju`}
-                        url={spot.detailUrl ? `https://funjeju.com${spot.detailUrl}` : `https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
+                        url={detailUrl ? `https://funjeju.com${detailUrl}` : `https://map.kakao.com/link/map/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`}
                         description={spot.address}
                         compact
                       />
@@ -173,10 +201,10 @@ export default function SavedPage() {
                 </>
               );
 
-              return spot.detailUrl ? (
+              return detailUrl ? (
                 <Link
                   key={spot.id}
-                  href={spot.detailUrl}
+                  href={detailUrl}
                   className="flex gap-4 rounded-2xl border border-border-soft bg-bg-card p-4 shadow-card transition-transform hover:scale-[1.01]"
                 >
                   {cardInner}
