@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+// useEffect는 자동 갱신 제거로 미사용 (아래 주석 처리된 블록 복원 시 다시 import할 것)
+import { useState } from "react";
 
 type StatsData = {
   now: string;
@@ -36,10 +37,11 @@ function formatDuration(sec: number): string {
 
 export default function AdminStatsPage() {
   const [data,    setData]    = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // 자동 조회 제거 → 버튼 누를 때만 true
   const [error,   setError]   = useState("");
 
   async function load() {
+    setLoading(true);
     try {
       const res = await fetch("/api/admin/stats", { cache: "no-store" });
       const json = await res.json();
@@ -53,12 +55,18 @@ export default function AdminStatsPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-    // 10초마다 자동 갱신
-    const id = setInterval(load, 10_000);
-    return () => clearInterval(id);
-  }, []);
+  // ── Firestore 비용 절감(2026-07-21): 자동 조회·자동 갱신 전면 제거 ──
+  // 이 API 1회 호출 = getSectionStats가 stats_pageviews를 최대 5만 건 스캔 +
+  // getRecentViews(7)·getTodayViews·getActiveSessions. 10초 폴링 시 시간당 약 1,440만 읽기.
+  // 창을 열어두는 것만으로 월 사용량이 채워져서, 아래 자동 갱신을 주석 처리하고
+  // "집계하기" 버튼을 누를 때만 조회하도록 바꿨다. 안 볼 때 읽기 = 0.
+  //
+  // useEffect(() => {
+  //   load();
+  //   // 10초마다 자동 갱신
+  //   const id = setInterval(load, 10_000);
+  //   return () => clearInterval(id);
+  // }, []);
 
   if (loading && !data) {
     return (
@@ -86,7 +94,25 @@ export default function AdminStatsPage() {
     );
   }
 
-  if (!data) return null;
+  // 첫 진입 — 아직 집계 전. 버튼을 눌러야 Firestore를 읽는다.
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-8">
+        <h1 className="text-2xl font-black text-text-primary">📊 실시간 통계</h1>
+        <div className="mt-6 rounded-2xl border border-border-light bg-white p-8 text-center">
+          <p className="text-3xl">📈</p>
+          <p className="mt-3 text-sm font-bold text-text-primary">집계를 시작하려면 버튼을 누르세요</p>
+          <p className="mt-1 text-xs text-text-secondary">
+            이 화면은 자동으로 갱신되지 않아요. 조회할 때만 데이터를 읽어서 비용이 발생하지 않습니다.
+          </p>
+          <button type="button" onClick={load} disabled={loading}
+            className="mt-5 rounded-full bg-brand-orange px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+            {loading ? "집계 중…" : "📊 집계하기"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const maxDailyViews = Math.max(1, ...data.daily.map((d) => d.views));
 
@@ -96,7 +122,7 @@ export default function AdminStatsPage() {
         <div>
           <h1 className="text-2xl font-black text-text-primary">📊 실시간 통계</h1>
           <p className="text-sm text-text-secondary">
-            10초마다 자동 갱신 · 마지막 업데이트 {new Date(data.now).toLocaleTimeString("ko-KR")}
+            수동 집계 · 마지막 집계 {new Date(data.now).toLocaleTimeString("ko-KR")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -109,9 +135,9 @@ export default function AdminStatsPage() {
           >
             📈 GA4 통계 열기 ↗
           </a>
-          <button type="button" onClick={load}
-            className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white">
-            🔄 새로고침
+          <button type="button" onClick={load} disabled={loading}
+            className="rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+            {loading ? "집계 중…" : "🔄 다시 집계"}
           </button>
         </div>
       </div>

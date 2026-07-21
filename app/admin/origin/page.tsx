@@ -93,22 +93,39 @@ export default function AdminOriginPage() {
     }
   }, []);
 
+  // 프록시 실시간 지표는 Vultr(/stats)를 읽으므로 Firestore 비용이 없다.
+  // 다만 프록시 부하를 줄이려 3초 → 10초로 완화. (원래 값: 3000)
   useEffect(() => {
     load();
-    const id = setInterval(load, 3000); // 3초마다 갱신
+    const id = setInterval(load, 10_000);
     return () => clearInterval(id);
   }, [load]);
 
-  // Cloudflare 비용 추정 (시청예산 집계 — 30초마다)
-  useEffect(() => {
-    const loadCost = () =>
-      fetch("/api/admin/cf-cost", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => { if (d && !d.error) setCost(d); })
-        .catch(() => { /* ignore */ });
-    loadCost();
-    const id = setInterval(loadCost, 30000);
-    return () => clearInterval(id);
+  // ── Firestore 비용 절감(2026-07-21): cf-cost 자동 폴링 제거 ──
+  // getWatchCostSummary가 이번 달 stats_watch_budget 문서를 전부 스캔한다.
+  // 30초 폴링이면 창을 열어둔 내내 반복되므로, 버튼을 누를 때만 조회하도록 변경.
+  //
+  // useEffect(() => {
+  //   const loadCost = () =>
+  //     fetch("/api/admin/cf-cost", { cache: "no-store" })
+  //       .then((r) => (r.ok ? r.json() : null))
+  //       .then((d) => { if (d && !d.error) setCost(d); })
+  //       .catch(() => { /* ignore */ });
+  //   loadCost();
+  //   const id = setInterval(loadCost, 30000);
+  //   return () => clearInterval(id);
+  // }, []);
+
+  const [costLoading, setCostLoading] = useState(false);
+  const loadCost = useCallback(async () => {
+    setCostLoading(true);
+    try {
+      const r = await fetch("/api/admin/cf-cost", { cache: "no-store" });
+      const d = r.ok ? await r.json() : null;
+      if (d && !d.error) setCost(d);
+    } catch { /* ignore */ } finally {
+      setCostLoading(false);
+    }
   }, []);
 
   if (loading && !data) {
@@ -214,7 +231,20 @@ export default function AdminOriginPage() {
         </div>
       )}
 
-      {/* Cloudflare 비용 추정 카드 */}
+      {/* Cloudflare 비용 추정 — 버튼을 눌러야 집계 (Firestore 대량 읽기 방지) */}
+      {!cost && (
+        <section className="mb-6 rounded-2xl border border-border-light bg-bg-card p-5 text-center">
+          <p className="text-sm font-bold text-text-primary">📊 Cloudflare 비용 추정</p>
+          <p className="mt-1 text-[11px] text-text-secondary">
+            이번 달 시청예산 문서를 전부 읽어야 해서 자동 집계하지 않아요. 필요할 때만 눌러주세요.
+          </p>
+          <button type="button" onClick={loadCost} disabled={costLoading}
+            className="mt-3 rounded-full bg-brand-navy px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
+            {costLoading ? "집계 중…" : "비용 집계하기"}
+          </button>
+        </section>
+      )}
+
       {cost && (() => {
         const reqMonth = estimateRequests(cost.monthSeconds);
         const reqToday = estimateRequests(cost.todaySeconds);
@@ -226,7 +256,13 @@ export default function AdminOriginPage() {
           <section className="mb-6 rounded-2xl border-2 border-brand-navy/20 bg-brand-navy/5 p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-black text-text-primary">📊 Cloudflare 비용 추정 (이번 달)</h2>
-              <span className="text-[10px] text-text-secondary">추정치 · 시청 {fmtSec(cost.monthSeconds)} 기준</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-text-secondary">추정치 · 시청 {fmtSec(cost.monthSeconds)} 기준</span>
+                <button type="button" onClick={loadCost} disabled={costLoading}
+                  className="rounded-full bg-brand-navy px-2.5 py-1 text-[10px] font-bold text-white disabled:opacity-50">
+                  {costLoading ? "집계 중…" : "🔄 다시 집계"}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
