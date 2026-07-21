@@ -386,22 +386,103 @@ const SECTION_RULES: { key: string; label: string; test: (p: string) => boolean 
 
 export type SectionStat = { key: string; label: string; views: number; uniqueUsers: number };
 
-/** 최근 N일 페이지뷰를 섹션별(CCTV·맛집·틀린그림 등)로 집계 */
-export async function getSectionStats(days = 7): Promise<SectionStat[]> {
+/**
+ * 하루치 섹션 집계 요약 — `stats_daily/{YYYY-MM-DD}` 문서 구조.
+ * users는 7일 순방문자를 정확히 합집합으로 구하기 위해 id 목록을 그대로 보관한다
+ * (일별 순방문자를 단순 합산하면 재방문자가 중복 계산됨).
+ */
+type DailyRollup = {
+  date: string;
+  sections: Record<string, { views: number; users: string[] }>;
+  /** 날짜가 끝나 값이 확정된 경우 true — 이후 재계산하지 않는다 */
+  final: boolean;
+  computedAt: number;
+};
+
+/** 섹션당 보관할 최대 userId 수 — 문서 1MB 한도 방어 */
+const ROLLUP_USER_CAP = 3000;
+/** 오늘치 요약 재사용 시간 — 연속 클릭 시 원본 재스캔 방지 */
+const TODAY_ROLLUP_TTL_MS = 5 * 60 * 1000;
+
+function sectionKeyFor(path: string): string {
+  return SECTION_RULES.find((r) => r.test(path))?.key ?? "etc";
+}
+
+/** 특정 날짜의 원본 페이지뷰를 스캔해 섹션별 요약을 만든다 (하루치만 읽음) */
+async function computeDailyRollup(date: string): Promise<DailyRollup> {
   const db = getAdminDb();
-  const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-  const snap = await db.collection("stats_pageviews").where("date", ">=", since).limit(50000).get();
+  const snap = await db.collection("stats_pageviews").where("date", "==", date).limit(50000).get();
 
   const agg = new Map<string, { views: number; users: Set<string> }>();
   for (const doc of snap.docs) {
     const d = doc.data() as { path?: string; userId?: string };
-    const path = d.path ?? "";
-    const rule = SECTION_RULES.find((r) => r.test(path));
-    const key = rule?.key ?? "etc";
+    const key = sectionKeyFor(d.path ?? "");
     const cur = agg.get(key) ?? { views: 0, users: new Set<string>() };
     cur.views++;
     if (d.userId) cur.users.add(d.userId);
     agg.set(key, cur);
+  }
+
+  const sections: DailyRollup["sections"] = {};
+  for (const [key, v] of agg) {
+    sections[key] = { views: v.views, users: [...v.users].slice(0, ROLLUP_USER_CAP) };
+  }
+  return { date, sections, final: date < todayDate(), computedAt: Date.now() };
+}
+
+/**
+ * 최근 N일 페이지뷰를 섹션별로 집계.
+ *
+ * 비용 최적화(2026-07-21): 예전에는 호출할 때마다 stats_pageviews를 최대 5만 건 스캔했다
+ * (7일치 약 2.8만 건 = 읽기 2.8만). 어드민이 한 번 누를 때마다 그 비용이 그대로 나갔다.
+ *
+ * 지금은 하루치 요약을 `stats_daily/{date}`에 저장해두고 재사용한다.
+ *  - 지난 날짜: 값이 변하지 않으므로 최초 1회만 계산하고 이후엔 요약 문서 1건만 읽는다.
+ *  - 오늘 날짜: 계속 늘어나므로 5분 TTL로만 재계산한다.
+ * 워밍업 후 호출당 읽기는 요약 7건 수준으로 떨어진다.
+ */
+export async function getSectionStats(days = 7): Promise<SectionStat[]> {
+  const db = getAdminDb();
+  const today = todayDate();
+
+  // 대상 날짜 목록 (오늘 포함 최근 N일)
+  const dates: string[] = [];
+  for (let i = 0; i < days; i++) {
+    dates.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+  }
+
+  const rollups = await Promise.all(
+    dates.map(async (date) => {
+      const ref = db.collection("stats_daily").doc(date);
+      try {
+        const snap = await ref.get();
+        if (snap.exists) {
+          const cached = snap.data() as DailyRollup;
+          // 확정된 과거 요약은 그대로 재사용
+          if (cached.final) return cached;
+          // 오늘치는 TTL 내라면 재사용
+          if (date === today && Date.now() - (cached.computedAt ?? 0) < TODAY_ROLLUP_TTL_MS) {
+            return cached;
+          }
+        }
+      } catch { /* 요약 읽기 실패 시 원본에서 재계산 */ }
+
+      const fresh = await computeDailyRollup(date);
+      // 저장 실패해도 집계 자체는 계속 진행
+      await ref.set(fresh).catch(() => { /* ignore */ });
+      return fresh;
+    }),
+  );
+
+  // 일별 요약 병합 — views는 합산, users는 합집합(재방문 중복 제거)
+  const agg = new Map<string, { views: number; users: Set<string> }>();
+  for (const r of rollups) {
+    for (const [key, v] of Object.entries(r.sections ?? {})) {
+      const cur = agg.get(key) ?? { views: 0, users: new Set<string>() };
+      cur.views += v.views;
+      for (const u of v.users ?? []) cur.users.add(u);
+      agg.set(key, cur);
+    }
   }
 
   const out: SectionStat[] = SECTION_RULES.map((r) => {
