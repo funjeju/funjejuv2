@@ -6,55 +6,5 @@
       "path": "/api/cron/health-check",
       "schedule": "* * * * *"
     }
-  ],
-  "_disabled_crons__restore_when_cost_analyzed": [
-    {
-      "path": "/api/cron/webzine",
-      "schedule": "0 1,6,11 * * *"
-    },
-    {
-      "path": "/api/cron/briefing",
-      "schedule": "20 0 * * *"
-    },
-    {
-      "path": "/api/cron/food-ingest",
-      "schedule": "30 23 * * *"
-    },
-    {
-      "path": "/api/cron/spot-ingest",
-      "schedule": "0 22 * * *"
-    },
-    {
-      "path": "/api/cron/spot-diff",
-      "schedule": "0 21 * * *"
-    },
-    {
-      "path": "/api/cron/spot-guide",
-      "schedule": "30 1,11 * * *"
-    },
-    {
-      "path": "/api/cron/jeju-magazine",
-      "schedule": "30 4,8 * * *"
-    },
-    {
-      "path": "/api/cron/itinerary",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/seasonal-spots",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/cardnews?slot=am",
-      "schedule": "0 23 * * *"
-    },
-    {
-      "path": "/api/cron/cardnews?slot=lunch",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/cardnews?slot=pm",
-      "schedule": "0 9 * * *"
-    }
   ]
 }
