@@ -1,12 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["icn1"],
-  "crons": [],
-  "_disabled_crons__restore_when_cost_analyzed": [
+  "crons": [
     {
       "path": "/api/cron/health-check",
       "schedule": "* * * * *"
-    },
+    }
+  ],
+  "_disabled_crons__restore_when_cost_analyzed": [
     {
       "path": "/api/cron/webzine",
       "schedule": "0 1,6,11 * * *"
