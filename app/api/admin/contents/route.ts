@@ -81,7 +81,25 @@ export async function DELETE(req: NextRequest) {
   // id는 쿼리(?id=) 또는 body { id } 둘 다 허용 (호출부마다 방식이 달라 400 나던 버그)
   const id = req.nextUrl.searchParams.get("id") || (await req.json().catch(() => ({} as { id?: string }))).id;
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+  // 삭제 전에 type/slug를 확보해야 알맞은 경로를 무효화할 수 있다.
+  const content = await getContentById(id);
   await deleteContent(id);
+  // 관련 페이지는 revalidate=false(영구 캐시)라, 삭제분이 목록/상세에 남지 않도록 명시적 무효화.
+  revalidatePath("/");
+  revalidatePath("/magazine");
+  if (content?.type === "briefing") {
+    revalidatePath("/daily");
+    revalidatePath("/daily/[slug]", "page");
+    if (content.slug) revalidatePath(`/daily/${content.slug}`);
+  } else if (content?.type === "card_news") {
+    revalidatePath("/card");
+    revalidatePath("/card/[slug]", "page");
+    if (content.slug) revalidatePath(`/card/${content.slug}`);
+  } else {
+    revalidatePath("/webzine");
+    revalidatePath("/webzine/[slug]", "page");
+    if (content?.slug) revalidatePath(`/webzine/${content.slug}`);
+  }
   return NextResponse.json({ ok: true, id });
 }
 

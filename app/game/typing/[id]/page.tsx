@@ -7,7 +7,7 @@ import { TypingPlay } from "@/components/typing/TypingPlay";
 import { GameHomepageCta } from "@/components/spot/GameHomepageCta";
 import { ShareButton } from "@/components/common/ShareButton";
 
-export const revalidate = 30;
+export const revalidate = false; // 영구 캐시 — 발행/수정 시 revalidatePath로 즉시 반영(admin/typing). 봇 크롤 ISR Write 0
 export const dynamicParams = true;
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

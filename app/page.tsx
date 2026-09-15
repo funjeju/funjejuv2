@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const revalidate = 120; // 20초→120초: 홈 콘텐츠는 그렇게 자주 안 바뀜 → ISR Write 절감
+export const revalidate = false; // 영구 캐시 — 콘텐츠 발행/삭제 시 revalidatePath("/")로 즉시 반영(admin/contents·spot·cardnews). 봇 크롤 ISR Write 0
 
 const quickLinks: { href: string; label: string; emoji?: string; icon?: ReactNode; bg: string; color: string }[] = [
   { href: "/cctv",      label: "실시간 CCTV",  icon: <CctvIcon size={26} />,   bg: "bg-blue-50",    color: "text-blue-600"   },

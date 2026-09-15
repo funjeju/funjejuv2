@@ -9,7 +9,7 @@ import { ShareButton } from "@/components/common/ShareButton";
 import { KakaoMap } from "@/components/biz/KakaoMap";
 
 const SITE_URL = "https://funjeju.com";
-export const revalidate = 3600; // 콘텐츠는 자주 안 바뀜 → ISR Write 절감 (발행 시 revalidatePath로 즉시 갱신)
+export const revalidate = false; // 영구 캐시 — 발행/삭제 시 revalidatePath로 즉시 반영(admin/contents). 봇 크롤 ISR Write 0
 
 /** 절대 URL(피드 Storage)이면 그대로, 상대경로면 SITE_URL 접두 */
 const absUrl = (src: string) => (/^https?:\/\//.test(src) ? src : `${SITE_URL}${src}`);

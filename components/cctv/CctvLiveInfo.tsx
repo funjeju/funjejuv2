@@ -28,6 +28,11 @@ export function CctvLiveInfo({
   const t = useT();
   const [weather, setWeather] = useState(serverWeather);
   const [tide, setTide] = useState<TideInfo | null | undefined>(serverTide);
+  // 페이지는 ISR로 영구 캐시되고 날씨는 항상 브라우저에서 라이브로 받아온다.
+  // 서버값이 없고 좌표가 있으면 = 아직 로딩 중 → "날씨 못 가져옴" 대신 로딩 표시.
+  const [loading, setLoading] = useState(
+    !serverWeather && Number.isFinite(lat) && Number.isFinite(lng)
+  );
 
   // 서버가 null을 내려줬고 좌표가 있으면 클라에서 라이브로 보강
   useEffect(() => {
@@ -36,11 +41,16 @@ export function CctvLiveInfo({
     fetch(`/api/weather?lat=${lat}&lng=${lng}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { weather?: Weather | null; tide?: TideInfo | null } | null) => {
-        if (!alive || !d?.weather) return;
-        setWeather(d.weather);
-        setTide(d.tide ?? null);
+        if (!alive) return;
+        if (d?.weather) {
+          setWeather(d.weather);
+          setTide(d.tide ?? null);
+        }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -109,6 +119,8 @@ export function CctvLiveInfo({
             </p>
           )}
         </>
+      ) : loading ? (
+        <p className="text-center text-xs text-text-secondary py-3 animate-pulse">···</p>
       ) : (
         <p className="text-center text-xs text-text-secondary py-3">{t("cctv.noWeather")}</p>
       )}

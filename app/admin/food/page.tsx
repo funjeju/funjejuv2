@@ -78,6 +78,16 @@ export default function AdminFoodPage() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  /** Firestore 브라우저 쓰기 후 서버에서 공개 ISR 캐시를 즉시 무효화한다. */
+  async function refreshPublicFood(id?: string) {
+    const res = await fetch("/api/admin/food/revalidate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(id ? { id } : {}),
+    });
+    if (!res.ok) throw new Error("공개 맛집 캐시 갱신 실패");
+  }
+
   async function handleSave() {
     if (!form.title || !form.region || !form.menu) {
       return notify("err", "이름·지역·메뉴는 필수");
@@ -86,9 +96,11 @@ export default function AdminFoodPage() {
     try {
       if (editingId) {
         await updateRestaurant(editingId, form);
+        await refreshPublicFood(editingId);
         notify("ok", "수정 완료!");
       } else {
-        await addRestaurant(form);
+        const id = await addRestaurant(form);
+        await refreshPublicFood(id);
         notify("ok", "등록 완료!");
       }
       setForm(EMPTY_FORM);
@@ -104,6 +116,7 @@ export default function AdminFoodPage() {
   async function handleDeleteNew(id: string, title: string) {
     if (!confirm(`"${title}" 삭제할까요?`)) return;
     await deleteNewRestaurant(id);
+    await refreshPublicFood(id);
     notify("ok", "삭제 완료");
     loadAll();
   }
@@ -122,12 +135,14 @@ export default function AdminFoodPage() {
   async function handleHide(id: string, title: string) {
     if (!confirm(`"${title}"를 도민맛집 목록에서 숨길까요?\n(데이터는 보존, 표시만 제거)`)) return;
     await hideRestaurant(id);
+    await refreshPublicFood(id);
     notify("ok", "숨김 처리 완료");
     loadAll();
   }
 
   async function handleUnhide(id: string) {
     await unhideRestaurant(id);
+    await refreshPublicFood(id);
     notify("ok", "복원 완료");
     loadAll();
   }

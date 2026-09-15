@@ -5,11 +5,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { syncCctvToKV, deleteCctvFromKV } from "@/lib/cloudflare-kv-sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+/**
+ * CCTV 상세/목록/지역·테마 허브는 revalidate=false(영구 캐시)라,
+ * 어드민에서 수정/추가/삭제할 때 여기서 명시적으로 캐시를 무효화해야 화면에 반영된다.
+ */
+function revalidateCctv(id: string) {
+  revalidatePath(`/cctv/${id}`);            // 해당 카메라 상세
+  revalidatePath("/cctv");                  // 전체 목록
+  revalidatePath("/cctv/region/[region]", "page"); // 지역 허브 전체
+  revalidatePath("/cctv/theme/[slug]", "page");    // 테마 허브 전체
+}
 
 async function authCheck(): Promise<NextResponse | null> {
   const cookieStore = await cookies();
@@ -93,6 +105,7 @@ export async function POST(req: NextRequest) {
       active:   !!fresh?.active,
     });
 
+    revalidateCctv(id);
     return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);
@@ -122,6 +135,7 @@ export async function PATCH(req: NextRequest) {
       active:   !!fresh?.active,
     });
 
+    revalidateCctv(id);
     return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);
@@ -143,6 +157,7 @@ export async function DELETE(req: NextRequest) {
     // ★ KV에서도 삭제
     const kvOk = await deleteCctvFromKV(id);
 
+    revalidateCctv(id);
     return NextResponse.json({ ok: true, kvSync: kvOk });
   } catch (e) {
     return adminError(e);

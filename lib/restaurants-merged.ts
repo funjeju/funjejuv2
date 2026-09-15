@@ -13,10 +13,12 @@ async function fetchFirestoreData(): Promise<{
 }> {
   const [newRes, hiddenRes] = await Promise.all([
     fetch(`${FS_BASE}/restaurants?key=${API_KEY}&pageSize=500`, {
-      next: { revalidate: 60 },  // 1분 캐시
+      // /food의 on-demand revalidation 때만 갱신한다. Firestore REST 응답은
+      // readTime이 매번 달라 60초 타이머를 두면 내용이 같아도 ISR write가 발생한다.
+      cache: "force-cache",
     }),
     fetch(`${FS_BASE}/restaurants_meta/hidden?key=${API_KEY}`, {
-      next: { revalidate: 60 },
+      cache: "force-cache",
     }),
   ]);
 

@@ -6,7 +6,6 @@ import { VurixLaunch } from "@/components/cctv/VurixLaunch";
 import { isVurixId } from "@/constants/vurix";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
-import { fetchWeather, fetchTide } from "@/lib/weather";
 import { LiveChat } from "@/components/cctv/LiveChat";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
@@ -33,8 +32,10 @@ export async function generateStaticParams() {
 
 // 새 ID 동적 생성 허용 (404 안 나게)
 export const dynamicParams = true;
-// 60초마다 재검증 (Firestore 변경 반영)
-export const revalidate = 60;
+// 캐시 영구 유지 — 어드민 저장 시 app/api/admin/cctv가 revalidatePath로 즉시 반영.
+// 날씨·조석은 CctvLiveInfo가 브라우저에서 라이브 호출하므로 페이지엔 시변 데이터 없음.
+// → 봇이 아무리 크롤해도 ISR Write 0 (시간 기반 재생성 제거).
+export const revalidate = false;
 
 // Firestore → fallback mock 순서로 조회
 async function loadCctv(id: string) {
@@ -126,8 +127,8 @@ export default async function CctvDetailPage({ params }: Props) {
     finalNearby = [...nearbyFromDb, ...extra];
   }
 
-  const weather = cctv.lat && cctv.lng ? await fetchWeather(cctv.lat, cctv.lng) : null;
-  const tide = cctv.lat && cctv.lng ? await fetchTide(cctv.lat, cctv.lng) : null;
+  // 날씨·조석은 CctvLiveInfo가 브라우저에서 /api/weather로 라이브 호출한다.
+  // (서버에서 미리 fetch해 HTML에 박으면 ISR 캐시에 옛 날씨가 굳어버리므로 제거)
   const spotGames = await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
 
   const jsonLd = {
@@ -279,7 +280,7 @@ export default async function CctvDetailPage({ params }: Props) {
           </div>
 
           {/* 실시간 날씨 (다국어) */}
-          <CctvLiveInfo weather={weather} tide={tide} lat={cctv.lat} lng={cctv.lng} />
+          <CctvLiveInfo weather={null} tide={null} lat={cctv.lat} lng={cctv.lng} />
 
           {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (

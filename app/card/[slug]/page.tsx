@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getContentBySlug } from "@/lib/contents";
 import { CardNewsViewer } from "@/components/card/CardNewsViewer";
 
-export const revalidate = 60;
+export const revalidate = false; // 영구 캐시 — 발행/삭제 시 revalidatePath로 즉시 반영(admin/contents). 봇 크롤 ISR Write 0
 export const dynamicParams = true;
 
 const SITE = "https://funjeju.com";

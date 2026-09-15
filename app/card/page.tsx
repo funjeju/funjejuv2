@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { listPublished } from "@/lib/contents";
 import { fetchGovCardNews } from "@/lib/jeju-gov-cardnews";
 
-export const revalidate = 60;
+export const revalidate = false; // 영구 캐시 — 발행/삭제 시 revalidatePath("/card")로 즉시 반영. 봇 크롤 ISR Write 0
 
 const SITE = "https://funjeju.com";
 

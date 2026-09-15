@@ -4,7 +4,7 @@ import { getContentBySlug } from "@/lib/contents";
 import { BriefingArticle } from "@/components/daily/BriefingArticle";
 
 const SITE_URL = "https://funjeju.com";
-export const revalidate = 3600;
+export const revalidate = false; // 영구 캐시 — 발행/삭제 시 revalidatePath로 즉시 반영(admin/contents). 봇 크롤 ISR Write 0
 export const dynamicParams = true;
 
 /** 절대 URL(Storage)이면 그대로, 상대경로면 SITE_URL 접두 */

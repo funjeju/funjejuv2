@@ -49,6 +49,7 @@ export async function PATCH(req: NextRequest) {
   await setPublished(id, published !== false);
   revalidatePath("/game/spot");
   revalidatePath("/game/spot/[id]", "page");
+  revalidatePath("/"); // 홈이 최신 스팟게임 2개를 노출 → 홈도 무효화(홈 revalidate=false)
   return NextResponse.json({ ok: true, id });
 }
 

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ingestDailyFoods } from "@/lib/food-ingest";
+import { revalidateFoodPages } from "@/lib/food-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -24,6 +25,8 @@ export async function GET(req: NextRequest) {
   const n = Math.min(Math.max(Number(req.nextUrl.searchParams.get("n") ?? "3") || 3, 1), 10);
   try {
     const r = await ingestDailyFoods(n);
+    // 새 맛집이 실제로 추가된 경우에만 목록·상세 ISR을 갱신한다.
+    if (r.added.length > 0) revalidateFoodPages();
     return NextResponse.json({ ok: true, ...r });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });

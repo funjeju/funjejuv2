@@ -12,10 +12,13 @@ import { GROUP_HUB } from "@/types/cctv-location";
 const BASE = "https://funjeju.com";
 
 // 1시간 캐시 — 크롤러가 자주 때려도 Firestore 대량 읽기는 시간당 1회로 제한
+// Keep the hourly refresh for content discovery, but do not put the current
+// timestamp in every response: unchanged data must produce unchanged ISR output.
 export const revalidate = 3600;
+const STATIC_LAST_MODIFIED = new Date("2026-07-21T00:00:00.000Z");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
+  const now = STATIC_LAST_MODIFIED;
 
   // 정적 페이지
   const staticPages: MetadataRoute.Sitemap = [

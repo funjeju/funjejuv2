@@ -5,7 +5,7 @@ import { GROUP_HUB } from "@/types/cctv-location";
 import { listLocationsByGroup } from "@/lib/cctv-location";
 import { getCctvById } from "@/lib/firestore-cctv-server";
 
-export const revalidate = 300;
+export const revalidate = false; // 영구 캐시 — CCTV 수정 시 revalidateCctv가 테마 허브 무효화(admin/cctv). 봇 크롤 ISR Write 0
 export const dynamicParams = false;
 
 const SITE = "https://funjeju.com";

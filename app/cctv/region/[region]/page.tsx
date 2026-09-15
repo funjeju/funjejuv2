@@ -15,7 +15,7 @@ export async function generateStaticParams() {
   return regions.map((region) => ({ region: encodeURIComponent(region) }));
 }
 
-export const revalidate = 86400;
+export const revalidate = false; // 영구 캐시 — CCTV 수정 시 revalidateCctv가 지역 허브 무효화(admin/cctv). 봇 크롤 ISR Write 0
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { region: encoded } = await params;

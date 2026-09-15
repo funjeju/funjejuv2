@@ -15,8 +15,9 @@ export const metadata: Metadata = {
   },
 };
 
-// 신규 맛집 반영 위해 60초마다 재생성
-export const revalidate = 60;
+// 목록 변경은 관리자 저장·자동 적재 완료 시 revalidatePath("/food")로 반영한다.
+// 1분 타이머는 Firestore 500건 응답을 매번 ISR에 다시 저장해 비용을 키웠다.
+export const revalidate = false;
 
 export default async function FoodPage() {
   const [restaurants, filters] = await Promise.all([

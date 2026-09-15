@@ -25,8 +25,9 @@ export async function generateStaticParams() {
   return [];
 }
 
-// 24시간마다 재생성 (ISR)
-export const revalidate = 86400;
+// 상세 변경은 관리자 저장·자동 적재 완료 시 on-demand로 무효화한다.
+// 새 ID는 dynamicParams로 첫 요청에 생성되고 이후 캐시된다.
+export const revalidate = false;
 
 // 동적 SEO 메타데이터
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
