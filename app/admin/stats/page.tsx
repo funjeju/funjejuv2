@@ -98,7 +98,18 @@ export default function AdminStatsPage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-black text-text-primary">📊 실시간 통계</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-black text-text-primary">📊 실시간 통계</h1>
+          <a
+            href="https://analytics.google.com/analytics/web/#/a396577514p539931691/reports/reportinghub"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-full bg-[#e37400] px-3 py-1.5 text-xs font-bold text-white hover:brightness-110"
+            title="구글 애널리틱스(GA4) — 방문자·유입경로·지역(도시) 통계"
+          >
+            📈 GA4 통계 열기 ↗
+          </a>
+        </div>
         <div className="mt-6 rounded-2xl border border-border-light bg-white p-8 text-center">
           <p className="text-3xl">📈</p>
           <p className="mt-3 text-sm font-bold text-text-primary">집계를 시작하려면 버튼을 누르세요</p>
