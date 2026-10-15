@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/common/Sidebar";
 import { AppHeader } from "@/components/common/AppHeader";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { FloatingChat } from "@/components/common/FloatingChat";
+import { ServiceNoticePopup } from "@/components/common/ServiceNoticePopup";
 import { usePageViewTracker } from "@/hooks/usePageViewTracker";
 import { LangProvider } from "@/lib/i18n";
 
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <FloatingChat />
       <BottomNavigation />
+      <ServiceNoticePopup />
     </LangProvider>
   );
 }
