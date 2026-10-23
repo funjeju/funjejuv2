@@ -4,22 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/admin/stats",  label: "📊 통계",     short: "통계"  },
   { href: "/admin/origin", label: "🔴 Origin",  short: "Origin" },
-  { href: "/admin/logs",   label: "📋 로그",     short: "로그"  },
   { href: "/admin/cctv",   label: "📡 CCTV",    short: "CCTV"  },
   { href: "/admin/cctv-seo", label: "📍 CCTV SEO", short: "SEO" },
-  { href: "/admin/food",   label: "🍽️ 도민맛집", short: "맛집"  },
-  { href: "/admin/feed",   label: "📸 라이브피드",short: "피드"  },
-  { href: "/admin/jejutube", label: "▶ 제주tube", short: "튜브" },
-  { href: "/admin/contents", label: "📝 콘텐츠",  short: "콘텐츠" },
-  { href: "/admin/cardnews", label: "🃏 카드뉴스", short: "카드" },
-  { href: "/admin/game",   label: "🎮 게임",     short: "게임"  },
-  { href: "/admin/biz",    label: "🏠 홈페이지",  short: "홈피"  },
-  { href: "/admin/grow-campaigns", label: "🌱 키우기광고", short: "키우기" },
-  { href: "/admin/bomal", label: "🐚 보말지급", short: "보말" },
-  { href: "/admin/map", label: "🗺️ 지도", short: "지도" },
-  { href: "/admin/shop-requests", label: "🏪 가게신청", short: "신청" },
   { href: "/admin/users",  label: "👥 사용자",   short: "사용자" },
 ];
 

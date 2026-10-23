@@ -126,12 +126,6 @@ export function Sidebar() {
           <p className="mt-2 text-xs font-medium text-text-primary">{t("sidebar.greeting")}</p>
           <p className="text-[10px] text-text-secondary">{t("sidebar.docent")}</p>
           <p className="text-[10px] text-text-secondary">{t("sidebar.haveFun")}</p>
-          <Link
-            href="/chat"
-            className="mt-3 block w-full rounded-full border border-border-soft bg-bg-secondary py-1.5 text-center text-[11px] font-medium text-text-secondary hover:bg-bg-primary transition-colors"
-          >
-            {t("sidebar.askDocent")}
-          </Link>
           <a
             href="mailto:naggu1999@naver.com"
             className="mt-3 inline-flex items-center justify-center gap-1 text-[11px] font-medium text-text-secondary hover:text-brand-orange transition-colors"

@@ -4,14 +4,11 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/common/Sidebar";
 import { AppHeader } from "@/components/common/AppHeader";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
-import { FloatingChat } from "@/components/common/FloatingChat";
 import { ServiceNoticePopup } from "@/components/common/ServiceNoticePopup";
-import { usePageViewTracker } from "@/hooks/usePageViewTracker";
 import { LangProvider } from "@/lib/i18n";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  usePageViewTracker(); // 페이지 이동마다 자동 기록
 
   if (pathname.startsWith("/admin")) {
     return <div className="min-h-screen bg-bg-primary">{children}</div>;
@@ -31,7 +28,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 pb-20 md:pb-0">{children}</main>
         </div>
       </div>
-      <FloatingChat />
       <BottomNavigation />
       <ServiceNoticePopup />
     </LangProvider>

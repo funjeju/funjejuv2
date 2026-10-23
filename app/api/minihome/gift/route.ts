@@ -1,18 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { giftBomal } from "@/lib/biz/social-store";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export async function POST(req: NextRequest) {
-  const auth = await verifyFirebaseToken(req.headers.get("authorization"));
-  if (!auth) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  try {
-    const { to, bomal, msg } = await req.json();
-    if (!to) return NextResponse.json({ error: "대상이 없습니다" }, { status: 400 });
-    const r = await giftBomal(auth.uid, String(to), Number(bomal), String(msg || ""));
-    if (!r.ok) return NextResponse.json({ error: r.reason }, { status: 400 });
-    return NextResponse.json({ ok: true });
-  } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "선물 실패" }, { status: 400 }); }
-}
+import { NextResponse } from "next/server";
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

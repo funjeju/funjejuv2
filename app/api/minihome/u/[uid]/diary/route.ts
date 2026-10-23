@@ -1,12 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { listDiary } from "@/lib/biz/minihompy-store";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-// 공개 다이어리 조회 (방문자 모드)
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
-  const { uid } = await params;
-  try { return NextResponse.json({ entries: await listDiary(uid, 80, "minihomes") }); }
-  catch { return NextResponse.json({ entries: [] }); }
-}
+import { NextResponse } from "next/server";
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

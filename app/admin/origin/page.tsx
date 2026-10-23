@@ -97,8 +97,7 @@ export default function AdminOriginPage() {
   // 다만 프록시 부하를 줄이려 3초 → 10초로 완화. (원래 값: 3000)
   useEffect(() => {
     load();
-    const id = setInterval(load, 10_000);
-    return () => clearInterval(id);
+
   }, [load]);
 
   // ── Firestore 비용 절감(2026-07-21): cf-cost 자동 폴링 제거 ──

@@ -6,7 +6,6 @@ import { VurixLaunch } from "@/components/cctv/VurixLaunch";
 import { isVurixId } from "@/constants/vurix";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
-import { LiveChat } from "@/components/cctv/LiveChat";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
 import { getLocation } from "@/lib/cctv-location";
@@ -14,9 +13,6 @@ import { GROUP_HUB } from "@/types/cctv-location";
 import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
-import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
-import { CctvLiveInfo } from "@/components/cctv/CctvLiveInfo";
-import { listGames } from "@/lib/spot";
 import { T } from "@/lib/i18n";
 
 type Props = { params: Promise<{ id: string }> };
@@ -129,7 +125,7 @@ export default async function CctvDetailPage({ params }: Props) {
 
   // 날씨·조석은 CctvLiveInfo가 브라우저에서 /api/weather로 라이브 호출한다.
   // (서버에서 미리 fetch해 HTML에 박으면 ISR 캐시에 옛 날씨가 굳어버리므로 제거)
-  const spotGames = await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
+
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -228,7 +224,7 @@ export default async function CctvDetailPage({ params }: Props) {
           )}
 
           {/* 모바일: 영상 바로 아래 최근 틀린그림 배너 */}
-          <RecentGameBanner games={spotGames} className="lg:hidden" />
+
 
           {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
           {!cctv.youtubeId && (
@@ -280,7 +276,7 @@ export default async function CctvDetailPage({ params }: Props) {
           </div>
 
           {/* 실시간 날씨 (다국어) */}
-          <CctvLiveInfo weather={null} tide={null} lat={cctv.lat} lng={cctv.lng} />
+
 
           {/* 지역 SEO 콘텐츠 — [A]도입 [B]지역정보 [C]날씨 [D]확인포인트 [E]FAQ [F]가는길 [G]내부링크 */}
           {loc && (
@@ -429,7 +425,7 @@ export default async function CctvDetailPage({ params }: Props) {
           )}
 
           <div className="mx-4 md:mx-0">
-            <LiveChat cctvId={cctv.id} cctvName={cctv.name} />
+
           </div>
         </div>
 
@@ -466,13 +462,10 @@ export default async function CctvDetailPage({ params }: Props) {
           <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
             <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> <T k="cctv.askAi" /></p>
             <p className="mt-1 text-[11px] text-white/80"><T k="cctv.askAi.sub" /></p>
-            <Link href="/chat" className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors">
-              <T k="cctv.askAi.cta" />
-            </Link>
           </div>
 
           {/* 데스크톱: 돌AI 버튼 아래 최근 틀린그림 배너 */}
-          <RecentGameBanner games={spotGames} className="hidden lg:block" />
+
         </aside>
       </div>
     </div>

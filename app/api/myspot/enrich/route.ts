@@ -1,22 +1,4 @@
 import { NextResponse } from "next/server";
-import { loadAllRestaurants, restaurantImageUrl } from "@/lib/restaurants";
-
-export async function POST(req: Request) {
-  try {
-    const { foodIds } = (await req.json()) as { foodIds: string[] };
-    if (!Array.isArray(foodIds) || foodIds.length === 0) {
-      return NextResponse.json({});
-    }
-    const ids = foodIds.slice(0, 50);
-    const all = await loadAllRestaurants();
-    const map: Record<string, string> = {};
-    for (const id of ids) {
-      const r = all.find((x) => x.id === id);
-      const thumb = r?.images?.[0] ? restaurantImageUrl(r.images[0]) : undefined;
-      if (thumb) map[id] = thumb;
-    }
-    return NextResponse.json(map);
-  } catch {
-    return NextResponse.json({}, { status: 500 });
-  }
-}
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

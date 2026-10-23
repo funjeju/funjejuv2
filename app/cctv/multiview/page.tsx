@@ -9,9 +9,9 @@ import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
-import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
-import type { SpotGame } from "@/types/spot";
-import { BgmPlayer } from "@/components/cctv/BgmPlayer";
+
+
+
 import { useAuth } from "@/hooks/useAuth";
 import { getEntitlements } from "@/lib/entitlements";
 import { loadPresets, savePresets, type MvPreset } from "@/lib/multiview-presets";
@@ -432,10 +432,6 @@ function EmptySlot({
 export default function MultiviewPage() {
   const t = useT();
   const { favoriteIds: savedIds } = useCctvFavorite();
-  const [spotGames, setSpotGames] = useState<SpotGame[]>([]);
-  useEffect(() => {
-    fetch("/api/spot/recent?limit=3").then((r) => r.json()).then((d) => setSpotGames(d.games ?? [])).catch(() => {});
-  }, []);
   const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
@@ -675,7 +671,7 @@ export default function MultiviewPage() {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      <BgmPlayer />
+
       <PageHeader
         title={t("cctv.multiview")}
         subtitle={t("mv.subtitle")}
@@ -821,7 +817,7 @@ export default function MultiviewPage() {
       </div>
 
       {/* 멀티뷰 → 최근 틀린그림찾기 송객 배너 (좌측 소형 — CCTV 사이드처럼) */}
-      <RecentGameBanner games={spotGames} className="mb-3 max-w-xs" />
+
 
       {/* 어드민/무제한 — 차단 없이 오늘 누적 사용량 위로 카운트 */}
       {budget.unlimited && budget.usedSeconds > 0 && (

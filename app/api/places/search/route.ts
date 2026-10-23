@@ -1,25 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { searchPlaces } from "@/lib/firestore-places";
-
-export const runtime = "nodejs";
-export const maxDuration = 10;
-
-export async function GET(req: NextRequest) {
-  const sp = req.nextUrl.searchParams;
-  try {
-    const result = await searchPlaces({
-      category: sp.get("category") || undefined,
-      region:   sp.get("region")   || undefined,
-      q:        sp.get("q")        || undefined,
-      withPets: sp.get("withPets") === "true",
-      withKids: sp.get("withKids") === "true",
-      pageSize: sp.get("pageSize") ? Number(sp.get("pageSize")) : 30,
-    });
-    return NextResponse.json(result);
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "검색 실패" },
-      { status: 500 }
-    );
-  }
-}
+import { NextResponse } from "next/server";
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

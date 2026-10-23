@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
-import { BgmPlayer } from "@/components/cctv/BgmPlayer";
+
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCctvs } from "@/hooks/useCctvs";
 import { DIRECTION_META } from "@/constants/cctv-directions";
@@ -35,20 +35,13 @@ export default function CctvPage() {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      <BgmPlayer />
+
       <PageHeader
         title={t("cctv.list.title")}
         subtitle={t("cctv.list.subtitle")}
         emoji="📷"
         right={
           <div className="flex items-center gap-1.5">
-            <Link
-              href="/qna"
-              className="flex items-center gap-1 rounded-full border border-border-soft bg-bg-card px-2.5 py-1.5 text-[11px] font-bold text-text-secondary hover:text-brand-navy transition-colors"
-              title="제주 실시간 날씨·CCTV 자주 묻는 질문"
-            >
-              💬 <span className="hidden sm:inline">Q&A</span>
-            </Link>
             <Link
               href="/cctv/multiview"
               className="flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1.5 text-[11px] font-bold text-white shadow-soft hover:bg-brand-orange/90 transition-colors"

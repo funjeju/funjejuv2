@@ -1,17 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyFirebaseToken } from "@/lib/firebase-admin";
-import { acceptIlchon } from "@/lib/biz/social-store";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-export async function POST(req: NextRequest) {
-  const auth = await verifyFirebaseToken(req.headers.get("authorization"));
-  if (!auth) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
-  try {
-    const { from } = await req.json();
-    if (!from) return NextResponse.json({ error: "대상이 없습니다" }, { status: 400 });
-    await acceptIlchon(auth.uid, String(from));
-    return NextResponse.json({ ok: true });
-  } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "수락 실패" }, { status: 400 }); }
-}
+import { NextResponse } from "next/server";
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

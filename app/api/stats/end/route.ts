@@ -1,20 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { endSession } from "@/lib/firestore-stats";
-
-export const runtime = "nodejs";
-
-export async function POST(req: NextRequest) {
-  try {
-    const { sessionId } = await req.json() as { sessionId: string };
-    if (!sessionId) {
-      return NextResponse.json({ error: "sessionId 필수" }, { status: 400 });
-    }
-    await endSession(sessionId);
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : String(e) },
-      { status: 500 }
-    );
-  }
-}
+import { NextResponse } from "next/server";
+export const dynamic = "force-static";
+function disabled() { return NextResponse.json({ error: "이 기능은 운영을 중단했습니다." }, { status: 410 }); }
+export { disabled as GET, disabled as POST, disabled as PUT, disabled as PATCH, disabled as DELETE };

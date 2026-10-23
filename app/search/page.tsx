@@ -9,7 +9,7 @@ type ContentHit = { type: "webzine" | "briefing"; slug: string; title: string; s
 type CctvHit = { id: string; name: string; region: string };
 type SearchData = { restaurants: RestaurantHit[]; contents: ContentHit[]; cctvs: CctvHit[] };
 
-const SUGGESTIONS = ["흑돼지", "애월 카페", "오설록", "한라산", "성산 일출봉", "함덕"];
+const SUGGESTIONS = ["함덕", "협재", "공항", "성산", "우도"];
 const RECENT_KEY = "funjeju_recent_searches";
 
 export default function SearchPage() {
@@ -77,7 +77,7 @@ export default function SearchPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") saveRecent(query); }}
-          placeholder="맛집·웹진·CCTV 등 제주 전체 검색"
+          placeholder="CCTV 이름·지역 검색"
           className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-secondary outline-none"
         />
         {query && (
