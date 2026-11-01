@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (CCTV_FOCUSED_PUBLIC) {
     return (
       <LangProvider>
-        <div className="min-h-screen bg-[#fbfaf5]">
+        <div className="min-h-screen bg-[#f6f7f2]">
           <CctvHeader />
           <main id="main-content">{children}</main>
         </div>

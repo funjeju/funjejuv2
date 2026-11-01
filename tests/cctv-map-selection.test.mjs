@@ -29,6 +29,7 @@ function mapHarness() {
       useEffect: () => {},
     },
     'next/link': { default: () => null },
+    '@/components/cctv/CameraDialog': { CameraDialog: () => null },
     '@/components/cctv/HlsPlayer': { HlsPlayer: () => null },
     '@/components/cctv/YoutubePlayer': { YoutubePlayer: () => null },
     '@/components/cctv/VurixLaunch': { VurixLaunch: () => null },
@@ -87,4 +88,10 @@ test('close/Escape callback clears selection and a later explicit selection can 
   assert.equal(map.render([a, b]), null);
   map.select('a');
   assert.equal(map.render([a, b]).props.camera.id, 'a');
+});
+test('map: frozen readonly inventory is never mutated', () => {
+  const map = mapHarness();
+  const inventory = Object.freeze([Object.freeze({ ...a }), Object.freeze({ ...b })]);
+  map.render(inventory); map.select('a');
+  assert.equal(map.render(inventory).props.camera.id, 'a');
 });

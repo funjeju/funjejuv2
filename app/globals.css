@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./cctv-editorial.css";
 
 @theme {
   --color-bg-primary: #fffbf2;
