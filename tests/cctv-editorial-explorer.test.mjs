@@ -38,3 +38,19 @@ test('hero image explicitly distinguishes scenic photograph from current CCTV',(
  const h=harness();assert.ok(h.all.some(n=>n.type==='p'&&n.props.children==='풍경 이미지 · 현재 CCTV 화면이 아닙니다'));
  const photo=h.all.find(n=>n.props?.src==='/cctv-editorial/seongsan-coast.jpg');assert.ok(photo.props.priority);assert.ok(h.all.some(n=>n.props?.href==='https://creativecommons.org/licenses/by-sa/4.0/'));
 });
+test('public explorer hides multiview promotion while retaining list and map',()=>{
+ const h=harness();assert.equal(h.all.some(n=>n.props?.href==='/cctv/multiview'),false);
+ assert.equal(h.all.some(n=>n.props?.className==='editorial-multiview'),false);
+});
+test('public header hides multiview without removing legacy route implementation',()=>{
+ const jsx=(type,props)=>({type,props});
+ const stubs={'react/jsx-runtime':{jsx,jsxs:jsx},'next/link':{default:'link'},'next/navigation':{usePathname:()=>'/cctv'},'lucide-react':new Proxy({},{get:(_,name)=>String(name)}),'@/components/common/AuthButton':{AuthButton:'auth'},'@/components/common/LangSwitcher':{LangSwitcher:'language'}};
+ const code=ts.transpileModule(readFileSync(new URL('../components/common/CctvHeader.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+ const mod={exports:{}};vm.runInNewContext(code,{module:mod,exports:mod.exports,require:name=>{assert.ok(name in stubs,name);return stubs[name]}});
+ const nodes=value=>!value||typeof value!=='object'?[]:Array.isArray(value)?value.flatMap(nodes):[value,...nodes(value.props?.children)];
+ const all=nodes(mod.exports.CctvHeader());
+ assert.equal(all.some(n=>n.props?.href==='/cctv/multiview'),false);
+ for(const href of ['/cctv','/cctv?view=map','/search'])assert.ok(all.some(n=>n.props?.href===href));
+ assert.ok(all.some(n=>n.type==='auth'));assert.ok(all.some(n=>n.type==='language'));
+ assert.ok(readFileSync(new URL('../app/cctv/multiview/page.tsx',import.meta.url),'utf8').includes('export default'));
+});

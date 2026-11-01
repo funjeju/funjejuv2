@@ -2,7 +2,7 @@
 
 import { openVurixWatch, vurixWatchUrl } from "@/constants/vurix";
 
-/** vurix 카메라 인페이지 런처 — 새 창(모니터 뷰어)에서 HTTP 원본 재생을 시도 */
+/** HTTP 카메라 런처 — 고정된 별도 HTTP 뷰어에서 재생을 시도. */
 export function VurixLaunch({ id, name }: { id: string; name: string }) {
   return (
     <div className="px-4 md:px-0">
@@ -11,7 +11,7 @@ export function VurixLaunch({ id, name }: { id: string; name: string }) {
         onClick={() => openVurixWatch(id, name)}
         className="group relative block w-full overflow-hidden rounded-2xl border border-[#2b2f37] bg-black md:rounded-2xl"
         style={{ aspectRatio: "16 / 9" }}
-        aria-label={`${name} 원본 화질로 보기`}
+        aria-label={`${name} 새 창에서 영상 보기`}
       >
         {/* 모니터 배경 + 스캔라인 + 비네트 */}
         <span className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 38%, #15161b 0%, #060607 78%)" }} />
@@ -32,7 +32,7 @@ export function VurixLaunch({ id, name }: { id: string; name: string }) {
             <svg viewBox="0 0 24 24" className="ml-1 h-8 w-8 fill-white"><path d="M8 5v14l11-7z" /></svg>
           </span>
           <span className="rounded-full bg-white/10 px-3 py-1 text-[12px] font-semibold text-white backdrop-blur">
-            원본 화질로 보기 (새 창)
+            새 창에서 영상 보기
           </span>
         </span>
       </button>

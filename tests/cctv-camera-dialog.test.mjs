@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 function harness() {
   const jsx = (type, props, key) => ({ type, props, key });
@@ -16,6 +17,7 @@ function harness() {
     '@/components/cctv/HlsPlayer': { HlsPlayer: 'HlsPlayer' },
     '@/components/cctv/YoutubePlayer': { YoutubePlayer: 'YoutubePlayer' },
     '@/components/cctv/VurixLaunch': { VurixLaunch: 'VurixLaunch' },
+    '@/lib/cctv-playback-target': loadPlaybackTarget(),
     '@/constants/vurix': { isVurixId: id => id === 'vurix' },
   };
   const source = readFileSync(new URL('../components/cctv/CameraDialog.tsx', import.meta.url), 'utf8');
@@ -45,8 +47,14 @@ test('dialog Escape and backdrop close while content click stays open', () => {
 });
 test('dialog retains HLS, YouTube and Vurix playback routes', () => {
   const { CameraDialog } = harness();
-  for (const [c, type] of [[camera, 'HlsPlayer'], [{ ...camera, youtubeId: 'video' }, 'YoutubePlayer'], [{ ...camera, id: 'vurix' }, 'VurixLaunch']]) {
+  for (const [c, type] of [[camera, 'HlsPlayer'], [{ ...camera, youtubeId: 'video' }, 'YoutubePlayer'], [{ ...camera, id: 'sinchang', originUrl: '' }, 'VurixLaunch']]) {
     const tree = CameraDialog({ camera: c, onClose() {} });
     assert.equal(tree.props.children[1].props.children.type, type);
   }
+});
+
+test('defensive dialog route never embeds HTTP dodu into HTTPS HLS player', () => {
+  const { CameraDialog } = harness();
+  const tree = CameraDialog({ camera: { ...camera, id: 'dodu', originUrl: 'http://example.test/a.m3u8' }, onClose() {} });
+  assert.equal(tree.props.children[1].props.children.type, 'VurixLaunch');
 });

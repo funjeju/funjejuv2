@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { VurixLaunch } from "@/components/cctv/VurixLaunch";
-import { isVurixId } from "@/constants/vurix";
+import { requiresExternalPlayback } from "@/lib/cctv-playback-target";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { LiveChat } from "@/components/cctv/LiveChat";
@@ -190,7 +190,7 @@ export default async function CctvDetailPage({ params }: Props) {
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-4">
 
-          {/* 플레이어 — YouTube / vurix(원본 새창) / HLS */}
+          {/* 플레이어 — YouTube / HTTP 원본(별도 새 창) / HTTPS HLS */}
           {!cctv.active ? (
             <div role="status" className="rounded-2xl border border-border-soft bg-bg-secondary p-10 text-center">
               <p className="font-bold">현재 영상을 확인할 수 없어요</p>
@@ -199,7 +199,7 @@ export default async function CctvDetailPage({ params }: Props) {
             </div>
           ) : cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
-          ) : isVurixId(cctv.id) ? (
+          ) : requiresExternalPlayback(cctv) ? (
             <VurixLaunch id={cctv.id} name={cctv.name} />
           ) : (
             <HlsPlayer
@@ -236,7 +236,7 @@ export default async function CctvDetailPage({ params }: Props) {
 
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
               <span className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
-                {!cctv.active ? "점검 · 임시 오류" : cctv.youtubeId ? "YouTube · 재생 시 확인" : isVurixId(cctv.id) ? "새 창에서 재생 확인" : "재생 상태는 플레이어에서 확인"}
+                {!cctv.active ? "점검 · 임시 오류" : cctv.youtubeId ? "YouTube · 재생 시 확인" : requiresExternalPlayback(cctv) ? "새 창에서 재생 확인" : "재생 상태는 플레이어에서 확인"}
               </span>
               {[cctv.category, cctv.region].map((tag) => (
                 <span key={tag} className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">

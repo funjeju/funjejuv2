@@ -2,7 +2,6 @@
 
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
 import { ArrowDown, ArrowUpRight, Camera, Compass, Grid2X2, Map, Search, SlidersHorizontal, X } from "lucide-react";
 import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
@@ -68,7 +67,6 @@ export function CctvExplorer() {
         {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="editorial-empty"><Camera size={32} strokeWidth={1.2} /><h3>목록 연결이 잠시 쉬고 있어요.</h3><p>카메라 고장으로 판단한 것은 아닙니다.<br />잠시 후 목록을 다시 불러와 주세요.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="editorial-empty"><Search size={32} strokeWidth={1.2} /><h3>{activeFilters ? "아직 찾지 못한 제주의 한 장면." : "카메라 목록을 준비하고 있어요."}</h3><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "기존 기록을 삭제하지 않고 목록 연결을 확인하고 있습니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : view === "map" ? <CctvMap cctvs={filtered} /> : <CctvList cctvs={filtered} />}
       </section>
 
-      <aside className="editorial-multiview"><div className="editorial-multi-art" aria-hidden="true"><span /><span /><span /><span /></div><div><p>ONE SCREEN. MORE JEJU.</p><h2>한 장면으론<br className="sm:hidden" /> 아쉬우니까.</h2><span>서로 다른 제주의 풍경, 멀티뷰로 나란히.</span></div><Link href="/cctv/multiview">멀티뷰 열기 <ArrowUpRight size={20} /></Link></aside>
       <footer className="editorial-footer"><div className="editorial-footer-brand">funjeju<span>✳</span></div><div className="editorial-footer-row"><p>제주를 여는 가장 작은 창.<br /><span>© FunJeju. All views, one island.</span></p><p>외부 영상은 현장 통신·점검에 따라 중단될 수 있습니다.<br />목록의 사진은 풍경 이미지이며 실시간 영상이 아닙니다.</p><a href="mailto:naggu1999@naver.com">문의하기 ↗</a></div><div className="editorial-credits"><p>메인 풍경 사진: <a href="https://commons.wikimedia.org/wiki/File:Seongsan_Ilchulbong_cliff_facing_the_sea.jpg" target="_blank" rel="noopener noreferrer">A. D. Prakasa / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> · 화면 비율에 맞춰 자름. 카드 사진의 출처는 각 카드에 표시합니다.</p></div></footer>
     </div>
   );

@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://funjeju.com/cctv" },
   openGraph: {
     title: "제주 CCTV - FunJeju",
-    description: "제주 전 지역 CCTV 목록 · 지도 · 멀티뷰",
+    description: "제주 전 지역 CCTV 목록 · 지도 · 새 창 재생",
     url: "https://funjeju.com/cctv",
     type: "website",
     locale: "ko_KR",

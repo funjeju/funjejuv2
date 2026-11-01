@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 // Execute the real component with a minimal deterministic hook harness. This
 // covers render/state reconciliation, not browser dialog or Kakao SDK behavior.
@@ -13,6 +14,8 @@ function mapHarness() {
   let pending = false;
   const jsx = (type, props, key) => ({ type, props, key });
   const stubs = {
+    'leaflet/dist/leaflet.css': {},
+    '@/lib/cctv-playback-target': loadPlaybackTarget(),
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: Symbol('Fragment') },
     react: {
       useState(initial) {
@@ -55,8 +58,8 @@ function mapHarness() {
   }
   return { render, select: id => setters[0](id), selection: () => state[0] };
 }
-const a = { id: 'a', name: 'A', active: true, lat: 33.4, lng: 126.5 };
-const b = { id: 'b', name: 'B', active: true, lat: 33.5, lng: 126.6 };
+const a = { id: 'a', name: 'A', active: true, originUrl: 'https://example.test/live', lat: 33.4, lng: 126.5 };
+const b = { id: 'b', name: 'B', active: true, originUrl: 'https://example.test/live', lat: 33.5, lng: 126.6 };
 
 test('open A → filter leaves B → restore cannot reopen or remount a player', () => {
   const map = mapHarness();
@@ -94,4 +97,26 @@ test('map: frozen readonly inventory is never mutated', () => {
   const inventory = Object.freeze([Object.freeze({ ...a }), Object.freeze({ ...b })]);
   map.render(inventory); map.select('a');
   assert.equal(map.render(inventory).props.camera.id, 'a');
+});
+
+test('map: source update to HTTP discards selected dialog without popup or resurrection', () => {
+  const map = mapHarness();
+  map.render([a]); map.select('a');
+  assert.equal(map.render([a]).props.camera.id, 'a');
+  assert.equal(map.render([{ ...a, originUrl: 'http://example.test/live.m3u8' }]), null);
+  assert.equal(map.selection(), null);
+  assert.equal(map.render([a]), null);
+});
+test('map: YouTube remains modal even when origin metadata is HTTP', () => {
+  const camera = { ...a, youtubeId: 'youtube-camera', originUrl: 'http://example.test/live' };
+  const map = mapHarness();
+  map.render([camera]); map.select('a');
+  assert.equal(map.render([camera]).props.camera.id, 'a');
+});
+
+test('map: selected source becoming unknown closes without effect navigation', () => {
+  const map = mapHarness(); map.render([a]); map.select('a');
+  assert.ok(map.render([a]));
+  assert.equal(map.render([{ ...a, originUrl: undefined }]), null);
+  assert.equal(map.render([a]), null);
 });
