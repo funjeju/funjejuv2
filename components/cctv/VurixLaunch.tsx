@@ -1,8 +1,8 @@
 "use client";
 
-import { openVurixWatch } from "@/constants/vurix";
+import { openVurixWatch, vurixWatchUrl } from "@/constants/vurix";
 
-/** vurix 카메라 인페이지 런처 — 새 창(모니터 뷰어)에서 HTTP 원본을 부드럽게 재생 */
+/** vurix 카메라 인페이지 런처 — 새 창(모니터 뷰어)에서 HTTP 원본 재생을 시도 */
 export function VurixLaunch({ id, name }: { id: string; name: string }) {
   return (
     <div className="px-4 md:px-0">
@@ -18,10 +18,10 @@ export function VurixLaunch({ id, name }: { id: string; name: string }) {
         <span className="pointer-events-none absolute inset-0 opacity-60" style={{ background: "repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px)" }} />
         <span className="pointer-events-none absolute inset-0" style={{ boxShadow: "inset 0 0 150px rgba(0,0,0,.7)" }} />
 
-        {/* LIVE / 이름 OSD */}
+        {/* 재생 방식 / 이름 */}
         <span className="absolute left-4 top-3 flex items-center gap-1.5 text-[12px] font-extrabold tracking-wide text-white drop-shadow">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#ff3b30] shadow-[0_0_8px_#ff3b30]" />
-          LIVE
+          <span className="h-2 w-2 rounded-full bg-gray-400" />
+          새 창 보기
         </span>
         <span className="absolute bottom-3 left-4 text-[14px] font-extrabold text-white drop-shadow">{name}</span>
         <span className="absolute bottom-3 right-4 text-[12px] font-extrabold text-brand-orange drop-shadow">FunJeju</span>
@@ -37,7 +37,8 @@ export function VurixLaunch({ id, name }: { id: string; name: string }) {
         </span>
       </button>
       <p className="mt-2 text-center text-[11px] text-text-secondary">
-        이 카메라는 새 창에서 <b>원본 화질</b>로 끊김 없이 재생됩니다.
+        HTTP 원본 영상은 별도 창에서 열립니다. 제공처 오류·브라우저 정책에 따라 재생되지 않을 수 있어요.
+        <a href={vurixWatchUrl(id, name)} target="_blank" rel="noopener noreferrer" className="mt-2 block underline">팝업이 열리지 않으면 새 탭으로 보기</a>
       </p>
     </div>
   );
