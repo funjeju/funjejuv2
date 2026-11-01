@@ -13,7 +13,7 @@ function toEntry(c: AnyEntry): CctvEntry {
   return { ...c, originUrl: "", active: c.status !== "비활성" };
 }
 
-export function CctvList({ cctvs }: { cctvs: readonly AnyEntry[] }) {
+export function CctvList({ cctvs, variant = "editorial", onCameraOpen }: { cctvs: readonly AnyEntry[]; variant?: "editorial" | "compact"; onCameraOpen?: (camera: CctvEntry) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const entries = cctvs.map(toEntry);
   const selected = entries.find(c => c.id === selectedId && c.active && !requiresExternalPlayback(c) && !requiresPlaybackDetail(c));
@@ -21,9 +21,10 @@ export function CctvList({ cctvs }: { cctvs: readonly AnyEntry[] }) {
   if (selectedId !== null && !selected) setSelectedId(null);
   return (
     <>
-      <div className="editorial-camera-grid grid gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
-        {entries.map((cctv, index) => <CctvCard key={cctv.id} cctv={cctv} index={index} onOpen={() => {
+      <div className={variant === "compact" ? "wind-camera-list flex flex-col gap-2" : "editorial-camera-grid grid gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3"}>
+        {entries.map((cctv, index) => <CctvCard key={cctv.id} cctv={cctv} index={index} variant={variant} onOpen={() => {
           if (!cctv.active) return;
+          onCameraOpen?.(cctv);
           if (requiresExternalPlayback(cctv)) { setSelectedId(null); openCameraWatch(cctv); }
           else if (requiresPlaybackDetail(cctv)) {
             setSelectedId(null);

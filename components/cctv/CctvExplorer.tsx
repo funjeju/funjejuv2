@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
-import { ArrowDown, ArrowUpRight, Camera, Compass, Grid2X2, Map, Search, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Camera, Compass, ExternalLink, List, Map, MapPin, Search, SlidersHorizontal, Wind, X } from "lucide-react";
 import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
 import { usePublicCctvs } from "@/hooks/usePublicCctvs";
@@ -10,80 +11,68 @@ import { CCTV_LAUNCH_OBSERVATIONS } from "@/constants/cctv-launch-observations";
 import { filterCctvs } from "@/lib/cctv-explorer";
 import { cameraWatchUrl, requiresHttpsProxyWindow } from "@/lib/cctv-playback-target";
 
-const QUICK_VIEW_NAMES: Record<string, string> = { jeju_airport: "제주공항", halla_baengnokdam: "한라산 백록담" };
-
-const DIRECTIONS = [{ value: "", label: "제주 전체", en: "ALL" }, { value: "북", label: "북쪽", en: "NORTH" }, { value: "동", label: "동쪽", en: "EAST" }, { value: "남", label: "남쪽", en: "SOUTH" }, { value: "서", label: "서쪽", en: "WEST" }];
-
+const DIRECTIONS = [{ value: "", label: "제주 전체", en: "ALL JEJU" }, { value: "북", label: "북쪽", en: "NORTH" }, { value: "동", label: "동쪽", en: "EAST" }, { value: "남", label: "남쪽", en: "SOUTH" }, { value: "서", label: "서쪽", en: "WEST" }];
+const QUICK_NAMES: Record<string, string> = { jeju_airport: "제주공항", halla_baengnokdam: "한라산 백록담" };
+function scrollToView(view: "list" | "map") {
+  document.getElementById(view === "map" ? "wind-map-panel" : "wind-list-panel")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
 export function CctvExplorer() {
-  const lastObservedAt = CCTV_LAUNCH_OBSERVATIONS.reduce((latest, row) => row.observedAt > latest ? row.observedAt : latest, "");
   const params = useSearchParams();
   const { cctvs, loading, error } = usePublicCctvs();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const query = params.get("q") ?? "";
   const direction = params.get("direction") ?? "";
   const category = params.get("category") ?? "";
   const view = params.get("view") === "map" ? "map" : "list";
+  const pendingView = useRef<"list" | "map" | null>(null);
+  useEffect(() => {
+    if (pendingView.current !== view) return;
+    pendingView.current = null;
+    // Wait for the committed responsive order, not the previous panel offset.
+    scrollToView(view);
+  }, [view]);
   const filtered = filterCctvs(cctvs, { query, direction, category });
-  const categories = [...new Set(cctvs.map((c) => c.category))].sort();
+  const categories = [...new Set(cctvs.map(camera => camera.category))].sort();
   const activeFilters = !!(query || direction || category);
-  const quickViews = !activeFilters && !loading && !error
-    ? ["jeju_airport", "halla_baengnokdam"].flatMap(id => {
-      const camera = cctvs.find(c => c.id === id && c.active && requiresHttpsProxyWindow(c));
-      return camera ? [{ ...camera, name: (typeof camera.name === "string" ? camera.name.trim() : "") || QUICK_VIEW_NAMES[id] }] : [];
-    }) : [];
-
+  const selected = !loading && !error ? filtered.find(camera => camera.id === selectedId) : undefined;
+  if (selectedId !== null && !selected) setSelectedId(null);
+  const lastObservedAt = CCTV_LAUNCH_OBSERVATIONS.reduce((latest, row) => row.observedAt > latest ? row.observedAt : latest, "");
+  const quickViews = !activeFilters && !loading && !error ? ["jeju_airport", "halla_baengnokdam"].flatMap(id => {
+    const camera = cctvs.find(row => row.id === id && row.active && requiresHttpsProxyWindow(row));
+    return camera ? [{ ...camera, name: (typeof camera.name === "string" ? camera.name.trim() : "") || QUICK_NAMES[id] }] : [];
+  }) : [];
   function update(values: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
     Object.entries(values).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key));
-    const search = next.toString();
-    window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
+    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
   }
-  function exploreMap() {
-    update({ view: "map" });
-    document.getElementById("camera-explorer")?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  function changeView(next: "list" | "map") {
+    if (next === view) scrollToView(next);
+    else { pendingView.current = next; update({ view: next }); }
   }
-
-  return (
-    <div className="cctv-explorer editorial-explorer">
-      <section className="editorial-hero" aria-labelledby="explorer-title">
-        <div className="editorial-hero-copy">
-          <div className="editorial-eyebrow"><span className="editorial-cross">✳</span> A WINDOW TO JEJU <span className="editorial-edition">01 — EXPLORE</span></div>
-          <p className="editorial-hero-kicker">어디에 있든, 지금</p>
-          <h1 id="explorer-title">제주를<br /><span>켜다.</span><span className="editorial-title-arrow" aria-hidden="true">↗</span></h1>
-          <p className="editorial-hero-description">파도는 어떤지, 산은 맑은지.<br />궁금한 제주의 풍경을 한 화면에서.</p>
-          <a href="#camera-explorer" className="editorial-primary-link">카메라 둘러보기 <ArrowDown size={17} /></a>
-        </div>
-        <div className="editorial-hero-visual">
-          <Image src="/cctv-editorial/seongsan-coast.jpg" alt="성산일출봉의 절벽과 바다를 담은 풍경 사진" fill priority sizes="(max-width: 760px) 100vw, 55vw" className="editorial-hero-photo" />
-          <div className="editorial-photo-shade" />
-          <span className="editorial-coordinate">JEJU ISLAND<br />33° N / 126° E</span>
-          <button type="button" onClick={exploreMap} className="editorial-map-stamp" aria-label="제주 CCTV 지도 펼치기"><Compass size={28} strokeWidth={1.2} /><span>지도로<br />펼쳐보기</span><ArrowUpRight size={18} /></button>
-          <div className="editorial-photo-caption"><span>THE ISLAND, UP CLOSE.</span><p>풍경 이미지 · 현재 CCTV 화면이 아닙니다</p></div>
-        </div>
+  return <div className="cctv-explorer wind-explorer">
+    <aside className="wind-sidebar" aria-label="지역 탐색">
+      <div className="wind-sidebar-brand"><Compass size={24} strokeWidth={1.3} aria-hidden="true" /><div>제주 탐색<small>ISLAND DIRECTORY</small></div></div>
+      <p className="wind-sidebar-label">어디로 떠나볼까요</p>
+      <nav className="wind-directions" aria-label="제주 방향">{DIRECTIONS.map(({ value, label, en }) => <button type="button" key={value} onClick={() => update({ direction: value })} aria-pressed={direction === value}><span><MapPin size={15} aria-hidden="true" />{label}</span><small>{en}</small></button>)}</nav>
+      <div className="wind-sidebar-bottom"><Wind size={31} strokeWidth={1} aria-hidden="true" /><p>바람이 머무는 곳,<br />제주의 지금을 만나요.</p><span>33° N · 126° E</span><Link href="/mypage">내가 저장한 풍경 <ArrowUpRight size={14} aria-hidden="true" /></Link></div>
+    </aside>
+    <div className="wind-content">
+      <header className="wind-intro"><div><p className="wind-eyebrow">JEJU, THROUGH A DIFFERENT WINDOW</p><h1 id="explorer-title">바람의 좌표<span>.</span></h1><p className="wind-intro-description">보고 싶은 제주, 지도에서 찾고 새 창으로 만나세요.</p></div><div className="wind-coordinate" aria-hidden="true"><Compass size={48} strokeWidth={.8} /><span>JEJU ISLAND<br />CAMERA ATLAS</span></div></header>
+      <section id="camera-explorer" aria-labelledby="explorer-title">
+        <div className="wind-toolbar"><div className="wind-search"><Search size={18} strokeWidth={1.4} aria-hidden="true" /><label className="sr-only" htmlFor="cctv-search">카메라 이름, 지역 또는 풍경 검색</label><input id="cctv-search" type="search" value={query} onChange={event => update({ q: event.target.value })} placeholder="카메라 이름이나 지역을 검색하세요" />{query && <button type="button" onClick={() => update({ q: "" })} aria-label="검색어 지우기"><X size={16} /></button>}</div><label className="wind-category"><SlidersHorizontal size={16} aria-hidden="true" /><span className="sr-only">카메라 종류</span><select value={category} onChange={event => update({ category: event.target.value })}><option value="">모든 풍경</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label><div className="wind-view-toggle" aria-label="보기 방식">{([{ id: "list", label: "목록", icon: List }, { id: "map", label: "지도", icon: Map }] as const).map(({ id, label, icon: Icon }) => <button type="button" key={id} aria-label={label} aria-pressed={view === id} onClick={() => changeView(id)}><Icon size={16} aria-hidden="true" /><span>{label}</span></button>)}</div></div>
+        <div className="wind-results"><p role="status">{loading ? "공개 카메라를 확인하고 있어요" : error ? "목록 연결을 확인해 주세요" : <><strong>{filtered.length}</strong>개의 재생 확인 카메라</>}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}><X size={13} aria-hidden="true" />필터 초기화</button>}<span>영상은 별도 창에서 열립니다 <ExternalLink size={12} aria-hidden="true" /></span></div>
+        {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="wind-empty"><Camera size={30} strokeWidth={1.2} /><h2>목록 연결이 잠시 쉬고 있어요.</h2><p>연결 상태를 확인하지 못해 영상을 표시하지 않습니다.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="wind-empty"><Search size={30} strokeWidth={1.2} /><h2>{activeFilters ? "조건에 맞는 풍경이 아직 없어요." : "최근 재생이 확인된 카메라가 아직 없어요."}</h2><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "미확인 카메라는 공개 목록에서 제외했어요. 확인된 영상이 준비되면 표시됩니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : <div className="wind-dashboard" data-view={view}>
+          <section id="wind-list-panel" className="wind-list-panel" aria-labelledby="wind-list-title"><div className="wind-panel-heading"><h2 id="wind-list-title">카메라 목록 <span>{filtered.length}</span></h2><small>마음 가는 풍경을 선택하세요</small></div><div className="wind-list-scroll"><CctvList cctvs={filtered} variant="compact" onCameraOpen={camera => setSelectedId(camera.id)} /></div></section>
+          <div className="wind-map-column"><section id="wind-map-panel" className="wind-map-panel" aria-labelledby="wind-map-title"><div className="wind-panel-heading"><h2 id="wind-map-title"><Map size={15} aria-hidden="true" />제주, 한눈에</h2><small>번호를 누르면 영상 창이 열려요</small></div><CctvMap cctvs={filtered} compact onCameraOpen={setSelectedId} /></section>
+            <section className="wind-window-panel" aria-labelledby="wind-window-title"><div className="wind-window-top"><span><ExternalLink size={14} aria-hidden="true" />영상 전용 창</span><small>SEPARATE WINDOW</small></div><div className="wind-window-body"><div className="wind-window-symbol" aria-hidden="true"><Wind size={42} strokeWidth={1} /></div><div><p className="wind-window-kicker">{selected ? `${selected.region} · ${selected.category}` : "A SMALL WINDOW TO JEJU"}</p><h2 id="wind-window-title">{selected ? selected.name : "풍경에만 집중할 수 있게."}</h2><p>{selected ? "선택한 카메라는 별도 영상 창에서 확인할 수 있어요." : "목록이나 지도에서 장소를 누르면\n영상만 담은 새 창으로 연결됩니다."}</p>{selected && requiresHttpsProxyWindow(selected) && <a className="wind-watch-link" href={cameraWatchUrl(selected)} target="_blank" rel="noopener noreferrer">{selected.name} 새 창으로 보기 <ArrowUpRight size={15} aria-hidden="true" /></a>}</div></div>{quickViews.length > 0 && <nav className="wind-quick-views" aria-label="최근 재생 확인 카메라 새 창 보기"><span>빠르게 보기</span>{quickViews.map(camera => <a className="wind-quick-link" key={camera.id} href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" aria-label={`${camera.name} 새 창에서 보기`}><span>{camera.name}</span><ArrowUpRight size={14} aria-hidden="true" /></a>)}</nav>}</section>
+          </div>
+        </div>}
       </section>
-
-      <div className="editorial-ticker" aria-label="탐색 안내"><span>오늘의 목적지, 미리 만나기</span><span aria-hidden="true">✳</span><span>바다에서 한라산까지</span><span aria-hidden="true">✳</span><span>마음 가는 풍경을 골라보세요</span><ArrowUpRight size={20} aria-hidden="true" /></div>
-
-      <section id="camera-explorer" className="editorial-cameras" aria-labelledby="camera-list-title">
-        <div className="editorial-section-heading">
-          <div><p className="editorial-section-label">FIND YOUR VIEW <span>— 01</span></p><h2 id="camera-list-title">어떤 제주가 궁금하세요<span className="editorial-lime-dot">?</span></h2></div>
-          <p className="editorial-heading-note">발걸음보다 먼저,<br />풍경을 만나보세요.</p>
-        </div>
-        <div className="editorial-search-row">
-          <div className="editorial-search"><Search size={21} aria-hidden="true" /><label htmlFor="cctv-search" className="sr-only">카메라 이름, 지역 또는 풍경 검색</label><input id="cctv-search" type="search" value={query} onChange={e => update({ q: e.target.value })} placeholder="장소, 지역, 보고 싶은 풍경을 검색하세요" />{query && <button type="button" onClick={() => update({ q: "" })} aria-label="검색어 지우기"><X size={17} /></button>}</div>
-          <div className="editorial-view-toggle" aria-label="보기 방식">{([{ id: "list", label: "목록", icon: Grid2X2 }, { id: "map", label: "지도", icon: Map }] as const).map(({ id, label, icon: Icon }) => <button type="button" key={id} aria-label={label} onClick={() => update({ view: id })} aria-pressed={view === id}><Icon size={17} aria-hidden="true" /><span>{label}</span></button>)}</div>
-        </div>
-        <div className="editorial-filter-row"><div className="editorial-directions" aria-label="제주 방향">{DIRECTIONS.map(({ value, label, en }) => <button type="button" key={value} onClick={() => update({ direction: value })} aria-pressed={direction === value}><span>{label}</span><small>{en}</small></button>)}</div><label className="editorial-category"><SlidersHorizontal size={15} /><span className="sr-only">카메라 종류</span><select value={category} onChange={e => update({ category: e.target.value })}><option value="">모든 풍경</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label></div>
-        <div className="editorial-results-note"><p role="status">{loading ? "카메라 목록을 불러오는 중" : error ? "목록 연결을 확인해주세요" : <><strong>{filtered.length}</strong>개의 최근 재생 확인 카메라 <span>· 현재 재생은 달라질 수 있어요. 영상을 열어 확인해 주세요</span></>}</p>{activeFilters ? <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}><X size={13} />필터 초기화</button> : <span className="editorial-list-hint">CLICK A VIEW, FEEL JEJU.</span>}</div>
-        {lastObservedAt && <p className="editorial-review-time">목록 재생 확인 <time dateTime={lastObservedAt}>{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(lastObservedAt))} KST</time> · 이후 연결 상태는 달라질 수 있습니다.</p>}
-        {quickViews.length > 0 && <nav aria-label="최근 재생 확인 카메라 새 창 보기" className="editorial-quick-views"><span className="editorial-quick-heading">최근 재생 확인 · 빠르게 보기</span>{quickViews.map(camera => <a key={camera.id} href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" className="editorial-quick-link" aria-label={`${camera.name} 새 창에서 보기`}><span className="editorial-quick-name">{camera.name}</span><span className="editorial-quick-action">새 창</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}</nav>}
-        {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="editorial-empty"><Camera size={32} strokeWidth={1.2} /><h3>목록 연결이 잠시 쉬고 있어요.</h3><p>카메라 고장으로 판단한 것은 아닙니다.<br />잠시 후 목록을 다시 불러와 주세요.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="editorial-empty"><Search size={32} strokeWidth={1.2} /><h3>{activeFilters ? "아직 찾지 못한 제주의 한 장면." : "최근 재생이 확인된 카메라가 아직 없어요."}</h3><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "미확인 카메라는 공개 목록에서 제외했어요. 확인된 영상이 준비되면 표시됩니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : view === "map" ? <CctvMap cctvs={filtered} /> : <CctvList cctvs={filtered} />}
-      </section>
-
-      <footer className="editorial-footer"><div className="editorial-footer-brand">funjeju<span>✳</span></div><div className="editorial-footer-row"><p>제주를 여는 가장 작은 창.<br /><span>© FunJeju. All views, one island.</span></p><p>외부 영상은 현장 통신·점검에 따라 중단될 수 있습니다.<br />목록의 사진은 풍경 이미지이며 실시간 영상이 아닙니다.</p><a href="mailto:naggu1999@naver.com">문의하기 ↗</a></div><div className="editorial-credits"><p>메인 풍경 사진: <a href="https://commons.wikimedia.org/wiki/File:Seongsan_Ilchulbong_cliff_facing_the_sea.jpg" target="_blank" rel="noopener noreferrer">A. D. Prakasa / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> · 화면 비율에 맞춰 자름. 카드 사진의 출처는 각 카드에 표시합니다.</p></div></footer>
+      <footer className="wind-footer"><p>© FUNJEJU. 제주를 여는 작은 창.</p><div>{lastObservedAt && <p>영상 확인 <time dateTime={lastObservedAt}>{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(lastObservedAt))} KST</time></p>}<p>현재 재생은 달라질 수 있습니다. 목록 사진은 풍경 이미지이며 실시간 화면이 아닙니다.</p></div><a href="mailto:naggu1999@naver.com">문의하기 <ArrowUpRight size={13} aria-hidden="true" /></a></footer>
     </div>
-  );
+  </div>;
 }
-
 export function ExplorerSkeleton() {
-  return <div aria-label="카메라 목록 로딩 중" className="editorial-skeleton-grid">{Array.from({ length: 6 }, (_, i) => <div key={i} className="editorial-skeleton"><div /><span /><span /></div>)}</div>;
+  return <div className="wind-skeleton" aria-label="카메라 목록 로딩 중">{Array.from({ length: 5 }, (_, index) => <div key={index}><span /><span /><span /></div>)}</div>;
 }

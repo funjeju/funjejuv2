@@ -16,19 +16,24 @@ type KakaoNS = {
     load: (cb: () => void) => void;
     LatLng: new (lat: number, lng: number) => unknown;
     LatLngBounds: new () => { extend: (latlng: unknown) => void };
-    Map: new (container: HTMLElement, options: { center: unknown; level: number }) => { setBounds: (bounds: unknown) => void };
+    Map: new (container: HTMLElement, options: { center: unknown; level: number }) => { setBounds: (bounds: unknown) => void; relayout?: () => void };
     CustomOverlay: new (opts: { position: unknown; content: HTMLElement; yAnchor?: number; xAnchor?: number; clickable?: boolean }) => { setMap: (map: unknown) => void };
   };
 };
 function kakao() { return (window as unknown as { kakao?: KakaoNS }).kakao; }
 
-export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
+export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: readonly CctvLike[]; compact?: boolean; onCameraOpen?: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapState, setMapState] = useState<"loading" | "ready" | "osm" | "static">("loading");
   const [retry, setRetry] = useState(0);
-  const valid = useMemo(() => cctvs.map(c => ({ ...c, lat: c.lat ?? c.latitude, lng: c.lng ?? c.longitude }))
-    .filter(c => c.active !== false && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat!) <= 90 && Math.abs(c.lng!) <= 180), [cctvs]);
+  // Public filters may return a fresh array on every UI render. Depend on the
+  // serializable inventory content, not array identity, to retain pan/zoom.
+  // Include all fields so source, coordinate and displayed metadata edits still rebuild.
+  const inventoryKey = JSON.stringify(cctvs
+    .map(c => ({ ...c, lat: c.lat ?? c.latitude, lng: c.lng ?? c.longitude }))
+    .filter(c => c.active !== false && Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat!) <= 90 && Math.abs(c.lng!) <= 180));
+  const valid = useMemo(() => JSON.parse(inventoryKey) as CctvLike[], [inventoryKey]);
   const selected = cctvs.find(c => c.id === selectedId && c.active !== false && !requiresExternalPlayback(c) && !requiresPlaybackDetail(c));
   // Reconcile during render so the dialog disappears immediately and the discarded
   // selection cannot reopen if filters or the published inventory later restore it.
@@ -45,6 +50,8 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
     const container = containerRef.current;
     let script: HTMLScriptElement | null = null;
     const choose = (camera: CctvLike) => {
+      if (camera.active === false) return;
+      onCameraOpen?.(camera.id);
       if (requiresExternalPlayback(camera)) {
         setSelectedId(null);
         openCameraWatch(camera); // Synchronous marker gesture, never an effect popup.
@@ -56,9 +63,13 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
     const markerButton = (camera: CctvLike) => {
       const marker = document.createElement("button");
       marker.type = "button";
-      marker.textContent = `📷 ${camera.name}`;
+      marker.textContent = compact ? String(valid.findIndex(c => c.id === camera.id) + 1) : `📷 ${camera.name}`;
+      marker.title = camera.name;
+      marker.className = compact ? "wind-map-pin" : "cctv-map-pin";
       marker.setAttribute("aria-label", `${camera.name} CCTV 보기${requiresExternalPlayback(camera) ? " (새 창)" : requiresPlaybackDetail(camera) ? " (상세에서 확인)" : ""}`);
-      marker.style.cssText = "cursor:pointer;border:2px solid white;border-radius:6px;background:#172524;color:#d9ff60;padding:6px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 6px #0004;white-space:nowrap";
+      marker.style.cssText = compact
+        ? "cursor:pointer;width:30px;height:30px;border:2px solid #f4faf5;border-radius:50%;background:#184c3b;color:#f4faf5;font-size:11px;font-weight:700;box-shadow:0 2px 5px #123b3326"
+        : "cursor:pointer;border:2px solid white;border-radius:6px;background:#172524;color:#d9ff60;padding:6px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 6px #0004;white-space:nowrap";
       marker.onclick = () => choose(camera);
       return marker;
     };
@@ -81,6 +92,8 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
       script?.removeEventListener("error", startFallback);
       script?.remove(); // Do not keep a failed SDK element around for a user retry.
       overlays.forEach(overlay => overlay.setMap(null));
+      resizeObserver?.disconnect();
+      resizeObserver = undefined;
       container.replaceChildren();
       setMapState("loading");
       tileTimer = window.setTimeout(staticFallback, 12000);
@@ -112,7 +125,7 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
         valid.forEach(camera => {
           const button = markerButton(camera);
           L.marker([camera.lat!, camera.lng!], {
-            icon: L.divIcon({ html: button, className: "cctv-map-marker", iconSize: [120, 32], iconAnchor: [60, 16] }),
+            icon: L.divIcon({ html: button, className: "cctv-map-marker", iconSize: compact ? [30, 30] : [120, 32], iconAnchor: compact ? [15, 15] : [60, 16] }),
             keyboard: false,
           }).addTo(map);
         });
@@ -135,6 +148,10 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
           overlays.push(overlay);
         });
         map.setBounds(bounds);
+        if (typeof ResizeObserver !== "undefined" && typeof map.relayout === "function") {
+          resizeObserver = new ResizeObserver(() => { if (!disposed && !fallbackStarted) map.relayout?.(); });
+          resizeObserver.observe(container);
+        }
         window.clearTimeout(timeout);
         setMapState("ready");
       } catch { startFallback(); }
@@ -176,7 +193,7 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
       leafletMap?.remove();
       container.replaceChildren();
     };
-  }, [valid, retry]);
+  }, [valid, retry, compact, onCameraOpen]);
 
   const available = cctvs.filter(camera => camera.active !== false);
   const message = !valid.length ? "현재 조건에 위치가 등록된 CCTV가 없어요. 아래 목록에서 선택해 주세요."
@@ -184,6 +201,8 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
     : mapState === "osm" ? "OpenStreetMap 대체 지도를 표시하고 있어요."
     : mapState === "loading" ? "제주 지도를 불러오고 있어요… 아래 목록은 바로 이용할 수 있어요." : null;
   const selectCamera = (camera: CctvLike) => {
+    if (camera.active === false) return;
+    onCameraOpen?.(camera.id);
     if (requiresExternalPlayback(camera)) { setSelectedId(null); openCameraWatch(camera); }
     else if (requiresPlaybackDetail(camera)) {
       setSelectedId(null);
@@ -194,20 +213,10 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
   const lngs = valid.map(c => c.lng!);
   const minLat = Math.min(...lats), maxLat = Math.max(...lats);
   const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  return (
-    <>
-      {message && <p role="status" className="rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-5 text-sm">{message}</p>}
-      <div className="relative"><div ref={containerRef} aria-label="제주 CCTV 지도" className={(!valid.length ? "hidden " : mapState === "static" ? "invisible absolute left-0 top-0 pointer-events-none " : "relative ") + "z-0 h-[60vh] w-full overflow-hidden rounded-2xl border border-[#172524]/20 bg-[#e9ede6]"} /></div>
-      {mapState === "static" && valid.length > 0 && <section aria-label="CCTV 위치 관계도" className="rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-5">
-        <p className="text-sm">위치 관계도 · 북쪽 ↑ · 실제 지도 배경이 아닌 좌표 기준 배치</p>
-        <div className="relative my-4 h-72 overflow-hidden rounded-xl border border-dashed border-[#172524]/30">
-          {valid.map((camera, index) => <button key={camera.id} type="button" onClick={() => selectCamera(camera)} title={camera.name} aria-label={`${camera.name} CCTV 보기${requiresExternalPlayback(camera) ? " (새 창)" : requiresPlaybackDetail(camera) ? " (상세에서 확인)" : ""}`} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#172524] px-2 py-1 text-xs text-[#d9ff60]" style={{ left: `${10 + 80 * (camera.lng! - minLng) / (maxLng - minLng || 1)}%`, top: `${90 - 80 * (camera.lat! - minLat) / (maxLat - minLat || 1)}%` }}>{index + 1}</button>)}
-        </div>
-        <button type="button" className="rounded-full border border-[#172524] px-4 py-2 text-sm" onClick={() => { setMapState("loading"); setRetry(value => value + 1); }}>지도 다시 시도</button>
-      </section>}
-      <section aria-label="지도 CCTV 목록" className="mt-4 rounded-2xl border border-[#172524]/20 p-5">
+  const cameraIndex = (
+    <section aria-label="지도 CCTV 목록" className={compact ? "wind-map-camera-index max-h-48 overflow-y-auto p-3" : "mt-4 rounded-2xl border border-[#172524]/20 p-5"}>
         <h3 className="mb-3 font-bold">CCTV 위치 목록</h3>
-        {available.length === 0 ? <p className="text-sm">현재 조건에 맞는 CCTV가 없어요.</p> : <ul className="grid gap-3 sm:grid-cols-2">
+        {available.length === 0 ? <p className="text-sm">현재 조건에 맞는 CCTV가 없어요.</p> : <ul className={compact ? "grid gap-3" : "grid gap-3 sm:grid-cols-2"}>
           {available.map(camera => <li key={camera.id}>
             <button type="button" className="text-left text-sm font-bold underline underline-offset-4" onClick={() => selectCamera(camera)}>{valid.findIndex(c => c.id === camera.id) >= 0 ? `${valid.findIndex(c => c.id === camera.id) + 1}. ` : ""}{camera.name}{requiresExternalPlayback(camera) ? " · 새 창 ↗" : requiresPlaybackDetail(camera) ? " · 상세에서 확인" : ""}</button>
             <p className="mt-1 text-xs opacity-70">{valid.some(c => c.id === camera.id) ? [camera.region, camera.category].filter(Boolean).join(" · ") || "위치 등록됨" : "위치 미등록"}</p>
@@ -215,6 +224,22 @@ export function CctvMap({ cctvs }: { cctvs: readonly CctvLike[] }) {
           </li>)}
         </ul>}
       </section>
+  );
+  return (
+    <>
+      {message && <p role="status" className={compact ? "wind-map-status px-3 py-2 text-xs" : "rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-5 text-sm"}>{message}</p>}
+      <div className="relative"><div ref={containerRef} aria-label="제주 CCTV 지도" className={(!valid.length ? "hidden " : mapState === "static" ? "invisible absolute left-0 top-0 pointer-events-none " : "relative ") + (compact ? "wind-map-canvas z-0 h-[420px] max-h-[55vh] min-h-[280px] w-full overflow-hidden bg-[#deeee5]" : "z-0 h-[60vh] w-full overflow-hidden rounded-2xl border border-[#172524]/20 bg-[#e9ede6]")} /></div>
+      {mapState === "static" && valid.length > 0 && <section aria-label="CCTV 위치 관계도" className={compact ? "wind-map-diagram bg-[#deeee5] p-3" : "rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-5"}>
+        <p className="text-sm">위치 관계도 · 북쪽 ↑ · 실제 지도 배경이 아닌 좌표 기준 배치</p>
+        <div className={compact ? "relative my-3 h-64 overflow-hidden border border-dashed border-[#184c3b]/20" : "relative my-4 h-72 overflow-hidden rounded-xl border border-dashed border-[#172524]/30"}>
+          {valid.map((camera, index) => <button key={camera.id} type="button" onClick={() => selectCamera(camera)} title={camera.name} aria-label={`${camera.name} CCTV 보기${requiresExternalPlayback(camera) ? " (새 창)" : requiresPlaybackDetail(camera) ? " (상세에서 확인)" : ""}`} className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#172524] px-2 py-1 text-xs text-[#d9ff60]" style={{ left: `${10 + 80 * (camera.lng! - minLng) / (maxLng - minLng || 1)}%`, top: `${90 - 80 * (camera.lat! - minLat) / (maxLat - minLat || 1)}%` }}>{index + 1}</button>)}
+        </div>
+        <button type="button" className="rounded-full border border-[#172524] px-4 py-2 text-sm" onClick={() => { setMapState("loading"); setRetry(value => value + 1); }}>지도 다시 시도</button>
+      </section>}
+      {compact ? <details className="wind-map-index" open={mapState === "static" || !valid.length}>
+        <summary>위치 목록 · {available.length}곳 <span>이름으로 선택하기</span></summary>
+        {cameraIndex}
+      </details> : cameraIndex}
       {selected && <CameraDialog key={selected.id} camera={selected} onClose={() => setSelectedId(null)} />}
     </>
   );

@@ -24,11 +24,11 @@ test('public filtering does not mutate or delete retained inventory',async()=>{
  const rows=[camera,{...camera,id:'unverified'},{...camera,id:'youtube',youtubeId:'failed'}];const snapshot=JSON.stringify(rows);
  assert.deepEqual(Array.from(await policy().filterLaunchCameras(rows),c=>c.id),['observed']);assert.equal(JSON.stringify(rows),snapshot);
 });
-test('release evidence has 12 dated frame/time observations, no origin addresses or failed YouTube IDs',()=>{
+test('release evidence has 11 dated frame/time observations, no origin addresses or failed YouTube IDs',()=>{
  const m=compile('../constants/cctv-launch-observations.ts',{});const rows=m.CCTV_LAUNCH_OBSERVATIONS;
- assert.equal(rows.length,12);assert.equal(new Set(rows.map(r=>r.id)).size,12);
- for(const row of rows){assert.match(row.sourceRevision,/^[a-f0-9]{64}$/);assert.ok(row.width>0&&row.height>0&&row.timeAdvancedSeconds>0);assert.ok(Date.parse(row.observedAt)>=Date.parse('2026-11-01T16:31:00Z'));assert.equal(row.pageUrl,`https://funjeju.com/cctv/${row.id}`);assert.equal('originUrl' in row,false)}
- assert.ok(!rows.some(row=>['sungsan','nonjitmul','gimnyeong'].includes(row.id)));
+ assert.equal(rows.length,11);assert.equal(new Set(rows.map(r=>r.id)).size,11);
+ for(const row of rows){assert.match(row.sourceRevision,/^[a-f0-9]{64}$/);assert.ok(row.width>0&&row.height>0&&row.timeAdvancedSeconds>0);assert.ok(Date.parse(row.observedAt)>=Date.parse('2026-11-01T22:19:00Z'));assert.equal(row.pageUrl,`https://funjeju.com/cctv/${row.id}`);assert.equal('originUrl' in row,false)}
+ assert.ok(!rows.some(row=>['sungsan','nonjitmul','gimnyeong','cheonjiyeon'].includes(row.id)));
 });
 
 function hookHarness() {

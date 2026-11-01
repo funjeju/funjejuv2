@@ -17,7 +17,7 @@ function scenery(category: string, index: number) {
   return null;
 }
 
-export function CctvCard({ cctv, index = 0, onOpen }: { cctv: CctvEntry; index?: number; onOpen: () => void }) {
+export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { cctv: CctvEntry; index?: number; onOpen: () => void; variant?: "editorial" | "compact" }) {
   const needsDetail = requiresPlaybackDetail(cctv);
   const popup = requiresExternalPlayback(cctv);
   const photo = scenery(cctv.category, index);
@@ -28,6 +28,37 @@ export function CctvCard({ cctv, index = 0, onOpen }: { cctv: CctvEntry; index?:
       : { author: "A. D. Prakasa", source: "https://commons.wikimedia.org/wiki/File:Seongsan_Ilchulbong_cliff_facing_the_sea.jpg", license: "CC BY-SA 4.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0/" };
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const hasPhoto = photo !== null && failedPhoto !== photo;
+  if (variant === "compact") return (
+    <article className="wind-camera-card min-w-0 overflow-hidden rounded-lg border border-[#dce9df] bg-[#f7fbf7] text-[#214e3e]">
+      <button type="button" onClick={onOpen} disabled={!cctv.active}
+        aria-label={`${cctv.name} ${popup ? "새 창에서 영상 보기" : needsDetail ? "상세 페이지에서 영상과 상태 확인" : "영상과 상태 확인"}`}
+        className="wind-camera-open group flex w-full items-center gap-3 p-2.5 text-left transition-colors hover:bg-[#eaf4ed] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#285943] disabled:cursor-not-allowed disabled:opacity-60">
+        <span className="wind-camera-thumb relative block h-[74px] w-[100px] shrink-0 overflow-hidden rounded-[5px] bg-[#d9e8df]">
+          {hasPhoto ? <Image src={photo} alt="" fill sizes="100px" className="object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setFailedPhoto(photo)} />
+            : <span aria-hidden="true" className="absolute inset-0 overflow-hidden"><span className="absolute -right-5 -top-3 h-20 w-20 rounded-full border-[14px] border-[#4d7e65]/20" /><span className="absolute bottom-2 left-2 text-xl font-black text-[#37644e]/60">{cctv.direction || "JEJU"}</span></span>}
+          <span className="absolute inset-x-0 bottom-0 bg-[#123d30]/80 px-1 py-0.5 text-center text-[8px] leading-3 text-white">{hasPhoto ? "풍경 사진 · 현재 영상 아님" : "지역 그래픽 · 영상 아님"}</span>
+        </span>
+        <span className="wind-camera-copy block min-w-0 flex-1">
+          <span className="wind-camera-name block truncate text-[14px] font-extrabold leading-5 tracking-[-.035em]">{cctv.name}</span>
+          <span className="wind-camera-location mt-1 block truncate text-[10px] leading-4 text-[#648272]">{[cctv.region, cctv.category].filter(Boolean).join(" · ")}</span>
+          <span className="wind-camera-note mt-1 block text-[9px] leading-3 text-[#537763]">{!cctv.active ? "공개 대기" : popup ? "별도 창에서 확인" : needsDetail ? "상세에서 연결 정보 확인" : "재생 시 상태 확인"}</span>
+        </span>
+        <span className="wind-camera-arrow flex h-7 w-5 shrink-0 items-center justify-center text-[#537763]">{popup ? <ExternalLink size={15} strokeWidth={1.5} /> : <ArrowUpRight size={17} strokeWidth={1.5} />}</span>
+      </button>
+      <div className="wind-camera-tools flex items-center gap-2 border-t border-[#dce9df]/70 px-2.5 py-1">
+        <Link href={`/cctv/${encodeURIComponent(cctv.id)}`} className="py-1 text-[9px] font-medium text-[#537763] underline decoration-[#acc4b5] underline-offset-2">상세 정보</Link>
+        <div className="ml-auto flex items-center gap-0.5"><ShareButton title={`${cctv.name} — 제주 CCTV | FunJeju`} url={`${BASE_URL}/cctv/${encodeURIComponent(cctv.id)}`} description={cctv.description} compact /><CctvFavoriteButton id={cctv.id} label={false} /></div>
+      </div>
+      <details className="wind-camera-credit border-t border-[#dce9df]/60 px-2.5 text-[9px] leading-4 text-[#648272]">
+        <summary className="cursor-pointer py-1 focus-visible:outline-2 focus-visible:outline-[#285943]">{hasPhoto ? "이용 안내 · 풍경 사진 출처" : "이용 안내"}</summary>
+        <div className="pb-2">
+          <p>{hasPhoto ? "풍경 이미지 · 실시간 화면 아님. " : "지역 그래픽 · 실시간 화면 아님. "}영상 연결 상태는 플레이어에서 확인해 주세요.</p>
+          {popup && cctv.active && <a href={cameraWatchUrl(cctv)} target="_blank" rel="noopener noreferrer" className="mt-1 block font-bold underline underline-offset-2">팝업이 열리지 않으면 새 탭으로 보기</a>}
+          {hasPhoto && <p className="mt-1"><a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.author}</a> · <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license}</a> · 화면 비율로 자름</p>}
+        </div>
+      </details>
+    </article>
+  );
   return (
     <article className="editorial-camera-card group min-w-0 text-[#172524]">
       <button type="button" onClick={onOpen} disabled={!cctv.active} className="block w-full text-left focus-visible:rounded-[18px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#224de8] disabled:cursor-not-allowed" aria-label={`${cctv.name} ${popup ? "새 창에서 영상 보기" : needsDetail ? "상세 페이지에서 영상과 상태 확인" : "영상과 상태 확인"}`}>
