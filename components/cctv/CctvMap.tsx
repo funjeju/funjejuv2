@@ -31,7 +31,10 @@ export function CctvMap({ cctvs }: { cctvs: CctvLike[] }) {
   const [mapState, setMapState] = useState<"loading" | "ready" | "error">("loading");
   const valid = useMemo(() => cctvs.map(c => ({ ...c, lat: c.lat ?? c.latitude, lng: c.lng ?? c.longitude }))
     .filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat!) <= 90 && Math.abs(c.lng!) <= 180), [cctvs]);
-  const selected = cctvs.find(c => c.id === selectedId);
+  const selected = cctvs.find(c => c.id === selectedId && c.active !== false);
+  // Reconcile during render so the dialog disappears immediately and the discarded
+  // selection cannot reopen if filters or the published inventory later restore it.
+  if (selectedId !== null && !selected) setSelectedId(null);
 
   useEffect(() => {
     if (!KAKAO_KEY || !containerRef.current || valid.length === 0) return;
