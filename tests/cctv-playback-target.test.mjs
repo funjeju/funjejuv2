@@ -16,13 +16,39 @@ test('only known legacy IDs fall back when origin unavailable; invalid metadata 
   assert.equal(target.requiresExternalPlayback({ id: 'dodu' }), false);
   for (const originUrl of ['javascript:alert(1)', '//evil.test/a', 'bad']) assert.equal(target.requiresExternalPlayback({ id: 'sinchang', originUrl }), false);
 });
-test('viewer URL is fixed and encodes only id/name, never raw media origin or tokens', () => {
-  const url = new URL(target.cameraWatchUrl({ id: 'dodu&url=evil', name: '도두 / <a>', originUrl: 'http://secret.test/token' }));
-  assert.equal(url.origin, 'http://141.164.53.216:8080');
-  assert.equal(url.pathname, '/watch');
-  assert.deepEqual([...url.searchParams.keys()], ['id', 'name']);
-  assert.equal(url.searchParams.get('id'), 'dodu&url=evil');
+test('normal HTTP opens fixed HTTPS detail window with safe id encoding and no source tokens', () => {
+  const url = new URL(target.cameraWatchUrl({ id: 'dodu&url=evil', name: '도두 / <a>', originUrl: 'http://secret.example.test/token' }));
+  assert.equal(url.origin, 'https://funjeju.com');
+  assert.equal(url.pathname, '/cctv/dodu%26url%3Devil');
+  assert.deepEqual([...url.searchParams.keys()], ['watch']);
+  assert.equal(url.searchParams.get('watch'), '1');
   assert.ok(!url.href.includes('secret'));
+});
+test('airport Hallasan and dodu HTTP metadata select existing HTTPS page without claiming health', () => {
+  for (const id of ['jeju_airport', 'halla_baengnokdam', 'dodu']) {
+    const camera = { id, name: id, originUrl: 'http://existing.example.test/live.m3u8' };
+    assert.equal(target.requiresExternalPlayback(camera), true);
+    assert.equal(target.requiresHttpsProxyWindow(camera), true);
+    assert.equal(target.requiresDirectHttpViewer(camera), false);
+    assert.equal(target.cameraWatchUrl(camera), `https://funjeju.com/cctv/${id}?watch=1`);
+  }
+});
+test('only exact legacy HTTP provider or absent metadata known Vurix uses legacy viewer', () => {
+  for (const camera of [{ id: 'sinchang', name: 'Legacy' }, { id: 'other', name: 'Other', originUrl: 'http://59.8.86.94:8080/live/token' }]) {
+    assert.equal(target.requiresDirectHttpViewer(camera), true);
+    assert.equal(target.requiresHttpsProxyWindow(camera), false);
+    const url = new URL(target.cameraWatchUrl(camera));
+    assert.equal(url.origin, 'http://141.164.53.216:8080');
+    assert.equal(url.pathname, '/watch');
+    assert.deepEqual([...url.searchParams.keys()], ['id', 'name']);
+    assert.equal(url.searchParams.get('id'), camera.id);
+  }
+  for (const originUrl of ['http://59.8.86.94:8081/live/a', 'http://59.8.86.94:8080.evil.test/live/a', 'https://59.8.86.94:8080/live/a', 'http://other.example.test/live/a']) assert.equal(target.requiresDirectHttpViewer({ id: 'sinchang', originUrl }), false);
+  for (const camera of [{ id: 'sinchang', youtubeId: 'video', originUrl: 'http://59.8.86.94:8080/a' }, { id: 'dodu', originUrl: 'https://example.test/a' }]) {
+    assert.equal(target.requiresExternalPlayback(camera), false);
+    assert.equal(target.requiresDirectHttpViewer(camera), false);
+    assert.equal(target.requiresHttpsProxyWindow(camera), false);
+  }
 });
 test('blocked/noopener-null popup has persistent accessible safe anchor fallback', () => {
   const card = readFileSync(new URL('../components/cctv/CctvCard.tsx', import.meta.url), 'utf8');

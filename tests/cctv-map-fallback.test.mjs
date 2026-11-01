@@ -72,7 +72,7 @@ test('missing Kakao key starts keyless OSM; markers synchronously route HTTP and
   assert.equal(h.markers[0].textContent, '📷 <b>Safe name</b>');
   h.markers[0].onclick(); assert.equal(h.state[0], 'secure');
   h.markers[1].onclick(); assert.equal(h.state[0], null); assert.equal(h.popups.length, 1);
-  assert.match(h.popups[0][0], /^http:\/\/141\.164\.53\.216:8080\/watch\?/);
+  assert.equal(h.popups[0][0], 'https://funjeju.com/cctv/http?watch=1');
   assert.doesNotMatch(h.popups[0][0], /token|example.test/);
   h.unmount(); assert.equal(h.leafletRemoved, 1);
 });

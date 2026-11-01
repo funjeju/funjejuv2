@@ -7,6 +7,7 @@ import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
 import { useCctvs } from "@/hooks/useCctvs";
 import { filterCctvs } from "@/lib/cctv-explorer";
+import { cameraWatchUrl, requiresHttpsProxyWindow } from "@/lib/cctv-playback-target";
 
 const DIRECTIONS = [{ value: "", label: "제주 전체", en: "ALL" }, { value: "북", label: "북쪽", en: "NORTH" }, { value: "동", label: "동쪽", en: "EAST" }, { value: "남", label: "남쪽", en: "SOUTH" }, { value: "서", label: "서쪽", en: "WEST" }];
 
@@ -20,6 +21,11 @@ export function CctvExplorer() {
   const filtered = filterCctvs(cctvs, { query, direction, category });
   const categories = [...new Set(cctvs.map((c) => c.category))].sort();
   const activeFilters = !!(query || direction || category);
+  const quickViews = !activeFilters && !loading && !error
+    ? ["jeju_airport", "halla_baengnokdam"].flatMap(id => {
+      const camera = cctvs.find(c => c.id === id && c.active && requiresHttpsProxyWindow(c));
+      return camera ? [camera] : [];
+    }) : [];
 
   function update(values: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
@@ -64,6 +70,7 @@ export function CctvExplorer() {
         </div>
         <div className="editorial-filter-row"><div className="editorial-directions" aria-label="제주 방향">{DIRECTIONS.map(({ value, label, en }) => <button type="button" key={value} onClick={() => update({ direction: value })} aria-pressed={direction === value}><span>{label}</span><small>{en}</small></button>)}</div><label className="editorial-category"><SlidersHorizontal size={15} /><span className="sr-only">카메라 종류</span><select value={category} onChange={e => update({ category: e.target.value })}><option value="">모든 풍경</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label></div>
         <div className="editorial-results-note"><p role="status">{loading ? "카메라 목록을 불러오는 중" : error ? "목록 연결을 확인해주세요" : <><strong>{filtered.length}</strong>개의 카메라 <span>· 재생 상태는 영상을 열어 확인해 주세요</span></>}</p>{activeFilters ? <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}><X size={13} />필터 초기화</button> : <span className="editorial-list-hint">CLICK A VIEW, FEEL JEJU.</span>}</div>
+        {quickViews.length > 0 && <nav aria-label="자주 찾는 풍경 새 창 보기" className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-4"><span className="mr-2 text-xs font-bold">자주 찾는 풍경</span>{quickViews.map(camera => <a key={camera.id} href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#172524] px-4 py-2 text-xs font-bold text-[#d9ff60]">{camera.name} · 새 창 <ArrowUpRight size={14} aria-hidden="true" /></a>)}</nav>}
         {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="editorial-empty"><Camera size={32} strokeWidth={1.2} /><h3>목록 연결이 잠시 쉬고 있어요.</h3><p>카메라 고장으로 판단한 것은 아닙니다.<br />잠시 후 목록을 다시 불러와 주세요.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="editorial-empty"><Search size={32} strokeWidth={1.2} /><h3>{activeFilters ? "아직 찾지 못한 제주의 한 장면." : "카메라 목록을 준비하고 있어요."}</h3><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "기존 기록을 삭제하지 않고 목록 연결을 확인하고 있습니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : view === "map" ? <CctvMap cctvs={filtered} /> : <CctvList cctvs={filtered} />}
       </section>
 

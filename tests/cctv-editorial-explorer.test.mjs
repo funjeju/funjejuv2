@@ -4,11 +4,12 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
 import { filterCctvs } from '../lib/cctv-explorer.ts';
+import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 const a={id:'a',name:'해변 A',region:'제주시',direction:'북',category:'해변',description:'바다',active:true};
 const b={id:'b',name:'산 B',region:'서귀포시',direction:'남',category:'산',description:'한라산',active:true};
 function harness(search='',state={cctvs:[a,b],loading:false,error:null}) {
  const jsx=(type,props)=>({type,props});let replaced;
- const stubs={'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{useSearchParams:()=>new URLSearchParams(search)},'next/image':{default:'image'},'next/link':{default:'link'},'lucide-react':new Proxy({},{get:(_,name)=>String(name)}),'@/components/cctv/CctvList':{CctvList:'list'},'@/components/cctv/CctvMap':{CctvMap:'map'},'@/hooks/useCctvs':{useCctvs:()=>state},'@/lib/cctv-explorer':{filterCctvs}};
+ const stubs={'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{useSearchParams:()=>new URLSearchParams(search)},'next/image':{default:'image'},'next/link':{default:'link'},'lucide-react':new Proxy({},{get:(_,name)=>String(name)}),'@/components/cctv/CctvList':{CctvList:'list'},'@/components/cctv/CctvMap':{CctvMap:'map'},'@/hooks/useCctvs':{useCctvs:()=>state},'@/lib/cctv-explorer':{filterCctvs},'@/lib/cctv-playback-target':loadPlaybackTarget()};
  const code=ts.transpileModule(readFileSync(new URL('../components/cctv/CctvExplorer.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const mod={exports:{}};
  vm.runInNewContext(code,{module:mod,exports:mod.exports,URLSearchParams,window:{history:{replaceState:(_a,_b,url)=>{replaced=url}},location:{pathname:'/cctv'},matchMedia:()=>({matches:true})},document:{getElementById:()=>({scrollIntoView:()=>{}})},require:name=>{assert.ok(name in stubs,`Unexpected ${name}`);return stubs[name]}});
@@ -53,4 +54,16 @@ test('public header hides multiview without removing legacy route implementation
  for(const href of ['/cctv','/cctv?view=map','/search'])assert.ok(all.some(n=>n.props?.href===href));
  assert.ok(all.some(n=>n.type==='auth'));assert.ok(all.some(n=>n.type==='language'));
  assert.ok(readFileSync(new URL('../app/cctv/multiview/page.tsx',import.meta.url),'utf8').includes('export default'));
+});
+
+test('quick links use only existing active ordinary-HTTP cameras and actual canonical new-window URLs',()=>{
+ const airport={...a,id:'jeju_airport',name:'제주공항',originUrl:'http://example.test/a'};
+ const summit={...b,id:'halla_baengnokdam',name:'백록담',originUrl:'http://example.test/b'};
+ const state={cctvs:[airport,summit],loading:false,error:null};
+ const h=harness('',state);const links=h.all.filter(n=>n.type==='a'&&n.props.href?.includes('?watch=1'));
+ assert.deepEqual(links.map(n=>n.props.href),['https://funjeju.com/cctv/jeju_airport?watch=1','https://funjeju.com/cctv/halla_baengnokdam?watch=1']);
+ for(const link of links){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer')}
+ for(const cctvs of [[],[{...airport,active:false}],[{...airport,youtubeId:'video'}],[{...airport,originUrl:'https://example.test/a'}]])assert.equal(harness('',{...state,cctvs}).all.some(n=>n.props?.href?.includes('?watch=1')),false);
+ assert.equal(harness('q=바다',state).all.some(n=>n.props?.['aria-label']==='자주 찾는 풍경 새 창 보기'),false);
+ assert.equal(harness('',{...state,error:'unavailable'}).all.some(n=>n.props?.href?.includes('?watch=1')),false);
 });

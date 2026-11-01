@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { VurixLaunch } from "@/components/cctv/VurixLaunch";
-import { requiresExternalPlayback } from "@/lib/cctv-playback-target";
+import { requiresDirectHttpViewer, requiresExternalPlayback } from "@/lib/cctv-playback-target";
+import { HttpsCameraWindow } from "@/components/cctv/HttpsCameraWindow";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { LiveChat } from "@/components/cctv/LiveChat";
@@ -200,7 +201,9 @@ export default async function CctvDetailPage({ params }: Props) {
           ) : cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
           ) : requiresExternalPlayback(cctv) ? (
-            <VurixLaunch id={cctv.id} name={cctv.name} />
+            requiresDirectHttpViewer(cctv)
+              ? <VurixLaunch id={cctv.id} name={cctv.name} originUrl={cctv.originUrl} />
+              : <HttpsCameraWindow id={cctv.id} name={cctv.name} originUrl={cctv.originUrl} proxyUrl={streamProxyUrl} />
           ) : (
             <HlsPlayer
               proxyUrl={streamProxyUrl}

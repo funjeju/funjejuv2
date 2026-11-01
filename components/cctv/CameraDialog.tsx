@@ -45,7 +45,7 @@ export function CameraDialog({ camera, onClose }: { camera: DialogCamera; onClos
       <div className="bg-[#101a19]">
         {camera.active === false ? <p role="status" className="p-10 text-center text-white">점검 또는 임시 오류로 재생이 중단되었어요.</p>
           : camera.youtubeId ? <YoutubePlayer key={playbackKey} youtubeId={camera.youtubeId} title={camera.name} />
-          : requiresExternalPlayback(camera) ? <VurixLaunch key={playbackKey} id={camera.id} name={camera.name} />
+          : requiresExternalPlayback(camera) ? <VurixLaunch key={playbackKey} id={camera.id} name={camera.name} originUrl={camera.originUrl} />
           : <HlsPlayer key={playbackKey} proxyUrl={proxyUrl} label={camera.name} cctvId={camera.id} cctvName={camera.name} />}
       </div>
       <div className="px-5 py-5 sm:px-7"><p className="mb-4 text-xs leading-5 text-[#52605a]">영상 연결과 재생 상태는 플레이어에서 확인해 주세요. 현장 통신 상황에 따라 지연되거나 중단될 수 있어요.</p><div className="flex items-center gap-3">

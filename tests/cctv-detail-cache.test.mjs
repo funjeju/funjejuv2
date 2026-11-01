@@ -64,7 +64,7 @@ test('real detail page AND metadata propagate unavailable instead of creating in
   const noop = () => null;
   const component = new Proxy({}, { get: () => noop });
   const imports = [
-    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/lib/cctv-playback-target',
+    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/lib/cctv-playback-target',
     '@/components/cctv/YoutubePlayer', '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat',
     '@/components/common/DolmangyiIcon', '@/constants/cctv-seo', '@/lib/cctv-location', '@/types/cctv-location',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
@@ -124,7 +124,7 @@ test('installed Next ISR keeps last successful value with bounded retry, then re
 test('real detail page sends HTTP metadata to separate viewer, never embedded HLS', async () => {
   const { loadPlaybackTarget } = await import('./helpers/load-playback-target.mjs');
   const imports = [
-    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/YoutubePlayer',
+    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/components/cctv/YoutubePlayer',
     '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat', '@/components/common/DolmangyiIcon',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
     '@/lib/i18n',
@@ -143,13 +143,13 @@ test('real detail page sends HTTP metadata to separate viewer, never embedded HL
   const page = compile('../app/cctv/[id]/page.tsx', stubs);
   const nodes = value => !value || typeof value !== 'object' ? [] : Array.isArray(value) ? value.flatMap(nodes) : [value, ...nodes(value.props?.children)];
   for (const [update, expected] of [
-    [{ originUrl: 'http://example.test/live.m3u8' }, 'VurixLaunch'],
+    [{ originUrl: 'http://example.test/live.m3u8' }, 'HttpsCameraWindow'],
     [{ originUrl: 'https://example.test/live.m3u8' }, 'HlsPlayer'],
     [{ originUrl: 'http://example.test/live.m3u8', youtubeId: 'video' }, 'YoutubePlayer'],
     [{ active: false }, null],
   ]) {
     camera = { ...entry, id: 'dodu', ...update };
-    const players = nodes(await page.default({ params: Promise.resolve({ id: 'dodu' }) })).filter(n => ['HlsPlayer', 'VurixLaunch', 'YoutubePlayer'].includes(n.type));
+    const players = nodes(await page.default({ params: Promise.resolve({ id: 'dodu' }) })).filter(n => ['HlsPlayer', 'VurixLaunch', 'YoutubePlayer', 'HttpsCameraWindow'].includes(n.type));
     assert.deepEqual(players.map(n => n.type), expected ? [expected] : []);
   }
 });

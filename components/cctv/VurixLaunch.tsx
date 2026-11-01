@@ -1,14 +1,16 @@
 "use client";
 
-import { openVurixWatch, vurixWatchUrl } from "@/constants/vurix";
+import { openCameraWatch, cameraWatchUrl, requiresDirectHttpViewer } from "@/lib/cctv-playback-target";
 
-/** HTTP 카메라 런처 — 고정된 별도 HTTP 뷰어에서 재생을 시도. */
-export function VurixLaunch({ id, name }: { id: string; name: string }) {
+/** 별도 창 런처 — 일반 카메라는 기존 HTTPS 상세 플레이어를 사용. */
+export function VurixLaunch({ id, name, originUrl }: { id: string; name: string; originUrl?: string }) {
+  const camera = { id, name, originUrl };
+  const direct = requiresDirectHttpViewer(camera);
   return (
     <div className="px-4 md:px-0">
       <button
         type="button"
-        onClick={() => openVurixWatch(id, name)}
+        onClick={() => openCameraWatch(camera)}
         className="group relative block w-full overflow-hidden rounded-2xl border border-[#2b2f37] bg-black md:rounded-2xl"
         style={{ aspectRatio: "16 / 9" }}
         aria-label={`${name} 새 창에서 영상 보기`}
@@ -37,8 +39,8 @@ export function VurixLaunch({ id, name }: { id: string; name: string }) {
         </span>
       </button>
       <p className="mt-2 text-center text-[11px] text-text-secondary">
-        HTTP 원본 영상은 별도 창에서 열립니다. 제공처 오류·브라우저 정책에 따라 재생되지 않을 수 있어요.
-        <a href={vurixWatchUrl(id, name)} target="_blank" rel="noopener noreferrer" className="mt-2 block underline">팝업이 열리지 않으면 새 탭으로 보기</a>
+        {direct ? "별도 HTTP 뷰어에서 재생을 시도합니다. 보안 경고가 표시되면 진행하지 마세요." : "기존 HTTPS 영상 페이지를 별도 창에서 엽니다."} 제공처 오류·브라우저 정책에 따라 재생되지 않을 수 있어요.
+        <a href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" className="mt-2 block underline">팝업이 열리지 않으면 새 탭으로 보기</a>
       </p>
     </div>
   );
