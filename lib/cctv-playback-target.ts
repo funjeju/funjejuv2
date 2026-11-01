@@ -38,7 +38,7 @@ export function requiresHttpsProxyWindow(camera: PlaybackCamera): boolean {
 export function cameraWatchUrl(camera: PlaybackCamera & { name: string }): string {
   return requiresDirectHttpViewer(camera)
     ? vurixWatchUrl(camera.id, camera.name)
-    : `https://funjeju.com/cctv/${encodeURIComponent(camera.id)}?watch=1`;
+    : `/cctv/watch/${encodeURIComponent(camera.id)}`;
 }
 
 /** Synchronous user gesture only. The always-visible anchor is the popup fallback;

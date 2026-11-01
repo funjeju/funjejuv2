@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, type DragEvent } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ShareButton } from "@/components/common/ShareButton";
-import { useCctvs } from "@/hooks/useCctvs";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
@@ -368,7 +368,7 @@ export default function MultiviewPage() {
     if (CCTV_FOCUSED_PUBLIC) return;
     fetch("/api/spot/recent?limit=3").then((r) => r.json()).then((d) => setSpotGames(d.games ?? [])).catch(() => {});
   }, []);
-  const { cctvs } = useCctvs(); // 목록 페이지와 같은 공개 Firestore 소스
+  const { cctvs } = usePublicCctvs(); // 목록 페이지와 같은 공개 Firestore 소스
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);

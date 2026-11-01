@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common/PageHeader";
-import { CctvList } from "@/components/cctv/CctvList";
+import { PublicRegionCctvs } from "@/components/cctv/PublicRegionCctvs";
 import { mockCctvs } from "@/constants/mock-cctvs";
 
 type Props = { params: Promise<{ region: string }> };
@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cctvs = mockCctvs.filter((c) => c.region === region);
   if (cctvs.length === 0) return { title: "지역 정보 없음 | FunJeju" };
 
-  const title = `${region} 실시간 CCTV ${cctvs.length}곳 - 제주 라이브캠 | FunJeju`;
-  const description = `${region}의 실시간 CCTV ${cctvs.length}개 한눈에 보기. ${cctvs.slice(0, 5).map((c) => c.name).join(", ")} 등 ${region} 라이브캠으로 지금 제주 날씨와 현장을 확인하세요.`;
+  const title = `${region} CCTV 장소 안내 | FunJeju`;
+  const description = `${region}의 CCTV 장소 정보. 최근 영상 재생을 확인한 카메라만 목록에 공개하며 나머지 기록은 보존합니다.`;
 
   return {
     title,
@@ -59,21 +59,6 @@ export default async function RegionPage({ params }: Props) {
 
   const categories = [...new Set(cctvs.map((c) => c.category))];
 
-  // JSON-LD: ItemList
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `${region} 실시간 CCTV`,
-    description: `${region}의 모든 실시간 CCTV 목록`,
-    numberOfItems: cctvs.length,
-    itemListElement: cctvs.map((c, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      name: c.name,
-      url: `${SITE_URL}/cctv/${c.id}`,
-    })),
-  };
-
   const breadcrumbLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -86,7 +71,6 @@ export default async function RegionPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-screen-xl px-0 md:px-4 md:py-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <nav aria-label="breadcrumb" className="px-4 pb-3 md:px-0">
@@ -101,7 +85,7 @@ export default async function RegionPage({ params }: Props) {
 
       <PageHeader
         title={`${region} 실시간 CCTV`}
-        subtitle={`${region}의 ${cctvs.length}개 CCTV를 한눈에`}
+        subtitle="최근 재생 확인을 마친 카메라만 공개합니다"
         emoji="📷"
         right={
           <Link href="/cctv" className="text-xs font-medium text-brand-orange">
@@ -116,8 +100,8 @@ export default async function RegionPage({ params }: Props) {
           {region} 라이브캠 안내
         </h2>
         <p className="mt-2 text-xs leading-6 text-text-primary">
-          {region}의 {cctvs.length}개 실시간 CCTV를 통해 지금 이 순간의 {region} 모습을 확인하세요.
-          {" "}{categories.join(", ")} 등 다양한 카테고리의 라이브 영상을 제공합니다.
+          {region}의 CCTV 장소 기록을 보존하고 있습니다.
+          {" "}영상 목록에는 최근 재생을 확인한 카메라만 표시합니다.
           여행 전 날씨와 물때를 미리 체크할 수 있어 효율적인 일정 계획이 가능합니다.
         </p>
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -133,7 +117,7 @@ export default async function RegionPage({ params }: Props) {
       </section>
 
       <div className="px-4 md:px-0">
-        <CctvList cctvs={cctvs} />
+        <PublicRegionCctvs region={region} />
       </div>
 
       {/* 인근 지역 추천 */}

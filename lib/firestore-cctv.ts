@@ -28,6 +28,7 @@ function toEntry(id: string, data: DocumentData): CctvEntry {
     originUrl: data.originUrl ?? "",
     youtubeId: data.youtubeId || undefined,
     active: !!data.active,
+    proxySyncPending: data.proxySyncPending === true,
     description: data.description ?? "",
     lat: data.lat,
     lng: data.lng,
@@ -36,14 +37,18 @@ function toEntry(id: string, data: DocumentData): CctvEntry {
 }
 
 /** 활성 CCTV 실시간 구독 (공개) */
-export function subscribeCctvs(callback: (entries: CctvEntry[]) => void, onError?: (error: Error) => void) {
+export function subscribeCctvs(callback: (entries: CctvEntry[]) => void, onError?: (error: Error) => void, requireServer = false) {
   const db = getFirebaseDb();
   const q = query(
     collection(db, "cctvs"),
     where("active", "==", true),
     orderBy("name")
   );
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(q, { includeMetadataChanges: requireServer }, (snap) => {
+    if (requireServer && (snap.metadata.fromCache || snap.metadata.hasPendingWrites)) {
+      onError?.(new Error("Current server inventory has not been confirmed."));
+      return;
+    }
     const entries = snap.docs.map((d) => toEntry(d.id, d.data()));
     // YouTube 항목 최상단 정렬
     entries.sort((a, b) => {

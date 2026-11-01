@@ -15,6 +15,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   usePageViewTracker(); // 페이지 이동마다 자동 기록
 
+  // The user-opened camera window is deliberately video-only on this origin.
+  if (pathname.startsWith("/cctv/watch/")) {
+    return <LangProvider><main id="main-content" className="min-h-dvh bg-[#071413] text-white">{children}</main></LangProvider>;
+  }
+
   if (pathname.startsWith("/admin")) {
     return <div className="min-h-screen bg-bg-primary">{children}</div>;
   }

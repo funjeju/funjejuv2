@@ -14,6 +14,7 @@ function docToEntry(id: string, data: Record<string, unknown>): CctvEntry {
     originUrl: (data.originUrl as string) ?? "",
     youtubeId: (data.youtubeId as string) || undefined,
     active: !!data.active,
+    proxySyncPending: data.proxySyncPending === true,
     description: (data.description as string) ?? "",
     lat: data.lat as number,
     lng: data.lng as number,

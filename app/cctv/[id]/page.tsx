@@ -1,3 +1,6 @@
+import { cctvSourceRevision } from "@/lib/cctv-review";
+import { PublicPlaybackBoundary } from "@/components/cctv/PublicPlaybackBoundary";
+import { filterLaunchCameras, isLaunchCameraVisible } from "@/lib/cctv-launch-policy";
 import type { Metadata } from "next";
 import { cache } from "react";
 import Link from "next/link";
@@ -53,6 +56,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cctv = await loadCctv(id);
   if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
 
+  if (!await isLaunchCameraVisible(cctv)) return { title: `${cctv.name} 장소 안내 | FunJeju`, description: "재생 확인 전까지 영상 공개를 보류합니다. 장소 기록은 보존됩니다.", robots: { index: false, follow: true } };
+
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
   const url = `${SITE_URL}/cctv/${id}`;
 
@@ -104,7 +109,8 @@ export default async function CctvDetailPage({ params }: Props) {
     : [];
 
   // Only authoritative published cameras are suggested.
-  const finalNearby = await getNearbyCctvs(cctv.region, cctv.id, 3);
+  const finalNearby = await filterLaunchCameras(await getNearbyCctvs(cctv.region, cctv.id, 12));
+  const publiclyVisible = await isLaunchCameraVisible(cctv);
 
   // 날씨·조석은 CctvLiveInfo가 브라우저에서 /api/weather로 라이브 호출한다.
   // (서버에서 미리 fetch해 HTML에 박으면 ISR 캐시에 옛 날씨가 굳어버리므로 제거)
@@ -143,7 +149,7 @@ export default async function CctvDetailPage({ params }: Props) {
   };
 
   // Published video metadata does not imply verified, uninterrupted live playback.
-  const videoLd = loc && cctv.active ? {
+  const videoLd = loc && publiclyVisible ? {
     "@context": "https://schema.org",
     "@type": "VideoObject",
     name: `${loc.formal} 실시간 CCTV — 지금 제주 ${loc.formal} 날씨`,
@@ -192,7 +198,8 @@ export default async function CctvDetailPage({ params }: Props) {
         <div className="min-w-0 flex-1 space-y-4">
 
           {/* 플레이어 — YouTube / HTTP 원본(별도 새 창) / HTTPS HLS */}
-          {!cctv.active ? (
+          <PublicPlaybackBoundary id={cctv.id} sourceRevision={cctvSourceRevision(cctv)}>
+          {!publiclyVisible ? (
             <div role="status" className="rounded-2xl border border-border-soft bg-bg-secondary p-10 text-center">
               <p className="font-bold">현재 영상을 확인할 수 없어요</p>
               <p className="mt-2 text-sm text-text-secondary">점검 또는 임시 오류로 재생을 잠시 중단했어요. 장소 정보와 주소는 그대로 유지됩니다.</p>
@@ -213,11 +220,13 @@ export default async function CctvDetailPage({ params }: Props) {
             />
           )}
 
+          </PublicPlaybackBoundary>
+
           {/* 모바일: 영상 바로 아래 최근 틀린그림 배너 */}
           {!CCTV_FOCUSED_PUBLIC && <RecentGameBanner games={spotGames} className="lg:hidden" />}
 
           {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
-          {cctv.active && !cctv.youtubeId && (
+          {publiclyVisible && !cctv.youtubeId && (
             <div className="px-4 md:px-0">
               <BetaPlanNotice />
             </div>
@@ -239,7 +248,7 @@ export default async function CctvDetailPage({ params }: Props) {
 
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
               <span className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
-                {!cctv.active ? "점검 · 임시 오류" : cctv.youtubeId ? "YouTube · 재생 시 확인" : requiresExternalPlayback(cctv) ? "새 창에서 재생 확인" : "재생 상태는 플레이어에서 확인"}
+                {!publiclyVisible ? "재생 확인 전 · 비공개" : cctv.youtubeId ? "YouTube · 재생 시 확인" : requiresExternalPlayback(cctv) ? "새 창에서 재생 확인" : "재생 상태는 플레이어에서 확인"}
               </span>
               {[cctv.category, cctv.region].map((tag) => (
                 <span key={tag} className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">

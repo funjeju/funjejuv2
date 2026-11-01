@@ -9,7 +9,7 @@ const a={id:'a',name:'해변 A',region:'제주시',direction:'북',category:'해
 const b={id:'b',name:'산 B',region:'서귀포시',direction:'남',category:'산',description:'한라산',active:true};
 function harness(search='',state={cctvs:[a,b],loading:false,error:null}) {
  const jsx=(type,props)=>({type,props});let replaced;
- const stubs={'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{useSearchParams:()=>new URLSearchParams(search)},'next/image':{default:'image'},'next/link':{default:'link'},'lucide-react':new Proxy({},{get:(_,name)=>String(name)}),'@/components/cctv/CctvList':{CctvList:'list'},'@/components/cctv/CctvMap':{CctvMap:'map'},'@/hooks/useCctvs':{useCctvs:()=>state},'@/lib/cctv-explorer':{filterCctvs},'@/lib/cctv-playback-target':loadPlaybackTarget()};
+ const stubs={'@/constants/cctv-launch-observations':{CCTV_LAUNCH_OBSERVATIONS:[{observedAt:'2026-11-01T16:32:47.392Z'}]},'react/jsx-runtime':{jsx,jsxs:jsx},'next/navigation':{useSearchParams:()=>new URLSearchParams(search)},'next/image':{default:'image'},'next/link':{default:'link'},'lucide-react':new Proxy({},{get:(_,name)=>String(name)}),'@/components/cctv/CctvList':{CctvList:'list'},'@/components/cctv/CctvMap':{CctvMap:'map'},'@/hooks/usePublicCctvs':{usePublicCctvs:()=>state},'@/lib/cctv-explorer':{filterCctvs},'@/lib/cctv-playback-target':loadPlaybackTarget()};
  const code=ts.transpileModule(readFileSync(new URL('../components/cctv/CctvExplorer.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const mod={exports:{}};
  vm.runInNewContext(code,{module:mod,exports:mod.exports,URLSearchParams,window:{history:{replaceState:(_a,_b,url)=>{replaced=url}},location:{pathname:'/cctv'},matchMedia:()=>({matches:true})},document:{getElementById:()=>({scrollIntoView:()=>{}})},require:name=>{assert.ok(name in stubs,`Unexpected ${name}`);return stubs[name]}});
@@ -17,7 +17,7 @@ function harness(search='',state={cctvs:[a,b],loading:false,error:null}) {
  function nodes(value){if(!value||typeof value!=='object')return[];if(Array.isArray(value))return value.flatMap(nodes);return [value,...nodes(value.props?.children)]}
  return {all:nodes(tree),url:()=>replaced};
 }
-test('editorial launch preserves active inventory without requiring new health metadata',()=>{
+test('editorial explorer renders hook-provided inventory and excludes disabled entries',()=>{
  const h=harness('',{cctvs:[a,b,{...a,id:'disabled',active:false}],loading:false,error:null});
  assert.deepEqual(h.all.find(n=>n.type==='list').props.cctvs.map(c=>c.id),['a','b']);
 });
@@ -60,10 +60,50 @@ test('quick links use only existing active ordinary-HTTP cameras and actual cano
  const airport={...a,id:'jeju_airport',name:'제주공항',originUrl:'http://example.test/a'};
  const summit={...b,id:'halla_baengnokdam',name:'백록담',originUrl:'http://example.test/b'};
  const state={cctvs:[airport,summit],loading:false,error:null};
- const h=harness('',state);const links=h.all.filter(n=>n.type==='a'&&n.props.href?.includes('?watch=1'));
- assert.deepEqual(links.map(n=>n.props.href),['https://funjeju.com/cctv/jeju_airport?watch=1','https://funjeju.com/cctv/halla_baengnokdam?watch=1']);
+ const h=harness('',state);const links=h.all.filter(n=>n.type==='a'&&n.props.href?.startsWith('/cctv/watch/'));
+ assert.deepEqual(links.map(n=>n.props.href),['/cctv/watch/jeju_airport','/cctv/watch/halla_baengnokdam']);
  for(const link of links){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer')}
- for(const cctvs of [[],[{...airport,active:false}],[{...airport,youtubeId:'video'}],[{...airport,originUrl:'https://example.test/a'}]])assert.equal(harness('',{...state,cctvs}).all.some(n=>n.props?.href?.includes('?watch=1')),false);
- assert.equal(harness('q=바다',state).all.some(n=>n.props?.['aria-label']==='자주 찾는 풍경 새 창 보기'),false);
- assert.equal(harness('',{...state,error:'unavailable'}).all.some(n=>n.props?.href?.includes('?watch=1')),false);
+ for(const cctvs of [[],[{...airport,active:false}],[{...airport,youtubeId:'video'}],[{...airport,originUrl:'https://example.test/a'}]])assert.equal(harness('',{...state,cctvs}).all.some(n=>n.props?.href?.startsWith('/cctv/watch/')),false);
+ assert.equal(harness('q=바다',state).all.some(n=>n.props?.['aria-label']==='최근 재생 확인 카메라 새 창 보기'),false);
+ assert.equal(harness('',{...state,error:'unavailable'}).all.some(n=>n.props?.href?.startsWith('/cctv/watch/')),false);
+});
+
+
+test('quick-view labels remain visible and named when source names are blank',()=>{
+ const airport={...a,id:'jeju_airport',name:'   ',originUrl:'http://example.test/a'};
+ const summit={...b,id:'halla_baengnokdam',name:'',originUrl:'http://example.test/b'};
+ const h=harness('',{cctvs:[airport,summit],loading:false,error:null});
+ const links=h.all.filter(n=>n.type==='a'&&n.props.className==='editorial-quick-link');
+ assert.equal(links.length,2);
+ assert.deepEqual(links.map(n=>n.props.children[0].props.children),['제주공항','한라산 백록담']);
+ assert.deepEqual(links.map(n=>n.props['aria-label']),['제주공항 새 창에서 보기','한라산 백록담 새 창에서 보기']);
+ assert.ok(h.all.some(n=>n.props?.className==='editorial-quick-heading'&&n.props.children==='최근 재생 확인 · 빠르게 보기'));
+});
+
+test('quick-link scoped unlayered colors defeat global anchor reset and meet WCAG AA',()=>{
+ const css=readFileSync(new URL('../app/globals.css',import.meta.url),'utf8');
+ assert.match(css,/a\s*\{\s*color:\s*inherit/);
+ const normal=css.match(/\.editorial-explorer a\.editorial-quick-link,\s*\.editorial-explorer a\.editorial-quick-link:visited\s*\{([^}]+)\}/)[1];
+ const focus=css.match(/\.editorial-explorer a\.editorial-quick-link:hover,\s*\.editorial-explorer a\.editorial-quick-link:focus-visible\s*\{([^}]+)\}/)[1];
+ const luminance=hex=>{
+  const rgb=hex.match(/[a-f0-9]{2}/gi).map(v=>parseInt(v,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+  return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];
+ };
+ for(const rule of [normal,focus]) {
+  const foreground=rule.match(/(?:^|[;\s])color:\s*(#[a-f0-9]{6})/)[1];
+  const background=rule.match(/background:\s*(#[a-f0-9]{6})/)[1];
+  const values=[luminance(foreground),luminance(background)].sort((a,b)=>b-a);
+  assert.ok((values[0]+.05)/(values[1]+.05)>=4.5,'13px text must meet AA contrast');
+ }
+ assert.match(normal,/min-height:\s*44px/);
+});
+
+test('empty public selection explains verification filter without claiming perpetual live health',()=>{
+ const h=harness('',{cctvs:[],loading:false,error:null});
+ assert.ok(h.all.some(n=>n.type==='h3'&&n.props.children==='최근 재생이 확인된 카메라가 아직 없어요.'));
+ assert.ok(h.all.some(n=>n.type==='p'&&n.props.children==='미확인 카메라는 공개 목록에서 제외했어요. 확인된 영상이 준비되면 표시됩니다.'));
+});
+
+test("launch observation time is visible without claiming continuous health",()=>{
+ const h=harness();assert.ok(h.all.some(n=>n.type==='time'&&n.props.dateTime==='2026-11-01T16:32:47.392Z'));
 });

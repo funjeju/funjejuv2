@@ -21,7 +21,7 @@ test('launcher uses same safe HTTPS destination for explicit click and blocked-p
   assert.equal(app.calls.length, 0, 'render never launches popup');
   const [button, paragraph] = tree.props.children;
   const anchor = paragraph.props.children.find(child => child?.type === 'a');
-  assert.equal(anchor.props.href, 'https://funjeju.com/cctv/jeju_airport?watch=1');
+  assert.equal(anchor.props.href, '/cctv/watch/jeju_airport');
   assert.equal(anchor.props.target, '_blank'); assert.equal(anchor.props.rel, 'noopener noreferrer');
   button.props.onClick();
   assert.equal(app.calls.length, 1);
@@ -36,5 +36,5 @@ test('launcher keeps exact-provider legacy route and never auto-opens during sou
   const changed = app.render({ id: 'sinchang', name: 'Legacy', originUrl: 'http://other.example.test/a' });
   assert.equal(app.calls.length, 1);
   changed.props.children[0].props.onClick();
-  assert.equal(app.calls[1][0], 'https://funjeju.com/cctv/sinchang?watch=1');
+  assert.equal(app.calls[1][0], '/cctv/watch/sinchang');
 });

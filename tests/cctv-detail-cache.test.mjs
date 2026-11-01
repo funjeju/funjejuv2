@@ -64,7 +64,7 @@ test('real detail page AND metadata propagate unavailable instead of creating in
   const noop = () => null;
   const component = new Proxy({}, { get: () => noop });
   const imports = [
-    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/lib/cctv-playback-target',
+    '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/lib/cctv-playback-target',
     '@/components/cctv/YoutubePlayer', '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat',
     '@/components/common/DolmangyiIcon', '@/constants/cctv-seo', '@/lib/cctv-location', '@/types/cctv-location',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
@@ -78,6 +78,8 @@ test('real detail page AND metadata propagate unavailable instead of creating in
     'next/navigation': { notFound: () => { throw new Error('should not return 404 for unavailable'); } },
     '@/lib/firestore-cctv-server': { lookupCctvById: async () => ({ state: 'unavailable' }) },
     '@/lib/cctv-detail': { resolveCctvDetail },
+    '@/lib/cctv-review': { cctvSourceRevision: () => 'synthetic-revision' },
+    '@/lib/cctv-launch-policy': { isLaunchCameraVisible: async camera => camera.active, filterLaunchCameras: async rows => rows },
     '@/constants/mock-cctvs': { mockCctvs: [legacy] },
     '@/constants/public-features': { CCTV_FOCUSED_PUBLIC: true },
   });
@@ -124,7 +126,7 @@ test('installed Next ISR keeps last successful value with bounded retry, then re
 test('real detail page sends HTTP metadata to separate viewer, never embedded HLS', async () => {
   const { loadPlaybackTarget } = await import('./helpers/load-playback-target.mjs');
   const imports = [
-    '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/components/cctv/YoutubePlayer',
+    '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/components/cctv/YoutubePlayer',
     '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat', '@/components/common/DolmangyiIcon',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
     '@/lib/i18n',
@@ -135,7 +137,9 @@ test('real detail page sends HTTP metadata to separate viewer, never embedded HL
     react: { cache: fn => fn }, 'react/jsx-runtime': require('react/jsx-runtime'), 'next/link': 'Link',
     'next/navigation': { notFound: () => { throw new Error('notFound'); } },
     '@/lib/firestore-cctv-server': { lookupCctvById: async () => ({ state: 'found', entry: camera }), getNearbyCctvs: async () => [] },
-    '@/lib/cctv-detail': { resolveCctvDetail }, '@/lib/cctv-playback-target': loadPlaybackTarget(),
+    '@/lib/cctv-detail': { resolveCctvDetail },
+    '@/lib/cctv-review': { cctvSourceRevision: () => 'synthetic-revision' },
+    '@/lib/cctv-launch-policy': { isLaunchCameraVisible: async camera => camera.active, filterLaunchCameras: async rows => rows }, '@/lib/cctv-playback-target': loadPlaybackTarget(),
     '@/constants/mock-cctvs': { mockCctvs: [] }, '@/constants/public-features': { CCTV_FOCUSED_PUBLIC: true },
     '@/constants/cctv-seo': { getCctvSeo: () => ({ intro: '', tips: [], nearby: [] }) },
     '@/lib/cctv-location': { getLocation: async () => null }, '@/types/cctv-location': {}, '@/lib/spot': {},

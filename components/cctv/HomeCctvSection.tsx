@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
-import { mockCctvs } from "@/constants/mock-cctvs";
-import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
+import { CctvList } from "@/components/cctv/CctvList";
 
 export function HomeCctvSection() {
   const { favoriteIds } = useCctvFavorite();
+  const { cctvs, loading, error } = usePublicCctvs();
+  const visible = error || loading ? [] : cctvs;
 
   // 즐겨찾기한 CCTV가 있으면 우선 표시, 없으면 기본 첫 2개
-  const savedCctvs = mockCctvs.filter((c) => favoriteIds.has(c.id));
-  const displayCctvs = savedCctvs.length > 0 ? savedCctvs.slice(0, 4) : mockCctvs.slice(0, 2);
+  const savedCctvs = visible.filter((c) => favoriteIds.has(c.id));
+  const displayCctvs = savedCctvs.length > 0 ? savedCctvs.slice(0, 4) : visible.slice(0, 2);
   const isPersonalized = savedCctvs.length > 0;
 
   return (
@@ -20,7 +22,7 @@ export function HomeCctvSection() {
           {isPersonalized ? (
             <>내 즐겨찾기 CCTV <span className="text-brand-orange">⭐</span></>
           ) : (
-            "실시간 제주 CCTV"
+            "제주 CCTV"
           )}
         </h2>
         <Link href="/cctv" className="text-xs font-medium text-brand-orange">
@@ -34,16 +36,10 @@ export function HomeCctvSection() {
           <span className="-rotate-12 inline-block">📡</span>
         </div>
 
-        <div className={`grid gap-3 ${displayCctvs.length > 2 ? "grid-cols-2" : "grid-cols-2"}`}>
-          {displayCctvs.map((cctv) => (
-            <HlsMiniPlayer
-              key={cctv.id}
-              id={cctv.id}
-              proxyUrl={cctv.streamProxyUrl}
-              name={cctv.name}
-            />
-          ))}
-        </div>
+        {loading ? <p role="status" className="p-4 text-sm">공개 카메라를 확인하고 있어요.</p>
+          : error ? <p role="status" className="p-4 text-sm">카메라 목록을 불러올 수 없습니다.</p>
+          : displayCctvs.length ? <CctvList cctvs={displayCctvs} />
+          : <p role="status" className="p-4 text-sm">지금 공개 가능한 카메라가 없어요.</p>}
 
         {isPersonalized && savedCctvs.length > 4 && (
           <p className="mt-2 text-center text-[11px] text-text-secondary">

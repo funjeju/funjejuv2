@@ -111,7 +111,7 @@ test('list: HTTP dodu click opens synchronously and never mounts modal, even if 
   list.render([dodu]); list.click('dodu');
   assert.equal(list.opened.length, 1);
   assert.equal(list.render([dodu]), null);
-  assert.equal(list.opened[0][0], 'https://funjeju.com/cctv/dodu?watch=1');
+  assert.equal(list.opened[0][0], '/cctv/watch/dodu');
   assert.ok(!list.opened[0][0].includes('secret'));
 });
 test('list: HTTPS and YouTube retain modal; transition to HTTP closes without unsolicited popup', () => {

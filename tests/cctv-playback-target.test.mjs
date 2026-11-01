@@ -16,21 +16,20 @@ test('only known legacy IDs fall back when origin unavailable; invalid metadata 
   assert.equal(target.requiresExternalPlayback({ id: 'dodu' }), false);
   for (const originUrl of ['javascript:alert(1)', '//evil.test/a', 'bad']) assert.equal(target.requiresExternalPlayback({ id: 'sinchang', originUrl }), false);
 });
-test('normal HTTP opens fixed HTTPS detail window with safe id encoding and no source tokens', () => {
-  const url = new URL(target.cameraWatchUrl({ id: 'dodu&url=evil', name: '도두 / <a>', originUrl: 'http://secret.example.test/token' }));
-  assert.equal(url.origin, 'https://funjeju.com');
-  assert.equal(url.pathname, '/cctv/dodu%26url%3Devil');
-  assert.deepEqual([...url.searchParams.keys()], ['watch']);
-  assert.equal(url.searchParams.get('watch'), '1');
+test('normal HTTP opens same-origin dedicated window with safe id encoding and no source tokens', () => {
+  const url = new URL(target.cameraWatchUrl({ id: 'dodu&url=evil', name: '도두 / <a>', originUrl: 'http://secret.example.test/token' }), 'https://preview.example.test');
+  assert.equal(url.origin, 'https://preview.example.test');
+  assert.equal(url.pathname, '/cctv/watch/dodu%26url%3Devil');
+  assert.deepEqual([...url.searchParams.keys()], []);
   assert.ok(!url.href.includes('secret'));
 });
-test('airport Hallasan and dodu HTTP metadata select existing HTTPS page without claiming health', () => {
+test('airport Hallasan and dodu HTTP metadata select dedicated route without claiming health', () => {
   for (const id of ['jeju_airport', 'halla_baengnokdam', 'dodu']) {
     const camera = { id, name: id, originUrl: 'http://existing.example.test/live.m3u8' };
     assert.equal(target.requiresExternalPlayback(camera), true);
     assert.equal(target.requiresHttpsProxyWindow(camera), true);
     assert.equal(target.requiresDirectHttpViewer(camera), false);
-    assert.equal(target.cameraWatchUrl(camera), `https://funjeju.com/cctv/${id}?watch=1`);
+    assert.equal(target.cameraWatchUrl(camera), `/cctv/watch/${id}`);
   }
 });
 test('only exact legacy HTTP provider or absent metadata known Vurix uses legacy viewer', () => {

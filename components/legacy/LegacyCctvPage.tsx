@@ -6,7 +6,7 @@ import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
 import { BgmPlayer } from "@/components/cctv/BgmPlayer";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useCctvs } from "@/hooks/useCctvs";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
 import { DIRECTION_META } from "@/constants/cctv-directions";
 import { useT } from "@/lib/i18n";
 import type { CctvDirection } from "@/types/cctv";
@@ -22,7 +22,7 @@ const DIR_FILTERS: { id: DirectionFilter; labelKey: string; emoji: string; sub: 
 ];
 
 export default function CctvPage() {
-  const { cctvs, loading } = useCctvs();
+  const { cctvs, loading } = usePublicCctvs();
   const t = useT();
   const [activeDir, setActiveDir] = useState<DirectionFilter>("전체");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");

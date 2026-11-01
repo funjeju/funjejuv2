@@ -5,15 +5,19 @@ import Image from "next/image";
 import { ArrowDown, ArrowUpRight, Camera, Compass, Grid2X2, Map, Search, SlidersHorizontal, X } from "lucide-react";
 import { CctvList } from "@/components/cctv/CctvList";
 import { CctvMap } from "@/components/cctv/CctvMap";
-import { useCctvs } from "@/hooks/useCctvs";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
+import { CCTV_LAUNCH_OBSERVATIONS } from "@/constants/cctv-launch-observations";
 import { filterCctvs } from "@/lib/cctv-explorer";
 import { cameraWatchUrl, requiresHttpsProxyWindow } from "@/lib/cctv-playback-target";
+
+const QUICK_VIEW_NAMES: Record<string, string> = { jeju_airport: "제주공항", halla_baengnokdam: "한라산 백록담" };
 
 const DIRECTIONS = [{ value: "", label: "제주 전체", en: "ALL" }, { value: "북", label: "북쪽", en: "NORTH" }, { value: "동", label: "동쪽", en: "EAST" }, { value: "남", label: "남쪽", en: "SOUTH" }, { value: "서", label: "서쪽", en: "WEST" }];
 
 export function CctvExplorer() {
+  const lastObservedAt = CCTV_LAUNCH_OBSERVATIONS.reduce((latest, row) => row.observedAt > latest ? row.observedAt : latest, "");
   const params = useSearchParams();
-  const { cctvs, loading, error } = useCctvs();
+  const { cctvs, loading, error } = usePublicCctvs();
   const query = params.get("q") ?? "";
   const direction = params.get("direction") ?? "";
   const category = params.get("category") ?? "";
@@ -24,7 +28,7 @@ export function CctvExplorer() {
   const quickViews = !activeFilters && !loading && !error
     ? ["jeju_airport", "halla_baengnokdam"].flatMap(id => {
       const camera = cctvs.find(c => c.id === id && c.active && requiresHttpsProxyWindow(c));
-      return camera ? [camera] : [];
+      return camera ? [{ ...camera, name: (typeof camera.name === "string" ? camera.name.trim() : "") || QUICK_VIEW_NAMES[id] }] : [];
     }) : [];
 
   function update(values: Record<string, string>) {
@@ -69,9 +73,10 @@ export function CctvExplorer() {
           <div className="editorial-view-toggle" aria-label="보기 방식">{([{ id: "list", label: "목록", icon: Grid2X2 }, { id: "map", label: "지도", icon: Map }] as const).map(({ id, label, icon: Icon }) => <button type="button" key={id} aria-label={label} onClick={() => update({ view: id })} aria-pressed={view === id}><Icon size={17} aria-hidden="true" /><span>{label}</span></button>)}</div>
         </div>
         <div className="editorial-filter-row"><div className="editorial-directions" aria-label="제주 방향">{DIRECTIONS.map(({ value, label, en }) => <button type="button" key={value} onClick={() => update({ direction: value })} aria-pressed={direction === value}><span>{label}</span><small>{en}</small></button>)}</div><label className="editorial-category"><SlidersHorizontal size={15} /><span className="sr-only">카메라 종류</span><select value={category} onChange={e => update({ category: e.target.value })}><option value="">모든 풍경</option>{categories.map(value => <option key={value}>{value}</option>)}</select></label></div>
-        <div className="editorial-results-note"><p role="status">{loading ? "카메라 목록을 불러오는 중" : error ? "목록 연결을 확인해주세요" : <><strong>{filtered.length}</strong>개의 카메라 <span>· 재생 상태는 영상을 열어 확인해 주세요</span></>}</p>{activeFilters ? <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}><X size={13} />필터 초기화</button> : <span className="editorial-list-hint">CLICK A VIEW, FEEL JEJU.</span>}</div>
-        {quickViews.length > 0 && <nav aria-label="자주 찾는 풍경 새 창 보기" className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[#172524]/20 bg-[#e9ede6] p-4"><span className="mr-2 text-xs font-bold">자주 찾는 풍경</span>{quickViews.map(camera => <a key={camera.id} href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#172524] px-4 py-2 text-xs font-bold text-[#d9ff60]">{camera.name} · 새 창 <ArrowUpRight size={14} aria-hidden="true" /></a>)}</nav>}
-        {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="editorial-empty"><Camera size={32} strokeWidth={1.2} /><h3>목록 연결이 잠시 쉬고 있어요.</h3><p>카메라 고장으로 판단한 것은 아닙니다.<br />잠시 후 목록을 다시 불러와 주세요.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="editorial-empty"><Search size={32} strokeWidth={1.2} /><h3>{activeFilters ? "아직 찾지 못한 제주의 한 장면." : "카메라 목록을 준비하고 있어요."}</h3><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "기존 기록을 삭제하지 않고 목록 연결을 확인하고 있습니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : view === "map" ? <CctvMap cctvs={filtered} /> : <CctvList cctvs={filtered} />}
+        <div className="editorial-results-note"><p role="status">{loading ? "카메라 목록을 불러오는 중" : error ? "목록 연결을 확인해주세요" : <><strong>{filtered.length}</strong>개의 최근 재생 확인 카메라 <span>· 현재 재생은 달라질 수 있어요. 영상을 열어 확인해 주세요</span></>}</p>{activeFilters ? <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}><X size={13} />필터 초기화</button> : <span className="editorial-list-hint">CLICK A VIEW, FEEL JEJU.</span>}</div>
+        {lastObservedAt && <p className="editorial-review-time">목록 재생 확인 <time dateTime={lastObservedAt}>{new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(lastObservedAt))} KST</time> · 이후 연결 상태는 달라질 수 있습니다.</p>}
+        {quickViews.length > 0 && <nav aria-label="최근 재생 확인 카메라 새 창 보기" className="editorial-quick-views"><span className="editorial-quick-heading">최근 재생 확인 · 빠르게 보기</span>{quickViews.map(camera => <a key={camera.id} href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer" className="editorial-quick-link" aria-label={`${camera.name} 새 창에서 보기`}><span className="editorial-quick-name">{camera.name}</span><span className="editorial-quick-action">새 창</span><ArrowUpRight size={16} aria-hidden="true" /></a>)}</nav>}
+        {loading ? <ExplorerSkeleton /> : error ? <div role="alert" className="editorial-empty"><Camera size={32} strokeWidth={1.2} /><h3>목록 연결이 잠시 쉬고 있어요.</h3><p>카메라 고장으로 판단한 것은 아닙니다.<br />잠시 후 목록을 다시 불러와 주세요.</p><button type="button" onClick={() => window.location.reload()}>다시 불러오기 <ArrowUpRight size={15} /></button></div> : filtered.length === 0 ? <div className="editorial-empty"><Search size={32} strokeWidth={1.2} /><h3>{activeFilters ? "아직 찾지 못한 제주의 한 장면." : "최근 재생이 확인된 카메라가 아직 없어요."}</h3><p>{activeFilters ? "검색어나 지역을 바꾸면 다른 풍경을 만날 수 있어요." : "미확인 카메라는 공개 목록에서 제외했어요. 확인된 영상이 준비되면 표시됩니다."}</p>{activeFilters && <button type="button" onClick={() => update({ q: "", direction: "", category: "" })}>전체 카메라 보기 <ArrowUpRight size={15} /></button>}</div> : view === "map" ? <CctvMap cctvs={filtered} /> : <CctvList cctvs={filtered} />}
       </section>
 
       <footer className="editorial-footer"><div className="editorial-footer-brand">funjeju<span>✳</span></div><div className="editorial-footer-row"><p>제주를 여는 가장 작은 창.<br /><span>© FunJeju. All views, one island.</span></p><p>외부 영상은 현장 통신·점검에 따라 중단될 수 있습니다.<br />목록의 사진은 풍경 이미지이며 실시간 영상이 아닙니다.</p><a href="mailto:naggu1999@naver.com">문의하기 ↗</a></div><div className="editorial-credits"><p>메인 풍경 사진: <a href="https://commons.wikimedia.org/wiki/File:Seongsan_Ilchulbong_cliff_facing_the_sea.jpg" target="_blank" rel="noopener noreferrer">A. D. Prakasa / Wikimedia Commons</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a> · 화면 비율에 맞춰 자름. 카드 사진의 출처는 각 카드에 표시합니다.</p></div></footer>
