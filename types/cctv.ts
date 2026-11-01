@@ -31,4 +31,8 @@ export type CctvEntry = {
   lat?: number;
   lng?: number;
   addedAt?: string;
+  sourceRevision?: string;
+  proxySyncPending?: boolean;
+  reviewedAt?: string;
+  reviewMethod?: "operator-observed";
 };

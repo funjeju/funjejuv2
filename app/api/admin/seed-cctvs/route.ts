@@ -4,7 +4,7 @@
  * → Firestore 보안 규칙 우회하므로 클라이언트 규칙은 항상 잠궈둘 수 있음
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { getDirection } from "@/constants/cctv-directions";
@@ -67,7 +67,7 @@ const SEED: {
   { id:"onpyeong",       name:"온평어촌계",    region:"서귀포시 성산읍", category:"포구",  description:"성산읍 온평리 어촌계 해안입니다.",                   lat:33.3920, lng:126.9010, originUrl:"http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100011/0/1/1.m3u8" },
 ];
 
-export async function POST(req: NextRequest) {
+export async function POST() {
   // Admin 인증
   const cookieStore = await cookies();
   const authCookie  = cookieStore.get("admin_auth")?.value;
@@ -77,11 +77,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const db = getAdminDb();
-    const batch = db.batch();
-
-    for (const c of SEED) {
+    const count = await db.runTransaction(async (transaction) => {
+      const snapshots = await transaction.getAll(...SEED.map((c) => db.collection("cctvs").doc(c.id)));
+      let added = 0;
+      for (const c of SEED) {
+      if (snapshots.find((snapshot) => snapshot.id === c.id)?.exists) continue;
       const ref = db.collection("cctvs").doc(c.id);
-      batch.set(ref, {
+      transaction.create(ref, {
         id:          c.id,
         name:        c.name,
         region:      c.region,
@@ -89,17 +91,18 @@ export async function POST(req: NextRequest) {
         category:    c.category,
         originUrl:   c.originUrl,
         youtubeId:   null,
-        active:      true,
+        active:      false,
         description: c.description,
         lat:         c.lat,
         lng:         c.lng,
         addedAt:     new Date(),
-      }, { merge: true });
-    }
+      });
+      added += 1;
+      }
+      return added;
+    });
 
-    await batch.commit();
-
-    return NextResponse.json({ ok: true, count: SEED.length });
+    return NextResponse.json({ ok: true, count, message: "기존 기록은 보존했습니다. 신규 카메라는 검토 대기 상태입니다." });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     // Admin SDK 설정 문제

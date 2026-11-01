@@ -81,3 +81,16 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.cctv-explorer button:focus-visible,
+.cctv-explorer a:focus-visible,
+.cctv-explorer select:focus-visible {
+  outline: 2px solid #426c4f;
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cctv-explorer *, .cctv-explorer *::before, .cctv-explorer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
