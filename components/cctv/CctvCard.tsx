@@ -20,7 +20,8 @@ function scenery(category: string, index: number) {
 export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { cctv: CctvEntry; index?: number; onOpen: () => void; variant?: "editorial" | "compact" }) {
   const needsDetail = requiresPlaybackDetail(cctv);
   const popup = requiresExternalPlayback(cctv);
-  const photo = scenery(cctv.category, index);
+  // Compact thumbnails are explicitly illustrative: never a camera-frame claim.
+  const photo = scenery(cctv.category, index) ?? (variant === "compact" ? "/cctv-editorial/seongsan-panorama.jpg" : null);
   const credit = photo?.includes("hallasan")
     ? { author: "Letmeuseflowers", source: "https://commons.wikimedia.org/wiki/File:Hallasan_Mountain.jpg", license: "CC BY-SA 3.0", licenseUrl: "https://creativecommons.org/licenses/by-sa/3.0/" }
     : photo?.includes("panorama")
@@ -29,31 +30,32 @@ export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { c
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const hasPhoto = photo !== null && failedPhoto !== photo;
   if (variant === "compact") return (
-    <article className="wind-camera-card min-w-0 overflow-hidden rounded-xl border border-[#e1e9e4] bg-white text-[#214e3e]">
+    <article className="wind-camera-card min-w-0 overflow-hidden rounded-xl border border-[#e7e7e7] bg-white text-[#434343]">
       <button type="button" onClick={onOpen} disabled={!cctv.active}
         aria-label={`${cctv.name} ${popup ? "새 창에서 영상 보기" : needsDetail ? "상세 페이지에서 영상과 상태 확인" : "영상과 상태 확인"}`}
-        className="wind-camera-open group flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[#eaf4ed] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#285943] disabled:cursor-not-allowed disabled:opacity-60">
-        <span className="wind-camera-thumb relative block h-[84px] w-[84px] shrink-0 overflow-hidden rounded-lg bg-[#e6eeea]">
-          {hasPhoto ? <Image src={photo} alt="" fill sizes="84px" className="object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setFailedPhoto(photo)} />
-            : <span aria-hidden="true" className="absolute inset-0 overflow-hidden"><span className="absolute -right-5 -top-3 h-20 w-20 rounded-full border-[14px] border-[#4d7e65]/20" /><span className="absolute bottom-2 left-2 text-xl font-black text-[#37644e]/60">{cctv.direction || "JEJU"}</span></span>}
+        className="wind-camera-open group flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[#f1f1f1] focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#4d4d4d] disabled:cursor-not-allowed disabled:opacity-60">
+        <span className="wind-camera-thumb relative block h-[84px] w-[112px] shrink-0 overflow-hidden rounded-lg bg-[#ececec]">
+          {hasPhoto ? <Image src={photo} alt="" fill sizes="(max-width:400px) 88px, (min-width:1001px) and (max-width:1150px) 92px, 112px" className="object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setFailedPhoto(photo)} />
+            : <span aria-hidden="true" className="absolute inset-0 overflow-hidden"><span className="absolute -right-5 -top-3 h-20 w-20 rounded-full border-[14px] border-[#727272]/20" /><span className="absolute bottom-2 left-2 text-xl font-black text-[#595959]/60">{cctv.direction || "JEJU"}</span></span>}
+          {hasPhoto && <span className="wind-thumbnail-label">예시 사진</span>}
         </span>
         <span className="wind-camera-copy block min-w-0 flex-1">
-          <span className="wind-camera-eyebrow mb-1 flex items-center gap-1.5 text-[9px] font-medium tracking-wide text-[#7a9186]"><span className="font-mono tabular-nums">{String(index + 1).padStart(2, "0")}</span><span aria-hidden="true">/</span><span>{cctv.category || "CCTV"}</span></span>
+          <span className="wind-camera-eyebrow mb-1 flex items-center gap-1.5 text-[9px] font-medium tracking-wide text-[#8b8b8b]"><span className="font-mono tabular-nums">{String(index + 1).padStart(2, "0")}</span><span aria-hidden="true">/</span><span>{cctv.category || "CCTV"}</span></span>
           <span className="wind-camera-name block truncate text-[16px] font-bold leading-5 tracking-[-.025em]">{cctv.name}</span>
-          <span className="wind-camera-location mt-1 block truncate text-[12px] leading-4 text-[#648272]">{[cctv.region, cctv.direction ? `${cctv.direction}쪽` : ""].filter(Boolean).join(" · ")}</span>
-          <span className="wind-camera-note mt-1.5 block text-[10px] leading-4 text-[#7b8e83]">{hasPhoto ? "풍경 사진 · 실시간 화면 아님" : "지역 그래픽 · 실시간 화면 아님"}</span>
+          <span className="wind-camera-location mt-1 block truncate text-[12px] leading-4 text-[#7a7a7a]">{[cctv.region, cctv.direction ? `${cctv.direction}쪽` : ""].filter(Boolean).join(" · ")}</span>
+          <span className="wind-camera-note mt-1.5 block text-[10px] leading-4 text-[#898989]">{hasPhoto ? "제주 풍경 예시 · 실시간 화면 아님" : "지역 그래픽 · 실시간 화면 아님"}</span>
         </span>
-        <span className="wind-camera-arrow flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f0f5f2] text-[#537763]">{popup ? <ExternalLink size={15} strokeWidth={1.5} /> : <ArrowUpRight size={17} strokeWidth={1.5} />}</span>
+        <span className="wind-camera-arrow flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f4f4f4] text-[#6e6e6e]">{popup ? <ExternalLink size={15} strokeWidth={1.5} /> : <ArrowUpRight size={17} strokeWidth={1.5} />}</span>
       </button>
-      <div className="wind-camera-footer grid grid-cols-[1fr_auto] items-start gap-x-2 border-t border-[#edf1ee] px-3 py-1">
+      <div className="wind-camera-footer grid grid-cols-[1fr_auto] items-start gap-x-2 border-t border-[#f0f0f0] px-3 py-1">
       <div className="wind-camera-tools flex min-w-0 items-center gap-2">
-        <Link href={`/cctv/${encodeURIComponent(cctv.id)}`} className="py-1 text-[9px] font-medium text-[#537763] underline decoration-[#acc4b5] underline-offset-2">상세 정보</Link>
+        <Link href={`/cctv/${encodeURIComponent(cctv.id)}`} className="py-1 text-[9px] font-medium text-[#6e6e6e] underline decoration-[#bebebe] underline-offset-2">상세 정보</Link>
         <div className="wind-camera-actions flex items-center gap-0.5"><ShareButton title={`${cctv.name} — 제주 CCTV | FunJeju`} url={`${BASE_URL}/cctv/${encodeURIComponent(cctv.id)}`} description={cctv.description} compact /><CctvFavoriteButton id={cctv.id} label={false} /></div>
       </div>
-      <details className="wind-camera-credit text-[10px] leading-4 text-[#648272]">
-        <summary className="cursor-pointer whitespace-nowrap py-1 focus-visible:outline-2 focus-visible:outline-[#285943]">{hasPhoto ? "안내·사진 출처" : "이용 안내"}</summary>
+      <details className="wind-camera-credit text-[10px] leading-4 text-[#7a7a7a]">
+        <summary className="cursor-pointer whitespace-nowrap py-1 focus-visible:outline-2 focus-visible:outline-[#4d4d4d]">{hasPhoto ? "안내·사진 출처" : "이용 안내"}</summary>
         <div className="wind-camera-credit-content pb-2 pt-1">
-          <p>{!cctv.active ? "공개 대기 중입니다. " : popup ? "영상은 별도 창에서 열립니다. " : ""}{hasPhoto ? "풍경 이미지 · 실시간 화면 아님. " : "지역 그래픽 · 실시간 화면 아님. "}영상 연결 상태는 플레이어에서 확인해 주세요.</p>
+          <p>{!cctv.active ? "공개 대기 중입니다. " : popup ? "영상은 별도 창에서 열립니다. " : ""}{hasPhoto ? "제주 풍경 예시로, 해당 CCTV의 촬영 화면이 아닙니다. " : "지역 그래픽 · 실시간 화면 아님. "}영상 연결 상태는 플레이어에서 확인해 주세요.</p>
           {popup && cctv.active && <a href={cameraWatchUrl(cctv)} target="_blank" rel="noopener noreferrer" className="mt-1 block font-bold underline underline-offset-2">팝업이 열리지 않으면 새 탭으로 보기</a>}
           {hasPhoto && <p className="mt-1"><a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.author}</a> · <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license}</a> · 화면 비율로 자름</p>}
         </div>

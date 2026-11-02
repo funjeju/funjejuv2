@@ -21,10 +21,10 @@ function cardHarness(){
 test('compact card is horizontal with fixed thumbnail and honest non-live imagery',()=>{
  const render=cardHarness();const tree=render({cctv:camera,onOpen(){},variant:'compact'});const all=nodes(tree);
  assert.match(tree.props.className,/wind-camera-card/);
- assert.ok(all.some(n=>/wind-camera-thumb/.test(n.props?.className??'')&&n.props.className.includes('w-[84px]')&&n.props.className.includes('h-[84px]')));
- assert.ok(all.some(n=>n.type==='Image'&&n.props.sizes==='84px'));
+ assert.ok(all.some(n=>/wind-camera-thumb/.test(n.props?.className??'')&&n.props.className.includes('w-[112px]')&&n.props.className.includes('h-[84px]')));
+ assert.ok(all.some(n=>n.type==='Image'&&n.props.sizes.endsWith('112px')));
  assert.match(text(tree),/실시간 화면 아님/);
- const thumbnail=all.find(n=>/wind-camera-thumb/.test(n.props?.className??''));assert.equal(text(thumbnail),'');
+ const thumbnail=all.find(n=>/wind-camera-thumb/.test(n.props?.className??''));assert.equal(text(thumbnail).trim(),'예시 사진');
  assert.ok(all.some(n=>/wind-camera-eyebrow/.test(n.props?.className??'')&&text(n).includes('01')));
  assert.ok(all.some(n=>/wind-camera-footer/.test(n.props?.className??'')));assert.doesNotMatch(text(tree),/LIVE|검증 완료|실시간 재생 중/);
  assert.ok(all.some(n=>n.type==='ExternalLink'));assert.ok(all.some(n=>/wind-camera-name/.test(n.props?.className??'')));
@@ -52,4 +52,13 @@ test('default card keeps editorial layout and compact list propagates variant wi
  const list=all.find(n=>/wind-camera-list/.test(n.props?.className??''));assert.ok(list);assert.doesNotMatch(list.props.className,/grid-cols-3/);
  const card=all.find(n=>n.type==='Card');assert.equal(card.props.variant,'compact');card.props.onOpen();assert.equal(opened[0][0],'/cctv/watch/synthetic_camera');assert.deepEqual(order,['selection','open']);assert.equal(all.some(n=>n.type==='Dialog'),false);
  const inactive=CctvList({cctvs:[{...camera,active:false}],variant:'compact',onCameraOpen:()=>{throw new Error('inactive callback')}});nodes(inactive).find(n=>n.type==='Card').props.onOpen();assert.equal(opened.length,1);
+});
+
+test('compact cards always show labelled example imagery even for airport or unknown category, never source snapshots',()=>{
+ for(const category of ['공항','기타','']){
+  const tree=cardHarness()({cctv:{...camera,name:'테스트 지점',category},variant:'compact',onOpen(){}});
+  const image=nodes(tree).find(n=>n.type==='Image');assert.ok(image);assert.match(image.props.src,/^\/cctv-editorial\//);
+  assert.match(text(tree),/예시 사진/);assert.match(text(tree),/해당 CCTV의 촬영 화면이 아닙니다/);
+  assert.doesNotMatch(image.props.src,/snapshot|source\.example|https?:/);
+ }
 });

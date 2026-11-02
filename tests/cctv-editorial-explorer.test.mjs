@@ -51,8 +51,8 @@ test('quicklink colors defeat anchor reset and have AA contrast',()=>{
 });
 test('dated observation visible without permanent LIVE claim',()=>{const h=harness();assert.ok(h.all.some(n=>n.type==='time'&&n.props.dateTime==='2026-11-01T16:32:47.392Z'));assert.ok(text(h.all).includes('현재 재생은 달라질 수 있습니다.'))});
 test('informative secondary labels and placeholder have normal-text AA contrast',()=>{
- const css=readFileSync(new URL('../app/cctv-wind.css',import.meta.url),'utf8');for(const [sel,bg]of[['.wind-results','#e8f2e9'],['.wind-footer','#e8f2e9'],['.wind-panel-heading > small','#e8f2e9'],['.wind-search input::placeholder','#fbfdf9']]){const rule=css.slice(css.indexOf(sel+' {')).split('}')[0];assert.ok(contrast(rule.match(/(?:^|[;\s])color:\s*(#[a-f0-9]{6})/)[1],bg)>=4.5,sel)}
+ const css=readFileSync(new URL('../app/cctv-wind.css',import.meta.url),'utf8');for(const [sel,bg]of[['.wind-results','#f4f4f4'],['.wind-footer','#f4f4f4'],['.wind-panel-heading > small','#f4f4f4'],['.wind-search input::placeholder','#ffffff']]){const rule=css.slice(css.indexOf(sel+' {')).split('}')[0];assert.ok(contrast(rule.match(/(?:^|[;\s])color:\s*(#[a-f0-9]{6})/)[1],bg)>=4.5,sel)}
 });
-test('forest sidebar focus outline outranks later global explorer focus reset',()=>{
- const css=readFileSync(new URL('../app/cctv-wind.css',import.meta.url),'utf8');assert.match(css,/\.wind-explorer\s+\.wind-sidebar\s+button:focus-visible\s*\{\s*outline-color:\s*#e3efdc/);assert.match(css,/\.wind-explorer\s+\.wind-sidebar-bottom\s+a:focus-visible\s*\{\s*outline-color:\s*#e3efdc/);assert.ok(contrast('#e3efdc','#204f3b')>=3);
+test('monochrome sidebar focus outline outranks later global explorer focus reset',()=>{
+ const css=readFileSync(new URL('../app/cctv-wind.css',import.meta.url),'utf8');assert.match(css,/\.wind-explorer\s+\.wind-sidebar\s+button:focus-visible\s*\{\s*outline-color:\s*#ebebeb/);assert.match(css,/\.wind-explorer\s+\.wind-sidebar-bottom\s+a:focus-visible\s*\{\s*outline-color:\s*#ebebeb/);assert.ok(contrast('#ebebeb','#171717')>=3);
 });

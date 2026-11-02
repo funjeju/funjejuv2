@@ -71,7 +71,7 @@ export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: reado
       marker.className = compact ? "wind-map-pin" : "cctv-map-pin";
       marker.setAttribute("aria-label", `${camera.name} CCTV 보기${requiresExternalPlayback(camera) ? " (새 창)" : requiresPlaybackDetail(camera) ? " (상세에서 확인)" : ""}`);
       marker.style.cssText = compact
-        ? "cursor:pointer;width:30px;height:30px;border:2px solid #f4faf5;border-radius:50%;background:#184c3b;color:#f4faf5;font-size:11px;font-weight:700;box-shadow:0 2px 5px #123b3326"
+        ? "cursor:pointer;width:30px;height:30px;border:2px solid #ffffff;border-radius:50%;background:#171717;color:#ffffff;font-size:11px;font-weight:700;box-shadow:0 2px 5px #00000026"
         : "cursor:pointer;border:2px solid white;border-radius:6px;background:#172524;color:#d9ff60;padding:6px 10px;font-size:11px;font-weight:700;box-shadow:0 2px 6px #0004;white-space:nowrap";
       marker.onclick = () => choose(camera);
       return marker;
