@@ -8,5 +8,5 @@ export default async function DirectoryAdminPage() {
   const secret = process.env.ADMIN_SECRET;
   const cookie = (await cookies()).get("admin_auth")?.value;
   if (!secret || !cookie || cookie !== secret) redirect("/admin/login?next=%2Fadmin%2Fcctv-directory");
-  return <DirectoryAdmin catalogueHref={process.env.VERCEL_ENV === "preview" ? "/cctv-directory" : null} />;
+  return <DirectoryAdmin catalogueHref={null} />;
 }
