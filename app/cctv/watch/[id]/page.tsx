@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { lookupCctvById } from "@/lib/firestore-cctv-server";
 import { cctvSourceRevision } from "@/lib/cctv-review";
 import { requiresDirectHttpViewer } from "@/lib/cctv-playback-target";
 import { isLaunchCameraVisible } from "@/lib/cctv-launch-policy";
 import { PublicPlaybackBoundary } from "@/components/cctv/PublicPlaybackBoundary";
 import { HttpsCameraWindow } from "@/components/cctv/HttpsCameraWindow";
+import { configuredPreviewViewerApproval } from "@/lib/cctv-viewer-policy";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "CCTV 영상 전용 창", robots: { index: false, follow: false } };
@@ -27,12 +29,17 @@ export default async function CameraWatchPage({ params }: Props) {
   if (requiresDirectHttpViewer(camera)) return <Held>이 카메라는 별도 HTTP 뷰어를 사용합니다. 보안 경고가 표시되면 진행하지 마세요.</Held>;
   const sourceRevision = cctvSourceRevision(camera);
   const playbackAllowed = await isLaunchCameraVisible(camera).catch(() => false);
+  const configuredApproval = configuredPreviewViewerApproval(process.env);
+  // No new credential: reuse the existing admin login, and only read it when an
+  // explicit, short-lived preview configuration is valid. Production is unchanged.
+  const previewApproval = playbackAllowed && configuredApproval && process.env.ADMIN_SECRET &&
+    (await cookies()).get("admin_auth")?.value === process.env.ADMIN_SECRET ? configuredApproval : null;
   const proxyUrl = PROXY_BASE ? `${PROXY_BASE.replace(/\/$/, "")}/cctv/${encodeURIComponent(camera.id)}` : null;
   return <section aria-label={`${camera.name} 영상 전용 창`} className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col justify-center">
     <header className="flex items-center justify-between gap-4 px-5 py-4"><h1 className="text-sm font-bold">{camera.name}</h1><span className="text-[10px] tracking-widest text-white/40">CAMERA VIEW</span></header>
     <PublicPlaybackBoundary id={camera.id} sourceRevision={sourceRevision}>
     <HttpsCameraWindow dedicated id={camera.id} name={camera.name} proxyUrl={proxyUrl}
-      sourceRevision={sourceRevision} playbackAllowed={playbackAllowed} />
+      sourceRevision={sourceRevision} playbackAllowed={playbackAllowed} previewApproval={previewApproval} />
     </PublicPlaybackBoundary>
   </section>;
 }

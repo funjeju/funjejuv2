@@ -3,9 +3,12 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { AppShell } from "@/components/common/AppShell";
 import { NaverAnalytics } from "@/components/common/NaverAnalytics";
+import { PreviewRuntimeProvider } from "@/components/common/PreviewRuntimeProvider";
 
 // GA4: 별도 GA_ID가 없으면 이미 설정된 Firebase 측정 ID(G-...)를 재사용 → 추가 env 불필요
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+// Preview QA must not populate the shared production pageview/analytics datasets.
+const TRACK_ANALYTICS = process.env.VERCEL_ENV !== "preview";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://funjeju.com"), // 네이버 등록·실제 200 응답 도메인(non-www)으로 통일
@@ -117,10 +120,12 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        <AppShell>{children}</AppShell>
-        <NaverAnalytics />
+        <PreviewRuntimeProvider preview={!TRACK_ANALYTICS}>
+          <AppShell trackPageViews={TRACK_ANALYTICS}>{children}</AppShell>
+        </PreviewRuntimeProvider>
+        {TRACK_ANALYTICS && <NaverAnalytics />}
       </body>
-      {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
+      {TRACK_ANALYTICS && GA_ID && <GoogleAnalytics gaId={GA_ID} />}
     </html>
   );
 }

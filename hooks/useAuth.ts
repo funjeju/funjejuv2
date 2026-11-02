@@ -10,8 +10,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
 
 export function useAuth() {
+  const preview = usePreviewRuntime();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +24,7 @@ export function useAuth() {
       setLoading(false);
 
       // 로그인 시 users 컬렉션에 프로필 자동 생성/업데이트
-      if (u) {
+      if (u && !preview) {
         try {
           const db = getFirebaseDb();
           const userRef = doc(db, "users", u.uid);
@@ -56,7 +58,7 @@ export function useAuth() {
       }
     });
     return unsub;
-  }, []);
+  }, [preview]);
 
   async function signInWithGoogle() {
     const auth = getFirebaseAuth();

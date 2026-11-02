@@ -11,9 +11,9 @@ import { LangProvider } from "@/lib/i18n";
 import { CCTV_FOCUSED_PUBLIC } from "@/constants/public-features";
 import { CctvHeader } from "@/components/common/CctvHeader";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, trackPageViews = true }: { children: React.ReactNode; trackPageViews?: boolean }) {
   const pathname = usePathname();
-  usePageViewTracker(); // 페이지 이동마다 자동 기록
+  usePageViewTracker(trackPageViews); // 서버가 preview 분석 기록을 비활성화할 수 있음
 
   // The user-opened camera window is deliberately video-only on this origin.
   if (pathname.startsWith("/cctv/watch/")) {
