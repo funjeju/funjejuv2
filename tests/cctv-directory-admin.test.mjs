@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { database, server } from './helpers/directory-harness.mjs';
 const jsx=(type,props)=>({type,props});
 const nodes=v=>!v||typeof v!=='object'?[]:Array.isArray(v)?v.flatMap(nodes):[v,...nodes(v.props?.children)];
 const text=v=>v==null||typeof v==='boolean'?'':typeof v!=='object'?String(v):Array.isArray(v)?v.map(text).join(''):text(v.props?.children);
@@ -51,7 +52,7 @@ test('import requires count-bearing confirmation and never overwrites automatica
 test('new draft defaults visible and unverified; paired coordinates and explicit observation required',async()=>{
  const h=harness();h.start();await h.flush();h.click('새 CCTV 추가');assert.equal(h.input('목록에 공개').props.checked,true);assert.equal(h.input('재생 상태').props.value,'unverified');assert.equal(h.input('방향').props.value,'');h.change('ID','new');h.change('이름','New');h.change('위도','33.4');h.submit();assert.equal(h.calls.length,1);assert.match(h.text(),/위도와 경도/);
  h.change('경도','126.5');h.change('재생 상태','verified');h.submit();assert.equal(h.calls.length,1);assert.match(h.text(),/직접 영상 재생/);h.change('실제 영상 재생',true);h.queue.push(()=>response(409,{}));h.submit();await h.flush();
- const body=JSON.parse(h.calls[1].options.body);assert.equal(body.expectedRevision,'');assert.equal(body.observation.observedPlayback,true);assert.ok(Number.isFinite(Date.parse(body.observation.observedAt)));assert.equal(body.fields.lat,33.4);h.stop();
+ const body=JSON.parse(h.calls[1].options.body);assert.equal(body.expectedRevision,'new');assert.equal(body.observation.observedPlayback,true);assert.ok(Number.isFinite(Date.parse(body.observation.observedAt)));assert.equal(body.fields.lat,33.4);h.stop();
 });
 test('refresh preserves draft and requires confirmation; discard also needs explicit confirmation',async()=>{
  const h=harness();h.start();await h.flush();h.click('새 CCTV 추가');h.change('이름','draft');h.click('목록 새로고침');assert.equal(h.calls.length,1);h.click('확인');await h.flush();assert.equal(h.input('이름').props.value,'draft');h.click('테스트 카메라 (synthetic)');assert.equal(h.input('이름').props.value,'draft');h.click('취소');assert.equal(h.input('이름').props.value,'draft');h.stop();
@@ -80,4 +81,17 @@ test('missing or false write gate keeps browsing available but blocks every POST
   h.click('기존 목록 가져오기');assert.equal(h.button('확인').props.disabled,true);h.click('확인');await h.flush();
   assert.equal(h.calls.filter(c=>c.options.method==='POST').length,0);assert.equal(h.input('이름').props.value,'draft');h.stop();
  }
+});
+
+// Exercise the real server contract, not a mock that accepts any revision string.
+test('new UI draft creates a new server record with the CAS creation revision', async()=>{
+ const fake=database({}),backend=server(fake),h=harness();h.start();await h.flush();
+ h.click('새 CCTV 추가');h.change('ID','new_camera');h.change('이름','새 카메라');
+ h.queue.push(async()=>response(200,{entry:await backend.saveDirectory(JSON.parse(h.calls.at(-1).options.body))}));
+ h.submit();await h.flush();
+ assert.equal(fake.records.get('cctv_directory_v1/new_camera')?.data.name,'새 카메라');
+ assert.equal(fake.records.get('cctv_directory_v1/new_camera')?.data.revision,1);
+ assert.equal(fake.records.get('cctv_directory_v1/new_camera')?.data.playbackStatus,'unverified');
+ assert.equal(fake.writes.some(w=>w.path.startsWith('cctvs/')),false);
+ assert.match(h.text(),/새 목록에 저장했습니다/);h.stop();
 });

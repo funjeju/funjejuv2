@@ -10,7 +10,7 @@ const emptyFields = (): DirectoryFields => ({ name: "", region: "", direction: "
 function toDraft(entry?: DirectoryEntry): Draft {
   const fields = emptyFields();
   if (entry) for (const key of Object.keys(fields) as (keyof DirectoryFields)[]) Object.assign(fields, { [key]: entry[key] });
-  return { id: entry?.id ?? "", revision: entry?.revision ?? "", fields, latitude: entry?.lat == null ? "" : String(entry.lat), longitude: entry?.lng == null ? "" : String(entry.lng), existing: !!entry, restricted: entry?.sourceRestricted ?? false, observed: false };
+  return { id: entry?.id ?? "", revision: entry?.revision ?? "new", fields, latitude: entry?.lat == null ? "" : String(entry.lat), longitude: entry?.lng == null ? "" : String(entry.lng), existing: !!entry, restricted: entry?.sourceRestricted ?? false, observed: false };
 }
 
 export function DirectoryAdmin({ catalogueHref = "/cctv-directory" }: { catalogueHref?: string | null } = {}) {
