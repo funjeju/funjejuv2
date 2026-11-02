@@ -16,7 +16,7 @@ type Props = {
   cctvId?: string;
   /** 통계용 cctv 이름 */
   cctvName?: string;
-  /** Explicit QA only: one attempt, observable HLS errors, no retry or telemetry. */
+  /** Public preview: no account budget/telemetry; terminal errors, no reconnect loop. */
   verificationMode?: boolean;
 };
 
@@ -41,8 +41,8 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
 
   // 시청시간 예산 — 서버 권위 + 클라 보간
   const productionBudget = useWatchBudget(!verificationMode && isPlaying ? 1 : 0, serverBudget);
-  // The separately admin-authorized, time-bounded verification session must not
-  // be masked by stale consumer usage caches. Actual entitlements are unchanged.
+  // Anonymous public-preview viewing must not be masked by stale consumer usage
+  // caches. Normal production entitlements are unchanged.
   const budget = verificationMode ? {
     ...productionBudget, exhausted: false, unlimited: true, usedSeconds: 0,
   } : productionBudget;
@@ -115,8 +115,8 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
       if (cancelled || failed) return;
 
       if (!Hls.isSupported()) {
-        // Native HLS hides response codes/retry behavior; do not probe it in QA.
-        if (verificationMode) { failPlayback(); return; }
+        // Safari/native HLS is part of public viewing. Its video error event is
+        // terminal; HTTP status details are not available through this API.
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl!;
 

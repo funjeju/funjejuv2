@@ -66,9 +66,12 @@ test('nonfatal/fatal access denial and every network error are terminal with no 
 test('denial handler is installed before loadSource and prevents subsequent media attachment',async()=>{
   const h=harness({denyDuringLoad:true});h.render();h.commit();await h.flush();const i=h.instances[0];assert.equal(i.loads,1);assert.equal(i.destroyed,1);assert.equal(i.attaches,0);assert.equal(i.starts,0);h.unmount();
 });
-test('QA cannot fall back to opaque native HLS while normal playback retains that fallback',async()=>{
-  const qa=harness({supported:false});qa.render();qa.commit();await qa.flush();assert.equal(qa.instances.length,0);assert.equal(qa.srcAssignments,0);assert.ok(text(qa.render()).includes('검증 요청을 중단'));qa.unmount();
-  const prod=harness({supported:false});prod.render({verificationMode:false});prod.commit();await prod.flush();assert.equal(prod.srcAssignments,1);prod.unmount();
+test('public preview and production both support native HLS when MSE is unavailable',async()=>{
+  for(const verificationMode of [true,false]){
+   const h=harness({supported:false});h.render({verificationMode});h.commit();await h.flush();
+   assert.equal(h.instances.length,0);assert.equal(h.srcAssignments,1);
+   h.emitVideo('loadedmetadata');await h.flush();assert.ok(h.playCalls>0);h.unmount();
+  }
 });
 test('QA suppresses player telemetry even when caller accidentally supplies identity',async()=>{
   const h=harness();h.render();h.commit();await h.flush();h.progress();h.emitVideo('playing');h.emitWindow('pagehide');h.render();
@@ -83,7 +86,7 @@ test('production defaults and existing network recovery remain unchanged',async(
   h.deny(403,true);assert.equal(i.starts,1);assert.equal(i.destroyed,0);h.emitVideo('playing');assert.equal(h.beacons,1);h.unmount();
 });
 
-test('admin verification cannot be masked by cached consumer budget; production still enforces it',async()=>{
+test('public preview cannot be masked by cached consumer budget; production still enforces it',async()=>{
   const qa=harness({budgetExhausted:true});let nodes=qa.render();qa.commit();await qa.flush();
   assert.equal(text(nodes).includes('오늘 시청시간을 다 썼어요'),false);
   nodes.find(n=>n.type==='video').props.onClick();await qa.flush();assert.ok(qa.playCalls>0);qa.unmount();

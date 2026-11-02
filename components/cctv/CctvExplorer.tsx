@@ -11,6 +11,8 @@ import { CCTV_LAUNCH_OBSERVATIONS } from "@/constants/cctv-launch-observations";
 import { filterCctvs } from "@/lib/cctv-explorer";
 import { cameraWatchUrl, requiresHttpsProxyWindow } from "@/lib/cctv-playback-target";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 const DIRECTIONS = [{ value: "", label: "제주 전체", en: "ALL JEJU" }, { value: "북", label: "북쪽", en: "NORTH" }, { value: "동", label: "동쪽", en: "EAST" }, { value: "남", label: "남쪽", en: "SOUTH" }, { value: "서", label: "서쪽", en: "WEST" }];
 const QUICK_NAMES: Record<string, string> = { jeju_airport: "제주공항", halla_baengnokdam: "한라산 백록담" };
 function scrollToView(view: "list" | "map") {
@@ -18,6 +20,7 @@ function scrollToView(view: "list" | "map") {
 }
 export function CctvExplorer() {
   const params = useSearchParams();
+  const preview = usePreviewRuntime();
   const { cctvs, loading, error } = usePublicCctvs();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const query = params.get("q") ?? "";
@@ -55,7 +58,7 @@ export function CctvExplorer() {
       <div className="wind-sidebar-brand"><Compass size={24} strokeWidth={1.3} aria-hidden="true" /><div>제주 탐색<small>ISLAND DIRECTORY</small></div></div>
       <p className="wind-sidebar-label">어디로 떠나볼까요</p>
       <nav className="wind-directions" aria-label="제주 방향">{DIRECTIONS.map(({ value, label, en }) => <button type="button" key={value} onClick={() => update({ direction: value })} aria-pressed={direction === value}><span><MapPin size={15} aria-hidden="true" />{label}</span><small>{en}</small></button>)}</nav>
-      <div className="wind-sidebar-bottom"><Wind size={31} strokeWidth={1} aria-hidden="true" /><p>바람이 머무는 곳,<br />제주의 지금을 만나요.</p><span>33° N · 126° E</span><Link href="/mypage">내가 저장한 풍경 <ArrowUpRight size={14} aria-hidden="true" /></Link></div>
+      <div className="wind-sidebar-bottom"><Wind size={31} strokeWidth={1} aria-hidden="true" /><p>바람이 머무는 곳,<br />제주의 지금을 만나요.</p><span>33° N · 126° E</span>{!preview && <Link href="/mypage">내가 저장한 풍경 <ArrowUpRight size={14} aria-hidden="true" /></Link>}</div>
     </aside>
     <div className="wind-content">
       <header className="wind-intro"><div><p className="wind-eyebrow">JEJU ISLAND · CAMERA ATLAS</p><h1 id="explorer-title">바람의 좌표<span>.</span></h1><p className="wind-intro-description">보고 싶은 제주, 지도에서 찾고 새 창으로 만나세요.</p></div><div className="wind-coordinate" aria-hidden="true"><Compass size={48} strokeWidth={.8} /><span>JEJU ISLAND<br />CAMERA ATLAS</span></div></header>

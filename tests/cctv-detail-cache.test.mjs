@@ -11,14 +11,14 @@ const ResponseCache = require('next/dist/server/response-cache').default;
 const RenderResult = require('next/dist/server/render-result').default;
 const entry = { id: 'known', name: 'Known camera', region: 'Jeju', direction: '북', category: '해변', description: '', originUrl: 'https://example.test/live.m3u8', active: true };
 const legacy = { ...entry, latitude: 33.4, longitude: 126.4, status: '실시간', isSaved: false, streamProxyUrl: null };
-function compile(relativePath, stubs) {
+function compile(relativePath, stubs, env = {}) {
   const code = ts.transpileModule(readFileSync(new URL(relativePath, import.meta.url), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   const compiledModule = { exports: {} };
   vm.runInNewContext(code, { exports: compiledModule.exports, module: compiledModule,
     require: (name) => { assert.ok(name in stubs, `Unexpected dependency: ${name}`); return stubs[name]; },
-    process: { env: {} }, Date, console,
+    process: { env }, Date, console,
   });
   return compiledModule.exports;
 }
@@ -155,5 +155,10 @@ test('real detail page sends HTTP metadata to separate viewer, never embedded HL
     camera = { ...entry, id: 'dodu', ...update };
     const players = nodes(await page.default({ params: Promise.resolve({ id: 'dodu' }) })).filter(n => ['HlsPlayer', 'VurixLaunch', 'YoutubePlayer', 'HttpsCameraWindow'].includes(n.type));
     assert.deepEqual(players.map(n => n.type), expected ? [expected] : []);
+    const preview = compile('../app/cctv/[id]/page.tsx', stubs, {VERCEL_ENV:'preview'});
+    const all = nodes(await preview.default({params:Promise.resolve({id:'dodu'})}));
+    assert.equal(all.some(n => ['HlsPlayer','VurixLaunch','YoutubePlayer','HttpsCameraWindow'].includes(n.type)), false);
+    const link=all.find(n=>n.props?.href==='/cctv/watch/dodu');
+    assert.equal(!!link, camera.active);if(link){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');}
   }
 });

@@ -41,11 +41,11 @@ test('server snapshot never mounts media; source revision changes remount but la
   const h=harness(),key=c=>nodes(h.render(c)).find(n=>n.type==='HlsPlayer').key;
   assert.equal(key(camera),key({...camera,name:'Updated'}));assert.notEqual(key(camera),key({...camera,sourceRevision:'revision-b'}));
 });
-test('explicit live exact-host QA approval mounts only verified HTTPS media and omits event/session identity',()=>{
+test('explicit exact-host public preview mounts verified HTTPS media without event/session identity',()=>{
   const now=Date.now(),origin='https://qa-build.example.vercel.app';
   // Nested/unrelated suffixes are not accepted as a Vercel deployment hostname.
-  assert.equal(nodes(harness({origin,now}).render({...camera,previewApproval:{origin,approvedAt:now-1,expiresAt:now+1000}})).some(n=>n.type==='HlsPlayer'),false);
-  const approvedOrigin='https://qa-build-project.vercel.app',approval={origin:approvedOrigin,approvedAt:now-1,expiresAt:now+1000};
+  assert.equal(nodes(harness({origin,now}).render({...camera,previewApproval:{origin}})).some(n=>n.type==='HlsPlayer'),false);
+  const approvedOrigin='https://qa-build-project.vercel.app',approval={origin:approvedOrigin};
   const h=harness({origin:approvedOrigin,now});
   const player=nodes(h.render({...camera,previewApproval:approval})).find(n=>n.type==='HlsPlayer');
   assert.ok(player);assert.equal(player.props.proxyUrl,camera.proxyUrl);assert.equal(player.props.cctvId,undefined);assert.equal(player.props.cctvName,undefined);assert.equal(player.props.verificationMode,true);
@@ -54,13 +54,10 @@ test('explicit live exact-host QA approval mounts only verified HTTPS media and 
   assert.equal(nodes(harness({now}).render(camera)).find(n=>n.type==='HlsPlayer').props.cctvId,camera.id);
   assert.equal(nodes(harness({now}).render(camera)).find(n=>n.type==='HlsPlayer').props.verificationMode,false);
 });
-test('an open QA viewer expires without a rerender trigger and removes timers/listeners on cleanup',()=>{
-  const now=Date.now(),origin='https://qa-build-project.vercel.app';
-  const previewApproval={origin,approvedAt:now-100,expiresAt:now+1000};
-  const h=harness({origin,now});assert.ok(nodes(h.render({...camera,previewApproval})).some(n=>n.type==='HlsPlayer'));
-  const cleanup=h.mount();assert.equal(h.timers.size,1);assert.equal(h.listeners.size,2);
-  const timer=[...h.timers.values()][0];assert.equal(timer.delay,1001);
-  h.setNow(now+1001);timer.callback();assert.equal(h.notifications(),1);
-  assert.equal(nodes(h.render({...camera,previewApproval})).some(n=>n.type==='HlsPlayer'),false);
-  cleanup();assert.equal(h.timers.size,0);assert.equal(h.listeners.size,0);
+test('public preview is not a 30-minute session and installs no expiry timer or auth listener',()=>{
+ const origin='https://qa-build-project.vercel.app',previewApproval={origin};
+ const h=harness({origin});assert.ok(nodes(h.render({...camera,previewApproval})).some(n=>n.type==='HlsPlayer'));
+ const cleanup=h.mount();assert.equal(h.timers.size,0);assert.equal(h.listeners.size,0);
+ h.setNow(Date.now()+365*24*60*60*1000);assert.ok(nodes(h.render({...camera,previewApproval})).some(n=>n.type==='HlsPlayer'));
+ cleanup();
 });

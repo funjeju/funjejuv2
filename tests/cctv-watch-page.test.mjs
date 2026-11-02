@@ -21,18 +21,17 @@ test('dedicated route selects authoritative server proxy, never serializes raw s
  assert.equal(player.props.proxyUrl,'https://proxy.example.test/cctv/test_camera');assert.equal(player.props.dedicated,true);assert.equal(player.props.playbackAllowed,true);assert.equal('originUrl' in player.props,false);assert.equal(r.reads(),1);
  const boundary=all.find(n=>n.type==='PublicPlaybackBoundary');assert.equal(boundary.props.id,entry.id);assert.equal(boundary.props.sourceRevision,'hash');assert.equal('originUrl' in boundary.props,false);
 });
-test('preview approval requires explicit server config AND existing admin auth; default and production read no cookie',async()=>{
- const now=Date.now(),env={VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:'qa-build-project.vercel.app',VERCEL_GIT_COMMIT_SHA:'a'.repeat(40),CCTV_PREVIEW_PLAYBACK_COMMIT:'a'.repeat(40),CCTV_PREVIEW_PLAYBACK_ORIGIN:'https://qa-build-project.vercel.app',CCTV_PREVIEW_PLAYBACK_APPROVED_AT:new Date(now-1000).toISOString(),CCTV_PREVIEW_PLAYBACK_EXPIRES_AT:new Date(now+60_000).toISOString(),ADMIN_SECRET:'synthetic-admin-secret'};
- for(const cookie of [undefined,'wrong']){
-  const r=route(undefined,true,env,cookie),player=nodes(await r.render()).find(n=>n.type==='HttpsCameraWindow');assert.equal(player.props.previewApproval,null);assert.equal(r.cookieReads(),1);
+test('explicit public preview config permits anonymous viewing without reading an admin cookie',async()=>{
+ const env={VERCEL:'1',VERCEL_ENV:'preview',VERCEL_URL:'qa-build-project.vercel.app',VERCEL_GIT_COMMIT_SHA:'a'.repeat(40),CCTV_PUBLIC_PREVIEW_COMMIT:'a'.repeat(40),CCTV_PUBLIC_PREVIEW_ORIGIN:'https://qa-build-project.vercel.app'};
+ for(const cookie of [undefined,'wrong','synthetic-admin-secret']){
+  const r=route(undefined,true,env,cookie),all=nodes(await r.render()),player=all.find(n=>n.type==='HttpsCameraWindow');
+  assert.equal(player.props.previewApproval.origin,env.CCTV_PUBLIC_PREVIEW_ORIGIN);assert.equal(r.cookieReads(),0);
+  assert.doesNotMatch(JSON.stringify(all),/synthetic-admin-secret|source\.example\.test/);
  }
- const r=route(undefined,true,env,env.ADMIN_SECRET),all=nodes(await r.render()),player=all.find(n=>n.type==='HttpsCameraWindow');
- assert.equal(player.props.previewApproval.origin,env.CCTV_PREVIEW_PLAYBACK_ORIGIN);assert.equal(player.props.playbackAllowed,true);assert.ok(all.some(n=>n.type==='PublicPlaybackBoundary'));
- assert.doesNotMatch(JSON.stringify(all),/synthetic-admin-secret|source\.example\.test/);
- for(const options of [{},{...env,VERCEL_ENV:'production'},{...env,VERCEL_ENV:'development'},{...env,ADMIN_SECRET:''},{...env,CCTV_PREVIEW_PLAYBACK_EXPIRES_AT:new Date(now-1).toISOString()}]){
-  const held=route(undefined,true,options,env.ADMIN_SECRET),p=nodes(await held.render()).find(n=>n.type==='HttpsCameraWindow');assert.equal(p.props.previewApproval,null);assert.equal(held.cookieReads(),0);
+ for(const options of [{},{...env,VERCEL_ENV:'production'},{...env,VERCEL_ENV:'development'},{...env,CCTV_PUBLIC_PREVIEW_ORIGIN:undefined}]){
+  const held=route(undefined,true,options),p=nodes(await held.render()).find(n=>n.type==='HttpsCameraWindow');assert.equal(p.props.previewApproval,null);assert.equal(held.cookieReads(),0);
  }
- const denied=route(undefined,false,env,env.ADMIN_SECRET),deniedPlayer=nodes(await denied.render()).find(n=>n.type==='HttpsCameraWindow');assert.equal(deniedPlayer.props.playbackAllowed,false);assert.equal(deniedPlayer.props.previewApproval,null);assert.equal(denied.cookieReads(),0);
+ const denied=route(undefined,false,env),deniedPlayer=nodes(await denied.render()).find(n=>n.type==='HttpsCameraWindow');assert.equal(deniedPlayer.props.playbackAllowed,false);assert.equal(deniedPlayer.props.previewApproval,null);assert.equal(denied.cookieReads(),0);
 });
 test('gate deny stays false; unavailable missing inactive and legacy never get player surface',async()=>{
  assert.equal(nodes(await route(undefined,false).render()).find(n=>n.type==='HttpsCameraWindow').props.playbackAllowed,false);

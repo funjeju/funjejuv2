@@ -205,6 +205,8 @@ export default async function CctvDetailPage({ params }: Props) {
               <p className="mt-2 text-sm text-text-secondary">점검 또는 임시 오류로 재생을 잠시 중단했어요. 장소 정보와 주소는 그대로 유지됩니다.</p>
               <Link href="/cctv" className="mt-4 inline-block underline">다른 CCTV 보기</Link>
             </div>
+          ) : process.env.VERCEL_ENV === "preview" ? (
+            <div className="p-10 text-center"><a href={`/cctv/watch/${encodeURIComponent(cctv.id)}`} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-white px-5 py-3 font-bold text-black">로그인 없이 영상 보기 · 새 창</a></div>
           ) : cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
           ) : requiresExternalPlayback(cctv) ? (

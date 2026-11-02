@@ -5,11 +5,12 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
-function harness() {
+function harness(preview = false) {
   const jsx = (type, props, key) => ({ type, props, key });
   let cleanup;
   const dialog = { showModal() {}, close() {} };
   const stubs = {
+    '@/components/common/PreviewRuntimeProvider': { usePreviewRuntime: () => preview },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     react: { useEffect: cb => { cleanup = cb(); }, useId: () => 'camera-title', useRef: () => ({ current: dialog }) },
     'next/link': { default: 'Link' },
@@ -57,4 +58,15 @@ test('defensive dialog route never embeds HTTP dodu into HTTPS HLS player', () =
   const { CameraDialog } = harness();
   const tree = CameraDialog({ camera: { ...camera, id: 'dodu', originUrl: 'http://example.test/a.m3u8' }, onClose() {} });
   assert.equal(tree.props.children[1].props.children.type, 'VurixLaunch');
+});
+
+test('public preview dialog never mounts inline media; watch route is sole authority', () => {
+  const { CameraDialog } = harness(true);
+  const nodes = v => !v || typeof v !== 'object' ? [] : Array.isArray(v) ? v.flatMap(nodes) : [v, ...nodes(v.props?.children)];
+  for (const update of [{}, {youtubeId:'synthetic'}, {originUrl:'http://example.test/source'}, {originUrl:'https://example.test/source'}]) {
+    const all = nodes(CameraDialog({camera:{...camera,...update},onClose(){}}));
+    assert.equal(all.some(n=>['HlsPlayer','YoutubePlayer','VurixLaunch'].includes(n.type)),false);
+    const link=all.find(n=>n.props?.href==='/cctv/watch/a');assert.ok(link);assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');
+  }
+  assert.equal(nodes(CameraDialog({camera:{...camera,active:false},onClose(){}})).some(n=>n.props?.href==='/cctv/watch/a'),false);
 });
