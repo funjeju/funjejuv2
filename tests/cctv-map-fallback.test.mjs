@@ -262,3 +262,29 @@ test('replacement callback stays current and Kakao observes column resize with c
   h.markers.at(-1).onclick(); assert.deepEqual(selected, ['new:http']);
   h.unmount(); assert.equal(h.resizeObservers.at(-1).disconnected, true);
 });
+
+test('compact card ordinals survive missing coordinates in both SDK pins and fallback', async () => {
+  const cameras=[{...https,id:'missing',lat:undefined},http];
+  for(const options of [{},{key:'key',kakaoReady:true}]){
+    const h=harness(options);h.render(cameras,true);h.mount();await h.flush();
+    assert.equal(h.markers.length,1);assert.equal(h.markers[0].textContent,'2');h.unmount();
+  }
+  const h=harness({leafletFails:true});h.render(cameras,true);h.mount();await h.flush();
+  const tree=h.render(cameras,true);
+  const diagram=tree.props.children.find(c=>c?.props?.['aria-label']==='CCTV 위치 관계도');
+  assert.equal(diagram.props.children[1].props.children[0].props.children,2);
+  const details=tree.props.children.find(c=>c?.type==='details');
+  const items=details.props.children[1].props.children[1].props.children;
+  assert.equal(items[0].props.children[0].props.children[0],'1. ');
+  assert.equal(items[1].props.children[0].props.children[0],'2. ');
+  h.unmount();
+});
+
+test('adding or removing a coordinate-less predecessor updates existing compact pin ordinals', async () => {
+  const h=harness();const callback=()=>{};
+  h.render([http],true,callback);h.mount();await h.flush();assert.equal(h.markers.at(-1).textContent,'1');
+  h.render([{...https,id:'missing',lat:undefined},http],true,callback);h.commit();await h.flush();
+  assert.equal(h.markers.at(-1).textContent,'2');assert.equal(h.leafletRemoved,1);
+  h.render([http],true,callback);h.commit();await h.flush();
+  assert.equal(h.markers.at(-1).textContent,'1');assert.equal(h.leafletRemoved,2);h.unmount();
+});

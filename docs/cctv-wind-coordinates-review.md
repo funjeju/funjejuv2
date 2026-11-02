@@ -63,3 +63,32 @@ width (785/785 and 375/375 after scrollbar), category controls remained usable,
 and map-focus scrolling landed around 98px below the viewport top after reorder.
 New screenshots were inspected for these exact restored bytes. Fixture sources
 remained synthetic; this does not add a new camera playback observation.
+
+## Pretendard interface refinement
+
+The user accepted the sidebar/list/map structure and requested a more refined
+actual web interface, explicitly naming Pretendard. Their new screenshot was
+materialized through the authorized Library flow and its pixels inspected.
+The new design keeps that structure, with quieter near-white surfaces, generous
+panel spacing, readable type sizes, clearer hierarchy and compact card utility
+rows. Thumbnail disclaimers now sit in the text column rather than covering a
+small image. All five mobile region choices fit in one row without a scrollbar.
+
+The previous layout downloaded `Pretendard Variable` but requested `Pretendard`
+in CSS, allowing fallback fonts. The interface now uses an unmodified official
+v1.3.9 WOFF2 from the same origin with matching family, `font-display: swap` and
+system fallbacks. The 1.96 MiB font, full SIL OFL 1.1 license and source/hash notes
+are bundled in `public/fonts/pretendard`. No font CDN runtime dependency remains.
+
+Local managed-browser fixture checks on the refined components confirmed:
+- The browser decoded the actual WOFF2; a visible fixture-only font-load indicator
+  reported a loaded `Pretendard Variable` face for Korean text.
+- Desktop/tablet/mobile content widths matched scroll widths (1165, 785 and 375px).
+- Leaflet loaded real map tiles; search narrowed both the list and markers to one.
+- Tablet/mobile map focus and mobile list return landed below the sticky header.
+- Native usage disclosures retained the separate-window fallback and credits.
+
+These are layout/component checks with synthetic sources and stubbed account
+controls, not production login or a new playback verification. The 11-camera
+observation selection, eligibility gates, source routing, auth, database and
+infrastructure remain unchanged. Preview video-origin protection still applies.

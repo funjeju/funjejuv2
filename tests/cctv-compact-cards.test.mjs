@@ -21,9 +21,12 @@ function cardHarness(){
 test('compact card is horizontal with fixed thumbnail and honest non-live imagery',()=>{
  const render=cardHarness();const tree=render({cctv:camera,onOpen(){},variant:'compact'});const all=nodes(tree);
  assert.match(tree.props.className,/wind-camera-card/);
- assert.ok(all.some(n=>/wind-camera-thumb/.test(n.props?.className??'')&&n.props.className.includes('w-[100px]')&&n.props.className.includes('h-[74px]')));
- assert.ok(all.some(n=>n.type==='Image'&&n.props.sizes==='100px'));
- assert.match(text(tree),/현재 영상 아님/);assert.doesNotMatch(text(tree),/LIVE|검증 완료|실시간 재생 중/);
+ assert.ok(all.some(n=>/wind-camera-thumb/.test(n.props?.className??'')&&n.props.className.includes('w-[84px]')&&n.props.className.includes('h-[84px]')));
+ assert.ok(all.some(n=>n.type==='Image'&&n.props.sizes==='84px'));
+ assert.match(text(tree),/실시간 화면 아님/);
+ const thumbnail=all.find(n=>/wind-camera-thumb/.test(n.props?.className??''));assert.equal(text(thumbnail),'');
+ assert.ok(all.some(n=>/wind-camera-eyebrow/.test(n.props?.className??'')&&text(n).includes('01')));
+ assert.ok(all.some(n=>/wind-camera-footer/.test(n.props?.className??'')));assert.doesNotMatch(text(tree),/LIVE|검증 완료|실시간 재생 중/);
  assert.ok(all.some(n=>n.type==='ExternalLink'));assert.ok(all.some(n=>/wind-camera-name/.test(n.props?.className??'')));
 });
 test('compact click delegates once synchronously; independent detail/share/favorite and credit remain',()=>{

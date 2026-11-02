@@ -70,10 +70,13 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
-        {/* Pretendard — 한글 동적 서브셋 (가장 가벼움) */}
+        {/* Same-origin Pretendard Variable v1.3.9; OFL license ships beside the font. */}
         <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css"
+          rel="preload"
+          href="/fonts/pretendard/PretendardVariable-v1.3.9.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
         />
         {/* 브랜드 구조화데이터 — "펀제주"/"funjeju" 브랜드 인식 + 사이트링크 검색창 */}
         <script

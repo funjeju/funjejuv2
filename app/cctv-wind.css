@@ -1,120 +1,268 @@
-/* Design 03 — 바람의 좌표. Scoped so legacy pages/admin keep their own UI. */
-.wind-site-shell { --wind-ink:#173e31; --wind-green:#204f3b; --wind-mint:#e8f2e9; --wind-paper:#f8fbf6; background:var(--wind-mint); color:var(--wind-ink); }
-.wind-header { position:sticky; top:0; z-index:40; border-bottom:1px solid #cdded0; background:#f3f8f0f5; backdrop-filter:blur(18px); color:#173e31; }
-.wind-header-inner { display:flex; align-items:center; gap:28px; min-height:76px; max-width:1720px; margin:0 auto; padding:12px 32px; }
-.wind-logo { display:inline-flex; align-items:center; gap:11px; min-width:190px; color:#173e31; font-size:19px; font-weight:900; letter-spacing:-.7px; line-height:1.1; }
-.wind-logo-com { font-weight:400; font-size:12px; letter-spacing:-.2px; }
-.wind-logo small { display:block; margin-top:5px; color:#668271; font-size:9px; letter-spacing:1.9px; font-weight:500; }
-.wind-header-nav { display:flex; gap:27px; align-items:center; margin-left:auto; font-size:12px; font-weight:600; }
-.wind-header-nav a { display:inline-flex; align-items:center; gap:5px; min-height:40px; color:#506f5b; }
-.wind-header-nav a[aria-current] { color:#173e31; font-weight:850; }
-.wind-header-nav a:hover { text-decoration:underline; text-underline-offset:6px; }
-.wind-header-actions { display:flex; align-items:center; gap:13px; padding-left:22px; border-left:1px solid #cdded0; }
-.wind-header-search { display:grid; place-items:center; width:36px; height:36px; color:#204f3b; }
+/* Wind Coordinates — quiet surfaces, clear typography, a useful island atlas.
+   Scoped to the focused public shell; legacy routes retain their own design. */
+.wind-site-shell {
+  --wind-ink:#183d32; --wind-green:#204f3b; --wind-mint:#f0f5f1; --wind-paper:#ffffff;
+  background:var(--wind-mint); color:var(--wind-ink);
+  font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+.wind-header { position:sticky; top:0; z-index:40; border-bottom:1px solid #dce6df; background:#ffffffed; backdrop-filter:blur(20px); color:#183d32; }
+.wind-header-inner { display:flex; align-items:center; gap:28px; min-height:80px; max-width:1720px; margin:0 auto; padding:15px 36px; }
+.wind-logo { display:inline-flex; align-items:center; gap:12px; min-width:198px; color:#183d32; font-size:21px; font-weight:800; letter-spacing:-.9px; line-height:1.1; }
+.wind-logo > svg { width:34px; height:34px; }
+.wind-logo-com { font-weight:450; font-size:12px; letter-spacing:-.2px; }
+.wind-logo small { display:block; margin-top:6px; color:#526b5d; font-size:10px; letter-spacing:1.6px; font-weight:500; }
+.wind-header-nav { display:flex; gap:7px; align-items:center; margin-left:auto; font-size:13px; font-weight:600; }
+.wind-header-nav a { display:inline-flex; align-items:center; gap:7px; min-height:40px; padding:0 15px; border-radius:999px; color:#52675d; }
+.wind-header-nav a[aria-current] { color:#204f3b; background:#eaf2ec; font-weight:700; }
+.wind-header-nav a:hover { color:#183d32; background:#f0f5f1; }
+.wind-header-actions { display:flex; align-items:center; gap:12px; padding-left:22px; border-left:1px solid #dde6df; }
+.wind-header-search { display:grid; place-items:center; width:40px; height:40px; border-radius:50%; color:#204f3b; }
+.wind-header-search:hover { background:#edf4ee; }
 .wind-language { display:none; }
+.wind-language > div > button { min-height:36px; border-color:#dce6df; background:#f6f8f5; color:#425b4e; border-radius:999px; padding:6px 10px; }
+.wind-header-actions > button { min-height:36px; padding:7px 12px; border-color:#dce6df; border-radius:999px; background:#ffffff; color:#204f3b; box-shadow:none; font-size:12px; }
 .wind-header a:focus-visible,.wind-header button:focus-visible,.wind-explorer button:focus-visible { outline:2px solid #204f3b; outline-offset:4px; }
 .wind-explorer .wind-sidebar button:focus-visible { outline-color:#e3efdc; }
-.wind-explorer { display:grid; grid-template-columns:208px minmax(0,1fr); max-width:1720px; margin:0 auto; min-height:calc(100dvh - 76px); color:#173e31; background:#e8f2e9; }
-.wind-sidebar { display:flex; flex-direction:column; align-self:stretch; padding:30px 17px 25px; background:#204f3b; color:#f0f7e9; }
-.wind-sidebar-brand { display:flex; align-items:center; gap:10px; padding:0 9px 30px; font-size:17px; font-weight:750; letter-spacing:-.6px; }
-.wind-sidebar-brand small { display:block; margin-top:5px; color:#b9d2be; font-size:9px; font-weight:500; letter-spacing:1.6px; }
-.wind-sidebar-label { margin:4px 11px 13px; color:#c0d7c3; font-size:10px; letter-spacing:.8px; }
-.wind-directions { display:flex; flex-direction:column; gap:5px; }
-.wind-directions button { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:48px; width:100%; padding:12px 13px; border:1px solid transparent; border-radius:7px; color:#e2eee1; background:transparent; text-align:left; cursor:pointer; }
-.wind-directions button > span { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; white-space:nowrap; }
-.wind-directions button small { color:#b2ccb6; font-size:9px; letter-spacing:.7px; }
+.wind-explorer { display:grid; grid-template-columns:218px minmax(0,1fr); max-width:1720px; margin:0 auto; min-height:calc(100dvh - 80px); color:#183d32; background:#f0f5f1; }
+.wind-sidebar { position:relative; display:flex; flex-direction:column; align-self:stretch; padding:36px 18px 28px; background:#204f3b; color:#f1f7ed; }
+.wind-sidebar-brand { display:flex; align-items:center; gap:11px; padding:0 12px 38px; font-size:18px; font-weight:650; letter-spacing:-.5px; }
+.wind-sidebar-brand small { display:block; margin-top:7px; color:#b9d2be; font-size:9px; font-weight:500; letter-spacing:1.5px; }
+.wind-sidebar-label { margin:0 14px 14px; color:#c4d9c9; font-size:11px; letter-spacing:.1px; }
+.wind-directions { display:flex; flex-direction:column; gap:8px; }
+.wind-directions button { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:50px; width:100%; padding:13px 15px; border:1px solid transparent; border-radius:10px; color:#e7f0e6; background:transparent; text-align:left; cursor:pointer; transition:background .18s,color .18s; }
+.wind-directions button > span { display:flex; align-items:center; gap:11px; font-size:14px; font-weight:550; white-space:nowrap; }
+.wind-directions button small { color:#bfd6c5; font-size:9px; letter-spacing:.7px; }
 .wind-directions button:hover { background:#315f49; }
-.wind-directions button[aria-pressed="true"] { border-color:#dcebd8; background:#e3efdc; color:#173e31; }
+.wind-directions button[aria-pressed="true"] { border-color:#e4efdf; background:#e4efdf; color:#173e31; box-shadow:0 3px 10px #102b2014; }
+.wind-directions button[aria-pressed="true"] > span { font-weight:700; }
 .wind-directions button[aria-pressed="true"] small { color:#4b6d50; }
-.wind-sidebar-bottom { margin-top:auto; padding:60px 11px 0; }
-.wind-sidebar-bottom > svg { margin-bottom:16px; color:#c4d9b7; }
-.wind-sidebar-bottom p { font-size:12px; line-height:1.9; font-weight:400; }
-.wind-sidebar-bottom > span { display:block; margin-top:17px; font-size:10px; color:#b0cab8; letter-spacing:2px; }
-.wind-sidebar-bottom a { display:flex; align-items:center; justify-content:space-between; margin-top:34px; padding-top:17px; border-top:1px solid #54755a; font-size:11px; color:#e4efdf; }
-.wind-content { min-width:0; padding:31px 30px 0; }
-.wind-intro { display:flex; align-items:center; justify-content:space-between; gap:22px; padding-bottom:24px; }
-.wind-eyebrow { margin-bottom:8px; color:#577361; font-size:10px; font-weight:600; letter-spacing:2px; }
-.wind-intro h1 { font-size:clamp(27px,2.7vw,40px); line-height:1.15; font-weight:850; letter-spacing:-1.7px; }
-.wind-intro h1 > span { color:#739d7b; }
-.wind-intro-description { margin-top:11px; color:#4f6c59; font-size:11px; line-height:1.7; }
-.wind-coordinate { display:flex; align-items:center; gap:14px; color:#74937c; }
-.wind-coordinate span { color:#4f6c59; font-size:10px; line-height:1.7; letter-spacing:1.7px; }
+.wind-sidebar-bottom { margin-top:auto; padding:80px 14px 0; }
+.wind-sidebar-bottom > svg { width:48px; height:48px; margin-bottom:22px; color:#c9ddbe; }
+.wind-sidebar-bottom p { font-size:14px; line-height:1.9; font-weight:400; letter-spacing:-.2px; }
+.wind-sidebar-bottom > span { display:block; margin-top:20px; font-size:10px; color:#bfd6c5; letter-spacing:2px; }
+.wind-sidebar-bottom a { display:flex; align-items:center; justify-content:space-between; margin-top:34px; min-height:48px; padding-top:18px; border-top:1px solid #52765f; font-size:12px; color:#e4efdf; }
+.wind-explorer .wind-sidebar-bottom a:focus-visible { outline-color:#e3efdc; }
+.wind-content { min-width:0; padding:35px 36px 0; }
+.wind-intro { display:flex; align-items:center; justify-content:space-between; gap:24px; padding-bottom:30px; }
+.wind-eyebrow { display:flex; align-items:center; gap:9px; margin-bottom:13px; color:#4f6c59; font-size:10px; font-weight:650; letter-spacing:1.7px; }
+.wind-eyebrow::before { content:""; display:block; width:20px; height:1px; background:#708c78; }
+.wind-intro h1 { font-size:clamp(34px,3vw,46px); line-height:1.14; font-weight:750; letter-spacing:-1.9px; }
+.wind-intro h1 > span { color:#6b9474; }
+.wind-intro-description { margin-top:13px; color:#4f6c59; font-size:14px; line-height:1.6; letter-spacing:-.25px; }
+.wind-coordinate { display:flex; align-items:center; gap:14px; color:#557a61; padding:15px 0 15px 24px; border-left:1px solid #d2dfd5; }
+.wind-coordinate > svg { width:46px; height:46px; }
+.wind-coordinate span { color:#4f6c59; font-size:10px; line-height:1.9; letter-spacing:1.4px; }
 .wind-toolbar { display:flex; align-items:stretch; gap:10px; padding:0; }
-.wind-search { display:flex; align-items:center; gap:11px; flex:1; min-width:120px; height:46px; padding:0 15px; border:1px solid #ccddcf; background:#fbfdf9; border-radius:7px; }
-.wind-search > svg { color:#67836d; flex-shrink:0; }
-.wind-search input { width:100%; min-width:0; color:#173e31; background:none; border:0; outline:0; font-size:12px; }
+.wind-search { display:flex; align-items:center; gap:12px; flex:1; min-width:120px; height:52px; padding:0 17px; border:1px solid #d5e1d8; background:#ffffff; border-radius:12px; box-shadow:0 2px 3px #203c2e03; }
+.wind-search > svg { color:#52735d; flex-shrink:0; }
+.wind-search input { width:100%; min-width:0; color:#183d32; background:none; border:0; outline:0; font-size:14px; letter-spacing:-.2px; }
 .wind-search input::placeholder { color:#4f6c59; }
-.wind-search:focus-within { border-color:#285943; box-shadow:0 0 0 2px #28594315; }
-.wind-search button { display:grid; place-items:center; width:27px; height:32px; cursor:pointer; }
-.wind-category { display:flex; align-items:center; gap:7px; padding:0 10px; border:1px solid #ccddcf; background:#f5faf2; border-radius:7px; }
-.wind-category select { width:91px; padding:0; color:#3d604b; background:none; border:0; font-size:11px; outline-offset:4px; }
-.wind-view-toggle { display:flex; padding:4px; background:#d8e6d8; border:1px solid #c5d9c9; border-radius:7px; }
-.wind-view-toggle button { display:flex; align-items:center; gap:7px; justify-content:center; min-width:62px; padding:7px 10px; border-radius:5px; background:transparent; color:#507058; cursor:pointer; font-size:11px; font-weight:600; }
-.wind-view-toggle button[aria-pressed="true"] { background:#204f3b; color:#f3f8ed; box-shadow:0 2px 5px #204f3b12; }
-.wind-results { display:flex; align-items:center; gap:14px; min-height:49px; color:#4f6c59; font-size:10px; }
-.wind-results strong { color:#204f3b; font-size:13px; margin-right:3px; }
-.wind-results button { display:inline-flex; align-items:center; gap:4px; color:#315f49; font-size:10px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
-.wind-results > span { display:inline-flex; align-items:center; gap:6px; margin-left:auto; font-size:9px; color:#4f6c59; }
-.wind-dashboard { display:grid; grid-template-columns:minmax(292px,.88fr) minmax(0,1.42fr); align-items:start; gap:18px; }
-.wind-dashboard[data-view="map"] { grid-template-columns:minmax(280px,.72fr) minmax(0,1.58fr); }
-.wind-list-panel { padding:0 0 5px; min-width:0; scroll-margin-top:98px; }
-.wind-panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; min-height:45px; margin:0 0 7px; }
-.wind-panel-heading h2 { display:flex; align-items:center; gap:7px; font-size:12px; font-weight:750; letter-spacing:-.2px; }
-.wind-panel-heading h2 > span { display:inline-grid; place-items:center; min-width:21px; min-height:20px; padding:0 5px; border-radius:5px; background:#d4e3d4; color:#325a42; font-size:10px; }
-.wind-panel-heading > small { color:#4f6c59; font-size:10px; }
-.wind-list-scroll { max-height:708px; padding:1px 5px 5px 1px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#b9cdbb transparent; }
-.wind-camera-list { gap:8px; }
-.wind-camera-card { border:1px solid #d5e3d6; border-radius:7px; background:#f9fcf7; transition:border-color .15s,box-shadow .15s; }
-.wind-camera-card:hover,.wind-camera-card:focus-within { border-color:#6f9679; box-shadow:0 2px 11px #224c3610; }
-.wind-camera-card .wind-camera-open { gap:12px; padding:10px; min-height:91px; }
-.wind-camera-card .wind-camera-thumb { width:92px; height:68px; border-radius:4px; }
-.wind-camera-card .wind-camera-name { font-size:13px; color:#173e31; }
-.wind-camera-card .wind-camera-location,.wind-camera-card .wind-camera-note { font-size:9px; color:#536f5d; }
-.wind-camera-card .wind-camera-tools { padding:2px 10px; min-height:28px; border-top:0; }
-.wind-camera-card .wind-camera-tools > a { color:#486650; font-size:9px; }
-.wind-camera-card .wind-camera-credit { border-top-color:#e0eade; font-size:10px; color:#526f5a; }
-.wind-camera-card .wind-camera-credit a { color:#315f49; text-decoration:underline; }
-.wind-camera-card .wind-camera-credit summary { padding:3px 0; }
-.wind-map-column { min-width:0; display:flex; flex-direction:column; gap:17px; }
-.wind-map-panel { min-width:0; scroll-margin-top:98px; }
-.wind-map-panel > .wind-panel-heading { padding:0 2px; }
-.wind-map-panel .wind-map-canvas { border:1px solid #c6dbce; border-radius:8px; background:#deeee5; }
-.wind-map-panel .wind-map-status { font-size:10px; line-height:1.6; color:#4f705b; }
-.wind-map-panel .wind-map-index { color:#355d43; font-size:10px; }
-.wind-map-panel details { border-color:#cfdecf; background:#f3f8ef; }
-.wind-map-index > summary { cursor:pointer; padding:9px 4px; }
+.wind-search:focus-within { border-color:#285943; box-shadow:0 0 0 3px #28594312; }
+.wind-search button { display:grid; place-items:center; width:32px; min-height:40px; cursor:pointer; }
+.wind-category { display:flex; align-items:center; gap:9px; padding:0 14px; border:1px solid #d5e1d8; background:#ffffff; border-radius:12px; }
+.wind-category select { width:98px; padding:0; color:#3d604b; background:none; border:0; font-size:13px; outline-offset:4px; }
+.wind-view-toggle { display:flex; padding:5px; background:#e5ede6; border:1px solid #dce6dc; border-radius:12px; }
+.wind-view-toggle button { display:flex; align-items:center; gap:7px; justify-content:center; min-width:70px; min-height:40px; padding:8px 12px; border-radius:8px; background:transparent; color:#4d6956; cursor:pointer; font-size:12px; font-weight:600; }
+.wind-view-toggle button[aria-pressed="true"] { background:#ffffff; color:#204f3b; box-shadow:0 2px 6px #224d3610; }
+.wind-results { display:flex; align-items:center; gap:14px; min-height:56px; color:#4f6c59; font-size:12px; }
+.wind-results strong { color:#204f3b; font-size:14px; font-weight:750; margin-right:3px; }
+.wind-results button { display:inline-flex; align-items:center; gap:4px; min-height:36px; color:#315f49; font-size:12px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.wind-results > span { display:inline-flex; align-items:center; gap:6px; margin-left:auto; font-size:11px; color:#4f6c59; }
+.wind-dashboard { display:grid; grid-template-columns:minmax(320px,.88fr) minmax(0,1.42fr); align-items:start; gap:22px; }
+.wind-dashboard[data-view="map"] { grid-template-columns:minmax(310px,.76fr) minmax(0,1.54fr); }
+.wind-list-panel { min-width:0; padding:18px 14px 12px; border:1px solid #dce6df; border-radius:18px; background:#ffffff; scroll-margin-top:100px; box-shadow:0 4px 16px #213f2e03; }
+.wind-panel-heading { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; min-height:32px; margin:0 3px 16px; }
+.wind-panel-heading h2 { display:flex; align-items:center; gap:9px; font-size:15px; font-weight:700; letter-spacing:-.45px; }
+.wind-panel-heading h2 > span { display:inline-grid; place-items:center; min-width:25px; min-height:23px; padding:0 7px; border-radius:7px; background:#edf3ec; color:#386247; font-size:11px; font-weight:650; }
+.wind-panel-heading > small { color:#4f6c59; font-size:11px; }
+.wind-list-panel .wind-panel-heading > small { display:none; }
+.wind-list-scroll { max-height:650px; padding:1px 5px 6px 1px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#b9cdbb transparent; }
+.wind-camera-list { gap:10px; }
+.wind-camera-card { overflow:visible; position:relative; border:1px solid #e0e8e2; border-radius:12px; background:#ffffff; transition:border-color .16s,box-shadow .16s; }
+.wind-camera-card:hover,.wind-camera-card:focus-within { border-color:#8eaf98; box-shadow:0 4px 14px #224c360a; }
+.wind-camera-card .wind-camera-open { gap:13px; padding:13px; min-height:112px; border-radius:12px 12px 0 0; }
+.wind-camera-card .wind-camera-open:hover { background:#f5f9f3; }
+.wind-camera-card .wind-camera-thumb { width:80px; height:80px; border-radius:9px; background:#e7efe6; }
+.wind-camera-card .wind-camera-eyebrow { display:flex; align-items:center; gap:6px; color:#526c5b; font-size:10px; font-weight:550; line-height:1.3; letter-spacing:.1px; }
+.wind-camera-card .wind-camera-eyebrow > span { font-size:10px; font-variant-numeric:tabular-nums; }
+.wind-camera-card .wind-camera-name { margin-top:5px; font-size:16px; font-weight:700; line-height:1.4; letter-spacing:-.5px; color:#183d32; }
+.wind-camera-card .wind-camera-location { margin-top:4px; font-size:12px; line-height:1.5; color:#4f6c59; }
+.wind-camera-card .wind-camera-note { margin-top:5px; font-size:10px; line-height:1.4; color:#526c5b; }
+.wind-camera-card .wind-camera-arrow { width:27px; height:30px; border-radius:8px; color:#41654d; background:#eef4ed; }
+.wind-camera-footer { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; padding:0 12px; border-top:1px solid #edf1ec; border-radius:0 0 12px 12px; background:#fbfcfa; }
+.wind-camera-card .wind-camera-tools { display:flex; align-items:center; gap:10px; padding:0; min-height:40px; border:0; }
+.wind-camera-card .wind-camera-tools > a { min-height:36px; display:inline-flex; align-items:center; color:#486650; font-size:11px; text-decoration:none; }
+.wind-camera-card .wind-camera-tools > a:hover { text-decoration:underline; text-underline-offset:4px; }
+.wind-camera-card .wind-camera-tools button { min-width:32px; min-height:32px; border-radius:8px; }
+.wind-camera-card .wind-camera-tools > div { margin-left:0; gap:3px; }
+.wind-camera-card .wind-camera-tools > div > div > button { background:transparent; color:#5a7263; }
+.wind-camera-card .wind-camera-tools > div > button { padding:4px 7px; box-shadow:none; }
+.wind-camera-card .wind-camera-credit { padding:0; border:0; font-size:11px; line-height:1.7; color:#526f5a; }
+.wind-camera-card .wind-camera-credit a { color:#315f49; text-decoration:underline; text-underline-offset:3px; }
+.wind-camera-card .wind-camera-credit summary { display:list-item; cursor:pointer; padding:11px 0 10px 9px; min-height:40px; font-size:10px; white-space:nowrap; }
+.wind-camera-footer:has(details[open]) { grid-template-columns:1fr; }
+.wind-camera-footer details[open] { grid-column:1/-1; border-top:1px solid #e2ebe0; }
+.wind-camera-footer details[open] > div { padding:0 3px 12px; }
+.wind-map-column { min-width:0; display:flex; flex-direction:column; gap:18px; }
+.wind-map-panel { min-width:0; padding:18px; border:1px solid #dce6df; border-radius:18px; background:#ffffff; scroll-margin-top:100px; box-shadow:0 4px 16px #213f2e03; }
+.wind-map-panel > .wind-panel-heading { margin:0 0 12px; }
+.wind-map-panel .wind-map-canvas { border:1px solid #d0e1d6; border-radius:12px; background:#deeee5; }
+.wind-map-panel .wind-map-status { padding:0 0 9px; font-size:11px; line-height:1.6; color:#4f705b; }
+.wind-map-panel .wind-map-index { color:#355d43; font-size:11px; }
+.wind-map-panel details { border-color:#e0e8de; background:#f8faf6; border-radius:9px; }
+.wind-map-index > summary { cursor:pointer; padding:10px 5px; }
 .wind-map-index > summary span { float:right; }
-.wind-window-panel { overflow:hidden; border:1px solid #cadfcf; border-radius:8px; background:#f8fcf5; }
-.wind-window-top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 15px; border-bottom:1px solid #d5e5d5; background:#edf5e9; }
-.wind-window-top > span { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:700; }
+.wind-window-panel { overflow:hidden; border:1px solid #d3e1d4; border-radius:18px; background:#e6efe0; }
+.wind-window-top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 20px 0; }
+.wind-window-top > span { display:flex; align-items:center; gap:8px; font-size:11px; font-weight:650; color:#3b6548; }
 .wind-window-top > small { color:#4f6c59; font-size:9px; letter-spacing:1.3px; }
-.wind-window-body { display:flex; align-items:center; gap:18px; padding:24px 20px; }
-.wind-window-symbol { display:grid; place-items:center; width:68px; height:68px; flex-shrink:0; border:1px solid #c6dbc9; border-radius:50%; color:#5c8666; background:#e9f3e4; }
+.wind-window-body { display:flex; align-items:center; gap:22px; padding:22px 24px; }
+.wind-window-symbol { display:grid; place-items:center; width:72px; height:72px; flex-shrink:0; border:1px solid #b6ceb7; border-radius:50%; color:#426e4f; background:#edf4e7; }
 .wind-window-kicker { color:#4f6c59; font-size:10px; letter-spacing:1px; }
-.wind-window-body h2 { margin-top:7px; font-size:22px; font-weight:800; letter-spacing:-.8px; line-height:1.3; }
-.wind-window-body h2 + p { margin-top:9px; color:#4f6c59; font-size:10px; line-height:1.8; white-space:pre-line; }
-.wind-explorer a.wind-watch-link { display:inline-flex; align-items:center; gap:8px; margin-top:12px; min-height:36px; color:#204f3b; font-size:11px; font-weight:700; text-decoration:underline; text-underline-offset:4px; }
-.wind-quick-views { display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding:12px 15px; border-top:1px solid #d5e5d5; background:#edf5e9; }
-.wind-quick-views > span { margin-right:auto; color:#55735c; font-size:9px; }
-.wind-explorer a.wind-quick-link,.wind-explorer a.wind-quick-link:visited { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:8px 12px; border:1px solid #204f3b; border-radius:5px; color:#f3f8ed; background:#204f3b; font-size:10px; font-weight:700; }
+.wind-window-body h2 { margin-top:7px; font-size:24px; font-weight:700; letter-spacing:-.9px; line-height:1.35; }
+.wind-window-body h2 + p { margin-top:9px; color:#4f6c59; font-size:12px; line-height:1.7; white-space:pre-line; }
+.wind-explorer a.wind-watch-link { display:inline-flex; align-items:center; gap:8px; margin-top:12px; min-height:40px; color:#204f3b; font-size:12px; font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+.wind-quick-views { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid #ccddc5; background:#f2f7ed; }
+.wind-quick-views > span { margin-right:auto; color:#4f6c59; font-size:11px; }
+.wind-explorer a.wind-quick-link,.wind-explorer a.wind-quick-link:visited { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:9px 13px; border:1px solid #204f3b; border-radius:9px; color:#f3f8ed; background:#204f3b; font-size:12px; font-weight:600; }
 .wind-explorer a.wind-quick-link:hover,.wind-explorer a.wind-quick-link:focus-visible { color:#173e31; background:#dcebd5; }
 .wind-explorer a.wind-quick-link:focus-visible { outline:2px solid #204f3b; outline-offset:3px; }
-.wind-footer { display:flex; align-items:flex-start; gap:20px; flex-wrap:wrap; padding:25px 0 20px; margin-top:20px; border-top:1px solid #ccdfcf; color:#4f6c59; font-size:10px; line-height:1.9; }
+.wind-footer { display:flex; align-items:flex-start; gap:24px; flex-wrap:wrap; padding:24px 0; margin-top:28px; border-top:1px solid #d5e1d6; color:#4f6c59; font-size:11px; line-height:1.8; }
 .wind-footer > p { flex-shrink:0; }
 .wind-footer > div { margin-left:auto; }
 .wind-footer > a { display:inline-flex; align-items:center; gap:3px; color:#355e42; white-space:nowrap; }
-.wind-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:380px; gap:14px; padding:35px; text-align:center; background:#f5faf1; border:1px solid #d0e1d0; border-radius:9px; }
-.wind-empty h2 { font-size:22px; font-weight:750; letter-spacing:-.7px; }
-.wind-empty p { font-size:12px; color:#4f6c59; line-height:1.8; }
-.wind-empty button { display:inline-flex; align-items:center; gap:8px; padding:11px 16px; margin-top:6px; border:1px solid #385f43; border-radius:5px; color:#204f3b; font-size:12px; cursor:pointer; }
-.wind-skeleton { display:grid; gap:10px; max-width:650px; }
-.wind-skeleton > div { display:grid; grid-template-columns:100px 1fr; gap:10px; padding:13px; min-height:100px; border-radius:8px; background:#f7fbf3; }
+.wind-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:380px; gap:14px; padding:36px; text-align:center; background:#ffffff; border:1px solid #dce6df; border-radius:18px; }
+.wind-empty h2 { font-size:24px; font-weight:700; letter-spacing:-.7px; }
+.wind-empty p { font-size:14px; color:#4f6c59; line-height:1.8; }
+.wind-empty button { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:11px 16px; margin-top:6px; border:1px solid #385f43; border-radius:9px; color:#204f3b; font-size:13px; cursor:pointer; }
+.wind-skeleton { display:grid; gap:12px; max-width:650px; }
+.wind-skeleton > div { display:grid; grid-template-columns:80px 1fr; gap:12px; padding:16px; min-height:112px; border-radius:12px; background:#ffffff; }
 .wind-skeleton span { display:block; min-height:15px; border-radius:4px; background:#d6e5d5; }
 .wind-skeleton span:first-child { grid-row:span 2; }
-.wind-header-actions > button { border-color:#c0d6c3; border-radius:5px; background:#f9fcf5; color:#204f3b; box-shadow:none; font-size:11px; }
 @media (min-width:640px) { .wind-language { display:inline-flex; } }
-@media (max-width:1440px) { .wind-explorer { grid-template-columns:208px minmax(0,1fr); } .wind-dashboard { grid-template-columns:minmax(292px,.9fr) minmax(0,1.4fr); } }
-@media (max-width:1150px) { .wind-header-inner { padding-inline:24px; gap:20px; } .wind-header-nav { gap:18px; } .wind-explorer { grid-template-columns:176px minmax(0,1fr); } .wind-sidebar { padding-inline:12px; } .wind-directions button small { display:none; } .wind-content { padding:28px 24px 0; } .wind-coordinate span { display:none; } .wind-dashboard,.wind-dashboard[data-view="map"] { grid-template-columns:minmax(270px,.95fr) minmax(0,1fr); gap:15px; } .wind-window-symbol { width:48px; height:48px; } .wind-window-body { gap:12px; padding:18px 14px; } .wind-window-body h2 { font-size:19px; } }
-@media (max-width:900px) { .wind-header-nav { display:none; } .wind-header-actions { margin-left:auto; } .wind-explorer { grid-template-columns:142px minmax(0,1fr); } .wind-sidebar-brand { font-size:14px; padding-inline:3px; } .wind-sidebar-brand small { display:none; } .wind-sidebar-brand > svg { width:20px; } .wind-content { padding:24px 18px 0; } .wind-dashboard,.wind-dashboard[data-view="map"] { grid-template-columns:1fr; } .wind-dashboard[data-view="map"] .wind-map-column { order:-1; } .wind-list-scroll { max-height:580px; } .wind-view-toggle button { min-width:44px; } .wind-view-toggle button span { display:none; } .wind-footer > div { margin-left:0; } }
-@media (max-width:700px) { .wind-header-inner { min-height:64px; padding:10px 18px; gap:10px; } .wind-logo { min-width:0; font-size:17px; gap:8px; } .wind-logo > svg { width:23px; } .wind-logo small { font-size:8px; } .wind-header-actions { gap:7px; padding-left:9px; border-left:0; } .wind-explorer { display:block; min-height:calc(100dvh - 64px); } .wind-sidebar { padding:12px 18px; } .wind-sidebar-brand,.wind-sidebar-label,.wind-sidebar-bottom { display:none; } .wind-directions { flex-direction:row; gap:6px; overflow-x:auto; padding-bottom:3px; } .wind-directions button { flex:0 0 auto; width:auto; min-height:40px; padding:9px 12px; } .wind-directions button > span { font-size:11px; } .wind-content { padding:25px 14px 0; } .wind-intro { padding-bottom:20px; gap:8px; } .wind-intro h1 { font-size:29px; } .wind-eyebrow { font-size:9px; letter-spacing:1.5px; } .wind-intro-description { font-size:10px; } .wind-coordinate > svg { width:36px; } .wind-toolbar { flex-wrap:wrap; gap:7px; } .wind-search { height:44px; padding-inline:11px; } .wind-search input { font-size:11px; } .wind-category { order:2; width:100%; min-height:34px; } .wind-category select { width:100%; } .wind-view-toggle button { min-width:34px; padding:7px; } .wind-results { gap:8px; font-size:10px; min-height:49px; flex-wrap:wrap; } .wind-results > span { font-size:9px; } .wind-list-scroll { max-height:580px; } .wind-camera-card .wind-camera-thumb { width:100px; height:74px; } .wind-window-body { padding:22px 18px; } .wind-window-symbol { width:54px; height:54px; } .wind-footer { gap:12px; } }
+@media (max-width:1440px) {
+  .wind-explorer { grid-template-columns:200px minmax(0,1fr); }
+  .wind-sidebar { padding-inline:12px; }
+  .wind-directions button { padding-inline:12px; }
+  .wind-content { padding:30px 28px 0; }
+  .wind-dashboard { grid-template-columns:minmax(320px,.92fr) minmax(0,1.28fr); gap:18px; }
+  .wind-panel-heading > small { font-size:10px; }
+  .wind-window-symbol { width:60px; height:60px; }
+  .wind-window-body { gap:16px; padding:20px; }
+  .wind-window-body h2 { font-size:22px; }
+}
+@media (max-width:1150px) {
+  .wind-header-inner { padding-inline:24px; gap:18px; }
+  .wind-logo { min-width:170px; }
+  .wind-header-nav { gap:0; }
+  .wind-header-nav a { padding-inline:11px; }
+  .wind-header-actions { gap:8px; padding-left:15px; }
+  .wind-explorer { grid-template-columns:170px minmax(0,1fr); }
+  .wind-sidebar-brand { padding-inline:7px; font-size:16px; }
+  .wind-sidebar-brand small { font-size:8px; letter-spacing:1px; }
+  .wind-directions button small { display:none; }
+  .wind-content { padding:28px 22px 0; }
+  .wind-coordinate span { display:none; }
+  .wind-coordinate { padding-left:18px; }
+  .wind-dashboard,.wind-dashboard[data-view="map"] { grid-template-columns:minmax(300px,.95fr) minmax(0,1fr); gap:15px; }
+  .wind-list-panel { padding-inline:10px; }
+  .wind-map-panel { padding:14px; }
+  .wind-panel-heading { gap:5px; }
+  .wind-panel-heading > small { width:100%; }
+  .wind-window-symbol { width:44px; height:44px; }
+  .wind-window-symbol > svg { width:30px; }
+  .wind-window-body { gap:12px; padding:18px 14px; }
+  .wind-window-body h2 { font-size:20px; }
+  .wind-window-body h2 + p { font-size:11px; }
+  .wind-window-top { padding-inline:14px; }
+  .wind-quick-views { padding:12px; }
+  .wind-quick-views > span { flex-basis:100%; }
+  .wind-explorer a.wind-quick-link { flex:1; padding-inline:8px; font-size:11px; }
+}
+@media (max-width:1000px) {
+  .wind-header-nav { display:none; }
+  .wind-header-actions { margin-left:auto; }
+  .wind-explorer { grid-template-columns:150px minmax(0,1fr); }
+  .wind-sidebar { padding-inline:9px; }
+  .wind-sidebar-brand { gap:7px; padding-inline:6px; font-size:15px; }
+  .wind-sidebar-brand small { display:none; }
+  .wind-sidebar-brand > svg { width:20px; }
+  .wind-directions button > span { font-size:13px; }
+  .wind-content { padding:26px 20px 0; }
+  .wind-dashboard,.wind-dashboard[data-view="map"] { grid-template-columns:1fr; }
+  .wind-dashboard[data-view="map"] .wind-map-column { order:-1; }
+  .wind-list-panel { padding:18px 14px 12px; }
+  .wind-list-scroll { max-height:620px; }
+  .wind-list-panel .wind-panel-heading > small { display:block; width:auto; }
+  .wind-panel-heading > small { width:auto; font-size:11px; }
+  .wind-map-panel { padding:18px; }
+  .wind-view-toggle button { min-width:44px; }
+  .wind-view-toggle button span { display:none; }
+  .wind-window-symbol { width:62px; height:62px; }
+  .wind-window-symbol > svg { width:38px; }
+  .wind-window-body { padding:22px; }
+  .wind-window-body h2 { font-size:24px; }
+  .wind-window-body h2 + p { font-size:12px; }
+  .wind-quick-views { padding:14px 20px; }
+  .wind-quick-views > span { flex-basis:auto; }
+  .wind-explorer a.wind-quick-link { flex:initial; padding-inline:13px; font-size:12px; }
+  .wind-footer > div { margin-left:0; }
+}
+@media (max-width:700px) {
+  .wind-header-inner { min-height:68px; padding:12px 18px; gap:10px; }
+  .wind-logo { min-width:0; font-size:19px; gap:9px; }
+  .wind-logo > svg { width:28px; height:28px; }
+  .wind-logo small { font-size:9px; letter-spacing:1.2px; }
+  .wind-header-actions { gap:6px; padding-left:0; border-left:0; }
+  .wind-header-search { width:34px; }
+  .wind-header-actions > button { font-size:11px; padding-inline:10px; }
+  .wind-explorer { display:block; min-height:calc(100dvh - 68px); }
+  .wind-sidebar { padding:13px 16px; }
+  .wind-sidebar-brand,.wind-sidebar-label,.wind-sidebar-bottom { display:none; }
+  .wind-directions { display:grid; grid-template-columns:1.3fr repeat(4,minmax(0,1fr)); gap:4px; padding:2px 0; }
+  .wind-directions button { width:100%; min-height:42px; justify-content:center; padding:10px 4px; border-radius:9px; }
+  .wind-directions button > span { font-size:12px; gap:5px; }
+  .wind-directions button > span svg { width:13px; height:13px; }
+  .wind-directions button:first-child > span svg { display:none; }
+  .wind-content { padding:28px 16px 0; }
+  .wind-intro { padding-bottom:24px; gap:12px; }
+  .wind-intro h1 { font-size:36px; letter-spacing:-1.7px; }
+  .wind-eyebrow { font-size:9px; letter-spacing:1.2px; margin-bottom:12px; gap:7px; }
+  .wind-eyebrow::before { width:13px; }
+  .wind-intro-description { max-width:250px; font-size:12px; margin-top:11px; }
+  .wind-coordinate { padding-left:0; border-left:0; }
+  .wind-coordinate > svg { width:38px; height:38px; }
+  .wind-toolbar { flex-wrap:wrap; gap:8px; }
+  .wind-search { height:48px; padding-inline:13px; border-radius:10px; }
+  .wind-search input { font-size:13px; }
+  .wind-category { order:2; width:100%; min-height:42px; border-radius:10px; }
+  .wind-category select { width:100%; font-size:12px; }
+  .wind-view-toggle { padding:4px; border-radius:10px; }
+  .wind-view-toggle button { min-width:34px; min-height:38px; padding:7px; }
+  .wind-results { gap:8px; font-size:11px; min-height:60px; flex-wrap:wrap; padding-block:10px; }
+  .wind-results > span { font-size:10px; }
+  .wind-list-panel { padding:15px 10px 10px; border-radius:15px; scroll-margin-top:86px; }
+  .wind-list-panel .wind-panel-heading { margin-inline:4px; }
+  .wind-list-panel .wind-panel-heading > small { display:none; }
+  .wind-list-scroll { max-height:620px; padding-right:3px; }
+  .wind-camera-card .wind-camera-open { padding:11px; gap:10px; min-height:108px; }
+  .wind-camera-card .wind-camera-thumb { width:72px; height:76px; }
+  .wind-camera-card .wind-camera-name { font-size:15px; }
+  .wind-camera-card .wind-camera-location { font-size:11px; }
+  .wind-camera-card .wind-camera-note { font-size:9px; }
+  .wind-camera-card .wind-camera-arrow { width:23px; background:none; }
+  .wind-map-panel { padding:14px; border-radius:15px; scroll-margin-top:86px; }
+  .wind-map-panel .wind-panel-heading > small { width:100%; font-size:10px; }
+  .wind-window-panel { border-radius:15px; }
+  .wind-window-top { padding:15px 17px 0; }
+  .wind-window-body { padding:20px 17px; gap:14px; }
+  .wind-window-symbol { width:48px; height:48px; }
+  .wind-window-symbol > svg { width:32px; }
+  .wind-window-body h2 { font-size:21px; }
+  .wind-window-body h2 + p { font-size:11px; }
+  .wind-quick-views { padding:12px 15px; }
+  .wind-quick-views > span { flex-basis:100%; }
+  .wind-explorer a.wind-quick-link { flex:1; padding-inline:8px; font-size:11px; }
+  .wind-footer { gap:12px; margin-top:24px; padding-top:20px; font-size:10px; }
+}
 @media (prefers-reduced-motion:reduce) { .wind-explorer * { scroll-behavior:auto !important; transition:none !important; } }
