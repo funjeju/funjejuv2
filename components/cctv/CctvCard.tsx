@@ -1,5 +1,7 @@
 "use client";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -18,8 +20,9 @@ function scenery(category: string, index: number) {
 }
 
 export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { cctv: CctvEntry; index?: number; onOpen: () => void; variant?: "editorial" | "compact" }) {
+  const preview = usePreviewRuntime();
   const needsDetail = requiresPlaybackDetail(cctv);
-  const popup = requiresExternalPlayback(cctv);
+  const popup = preview || requiresExternalPlayback(cctv);
   // Compact thumbnails are explicitly illustrative: never a camera-frame claim.
   const photo = scenery(cctv.category, index) ?? (variant === "compact" ? "/cctv-editorial/seongsan-panorama.jpg" : null);
   const credit = photo?.includes("hallasan")
@@ -55,8 +58,8 @@ export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { c
       <details className="wind-camera-credit text-[10px] leading-4 text-[#7a7a7a]">
         <summary className="cursor-pointer whitespace-nowrap py-1 focus-visible:outline-2 focus-visible:outline-[#4d4d4d]">{hasPhoto ? "안내·사진 출처" : "이용 안내"}</summary>
         <div className="wind-camera-credit-content pb-2 pt-1">
-          <p>{!cctv.active ? "공개 대기 중입니다. " : popup ? "영상은 별도 창에서 열립니다. " : ""}{hasPhoto ? "제주 풍경 예시로, 해당 CCTV의 촬영 화면이 아닙니다. " : "지역 그래픽 · 실시간 화면 아님. "}영상 연결 상태는 플레이어에서 확인해 주세요.</p>
-          {popup && cctv.active && <a href={cameraWatchUrl(cctv)} target="_blank" rel="noopener noreferrer" className="mt-1 block font-bold underline underline-offset-2">팝업이 열리지 않으면 새 탭으로 보기</a>}
+          <p>{!cctv.active ? "공개 대기 중입니다. " : popup ? "영상은 별도 창에서 열립니다. " : ""}{hasPhoto ? "제주 풍경 예시로, 해당 CCTV의 촬영 화면이 아닙니다. " : "지역 그래픽 · 실시간 화면 아님. "}{preview ? "원본 HLS 링크는 파일로 열릴 수 있으며 재생은 미확인입니다." : "영상 연결 상태는 플레이어에서 확인해 주세요."}</p>
+          {popup && cctv.active && <a href={cameraWatchUrl(cctv, preview)} target="_blank" rel="noopener noreferrer" className="mt-1 block font-bold underline underline-offset-2">팝업이 열리지 않으면 새 탭으로 보기</a>}
           {hasPhoto && <p className="mt-1"><a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.author}</a> · <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license}</a> · 화면 비율로 자름</p>}
         </div>
       </details>
@@ -76,7 +79,7 @@ export function CctvCard({ cctv, index = 0, onOpen, variant = "editorial" }: { c
         <div className="pt-4"><p className="text-[10px] font-bold tracking-[.06em] text-[#59675e]">{cctv.region} <span className="px-1.5 text-[#8b968c]">/</span> {cctv.category}</p><div className="mt-2 flex items-start justify-between gap-3"><h3 className="text-[23px] font-black leading-tight tracking-[-.055em]">{cctv.name}</h3><ArrowUpRight size={23} strokeWidth={1.5} className="mt-0.5 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></div><p className="mt-2 line-clamp-1 min-h-5 text-xs leading-5 text-[#59675e]">{cctv.description || "영상으로 확인하는 제주의 지금."}</p></div>
       </button>
       {needsDetail && cctv.active && <p className="mt-3 text-[11px] leading-5 text-[#52605a]">최신 영상 연결 정보는 상세 페이지에서 확인해 주세요.</p>}
-      {popup && cctv.active && <p className="mt-3 text-[11px] leading-5 text-[#52605a]">영상은 별도 창에서 열려요. 재생 여부는 새 창에서 확인해 주세요. <a href={cameraWatchUrl(cctv)} target="_blank" rel="noopener noreferrer" className="font-bold underline underline-offset-4">팝업이 열리지 않으면 새 탭으로 보기</a></p>}
+      {popup && cctv.active && <p className="mt-3 text-[11px] leading-5 text-[#52605a]">영상은 별도 창에서 열려요. 재생 여부는 새 창에서 확인해 주세요. <a href={cameraWatchUrl(cctv, preview)} target="_blank" rel="noopener noreferrer" className="font-bold underline underline-offset-4">팝업이 열리지 않으면 새 탭으로 보기</a></p>}
       {hasPhoto && <p className="mt-2 text-[9px] leading-4 text-[#657168]">풍경 사진 <a href={credit.source} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.author}</a> · <a href={credit.licenseUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{credit.license}</a> · 화면 비율로 자름</p>}
       <div className="mt-3 flex items-center gap-2 border-t border-[#172524]/20 pt-2.5">
         <Link href={`/cctv/${encodeURIComponent(cctv.id)}`} className="py-2 text-[11px] font-bold underline decoration-[#172524]/30 underline-offset-4 hover:decoration-[#172524]">상세 정보</Link>

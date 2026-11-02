@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import * as directLink from '../lib/cctv-direct-link.ts';
 import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 function harness(preview = false) {
@@ -10,6 +11,8 @@ function harness(preview = false) {
   let cleanup;
   const dialog = { showModal() {}, close() {} };
   const stubs = {
+    '@/components/cctv/DirectCameraLaunch': { DirectCameraLaunch: 'DirectCameraLaunch' },
+    '@/lib/cctv-direct-link': directLink,
     '@/components/common/PreviewRuntimeProvider': { usePreviewRuntime: () => preview },
     'react/jsx-runtime': { jsx, jsxs: jsx },
     react: { useEffect: cb => { cleanup = cb(); }, useId: () => 'camera-title', useRef: () => ({ current: dialog }) },
@@ -60,13 +63,15 @@ test('defensive dialog route never embeds HTTP dodu into HTTPS HLS player', () =
   assert.equal(tree.props.children[1].props.children.type, 'VurixLaunch');
 });
 
-test('public preview dialog never mounts inline media; watch route is sole authority', () => {
+test('public preview dialog never mounts inline media and only passes sanitized source to direct launcher', () => {
   const { CameraDialog } = harness(true);
   const nodes = v => !v || typeof v !== 'object' ? [] : Array.isArray(v) ? v.flatMap(nodes) : [v, ...nodes(v.props?.children)];
-  for (const update of [{}, {youtubeId:'synthetic'}, {originUrl:'http://example.test/source'}, {originUrl:'https://example.test/source'}]) {
-    const all = nodes(CameraDialog({camera:{...camera,...update},onClose(){}}));
+  for (const update of [{}, {youtubeId:'synthetic'}, {originUrl:'http://cctv.example.kr/live.m3u8'}, {originUrl:'https://cctv.example.kr/live.m3u8'}, {originUrl:'http://cctv.example.kr/live?secret=token'}]) {
+    const c={...camera,...update},all = nodes(CameraDialog({camera:c,onClose(){}}));
     assert.equal(all.some(n=>['HlsPlayer','YoutubePlayer','VurixLaunch'].includes(n.type)),false);
-    const link=all.find(n=>n.props?.href==='/cctv/watch/a');assert.ok(link);assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');
+    const launch=all.find(n=>n.type==='DirectCameraLaunch');assert.ok(launch);
+    assert.equal(launch.props.originUrl,directLink.directCameraSourceUrl(c)??'');
+    assert.doesNotMatch(JSON.stringify(launch),/secret=token/);
   }
-  assert.equal(nodes(CameraDialog({camera:{...camera,active:false},onClose(){}})).some(n=>n.props?.href==='/cctv/watch/a'),false);
+  assert.equal(nodes(CameraDialog({camera:{...camera,active:false},onClose(){}})).some(n=>n.type==='DirectCameraLaunch'),false);
 });

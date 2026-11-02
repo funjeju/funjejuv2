@@ -1,3 +1,42 @@
+# Current Preview: provider-direct popup test
+
+The Preview UI now opens a provider destination directly on an explicit user
+click. It does not mount the FunJeju HTTPS proxy player or call the Cloudflare /
+Vultr media routes. Production selection and administrator authentication are
+unchanged. No provider database record, proxy policy, or credential is changed.
+
+- The five Hallasan cameras use the verified official 제주도 HTML viewer pages.
+- Other currently selected cameras open their public, unsigned source URL.
+  These are HLS `.m3u8` manifests, **not** a guarantee of browser video playback.
+  The UI distinguishes opening a window from successful video playback.
+- Active/current public inventory gating still applies. URLs with credentials,
+  query strings, fragments, private/reserved/local hosts, or unsafe syntax are
+  rejected. A rejected source never silently falls back to a media relay.
+- The watch/detail routes remain safe no-media launch pages in Preview. Login
+  is not required for public CCTV viewing; administrative/data APIs stay gated.
+- The earlier Preview proxy-origin/commit variables below do not activate this
+  direct-navigation path and are not required for it. They are historical
+  documentation of the superseded proxy-based test design, not instructions to
+  enable that path.
+
+## Verification boundary
+
+Unit tests cover source validation, official viewer mapping, synchronous clicks,
+fallback anchors, no-preview-inline-player behavior, and unchanged production
+routing. Live browser checks must separately record actual video dimensions,
+ready state, playback-time advancement and any error. A manifest download,
+opened page, or still thumbnail is not a playback pass. Do not bypass HTTP,
+certificate, provider WAF, or browser security warnings.
+
+The existing HTTP `/watch` server renders HTML whose media source is fetched by
+the viewer's browser directly. It is not a media relay on that route, but still
+requires the old server for the HTML page; it is not used by the new Preview
+navigation and is not evidence that the server can be shut down in production.
+
+---
+
+## Historical proxy-based test design (superseded for Preview navigation)
+
 # Public CCTV preview: prepared locally, not activated
 
 ## Goal and status

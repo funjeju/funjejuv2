@@ -13,9 +13,9 @@ function load(path, dependencies) {
  vm.runInNewContext(code,{module:mod,exports:mod.exports,process:{env:{}},require:name=>{assert.ok(name in dependencies,name);return dependencies[name]}});return mod.exports;
 }
 const camera = {id:'synthetic_camera',name:'테스트 해변',region:'제주시',category:'해변',direction:'북',active:true,description:'',originUrl:'http://source.example.test/a'};
-function cardHarness(){
+function cardHarness(preview = false){
  let failed=null;
- const deps={'react/jsx-runtime':{jsx,jsxs:jsx},react:{useState:()=>[failed,next=>{failed=next}]},'next/link':{__esModule:true,default:'Link'},'next/image':{__esModule:true,default:'Image'},'lucide-react':{ArrowUpRight:'ArrowUpRight',Play:'Play',ExternalLink:'ExternalLink'},'@/components/common/CctvFavoriteButton':{CctvFavoriteButton:'Favorite'},'@/components/common/ShareButton':{ShareButton:'Share'},'@/lib/cctv-playback-target':loadPlaybackTarget()};
+ const deps={'@/components/common/PreviewRuntimeProvider':{usePreviewRuntime:()=>preview},'react/jsx-runtime':{jsx,jsxs:jsx},react:{useState:()=>[failed,next=>{failed=next}]},'next/link':{__esModule:true,default:'Link'},'next/image':{__esModule:true,default:'Image'},'lucide-react':{ArrowUpRight:'ArrowUpRight',Play:'Play',ExternalLink:'ExternalLink'},'@/components/common/CctvFavoriteButton':{CctvFavoriteButton:'Favorite'},'@/components/common/ShareButton':{ShareButton:'Share'},'@/lib/cctv-playback-target':loadPlaybackTarget()};
  return load('../components/cctv/CctvCard.tsx',deps).CctvCard;
 }
 test('compact card is horizontal with fixed thumbnail and honest non-live imagery',()=>{
@@ -47,7 +47,7 @@ test('compact failed image becomes honest graphic; inactive and unknown transpor
 test('default card keeps editorial layout and compact list propagates variant without changing HTTP launch',()=>{
  assert.match(cardHarness()({cctv:camera,onOpen(){}}).props.className,/editorial-camera-card/);
  const opened=[];const order=[];const routing=loadPlaybackTarget({screen:{},open:(...args)=>{order.push('open');opened.push(args)}});
- const deps={'react/jsx-runtime':{jsx,jsxs:jsx},react:{useState:()=>[null,()=>{}]},'@/components/cctv/CctvCard':{CctvCard:'Card'},'@/components/cctv/CameraDialog':{CameraDialog:'Dialog'},'@/lib/cctv-playback-target':routing};
+ const deps={'@/components/common/PreviewRuntimeProvider':{usePreviewRuntime:()=>false},'react/jsx-runtime':{jsx,jsxs:jsx},react:{useState:()=>[null,()=>{}]},'@/components/cctv/CctvCard':{CctvCard:'Card'},'@/components/cctv/CameraDialog':{CameraDialog:'Dialog'},'@/lib/cctv-playback-target':routing};
  const {CctvList}=load('../components/cctv/CctvList.tsx',deps);const tree=CctvList({cctvs:Object.freeze([Object.freeze(camera)]),variant:'compact',onCameraOpen:c=>{assert.equal(c,camera);order.push('selection')}});const all=nodes(tree);
  const list=all.find(n=>/wind-camera-list/.test(n.props?.className??''));assert.ok(list);assert.doesNotMatch(list.props.className,/grid-cols-3/);
  const card=all.find(n=>n.type==='Card');assert.equal(card.props.variant,'compact');card.props.onOpen();assert.equal(opened[0][0],'/cctv/watch/synthetic_camera');assert.deepEqual(order,['selection','open']);assert.equal(all.some(n=>n.type==='Dialog'),false);
@@ -61,4 +61,18 @@ test('compact cards always show labelled example imagery even for airport or unk
   assert.match(text(tree),/예시 사진/);assert.match(text(tree),/해당 CCTV의 촬영 화면이 아닙니다/);
   assert.doesNotMatch(image.props.src,/snapshot|source\.example|https?:/);
  }
+});
+
+test('preview card fallback uses safe direct destination and official Hallasan viewer, not proxy watch',()=>{
+ for(const [c,destination] of [[{...camera,originUrl:'http://cctv.example.kr/live.m3u8'},'http://cctv.example.kr/live.m3u8'],[{...camera,id:'halla_1100',originUrl:'http://cctv.example.kr/live.m3u8'},'https://www.jeju.go.kr/tool/halla/cctv_05.html']]){
+  for(const variant of ['compact','editorial']){
+   const all=nodes(cardHarness(true)({cctv:c,variant,onOpen(){}}));
+   const link=all.find(n=>n.type==='a'&&n.props.href===destination);assert.ok(link);assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');
+   assert.equal(all.some(n=>n.props?.href===`/cctv/watch/${c.id}`),false);
+  }
+ }
+ const unsafe={...camera,originUrl:'http://cctv.example.kr/a?token=secret'};
+ const all=nodes(cardHarness(true)({cctv:unsafe,variant:'compact',onOpen(){}}));
+ assert.ok(all.some(n=>n.props?.href==='/cctv/watch/synthetic_camera'));
+ assert.equal(all.some(n=>n.props?.href?.includes('token=')),false);
 });

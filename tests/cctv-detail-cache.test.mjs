@@ -1,3 +1,4 @@
+import * as directLink from '../lib/cctv-direct-link.ts';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +10,7 @@ import { CctvInventoryUnavailableError, resolveCctvDetail } from '../lib/cctv-de
 const require = createRequire(import.meta.url);
 const ResponseCache = require('next/dist/server/response-cache').default;
 const RenderResult = require('next/dist/server/render-result').default;
-const entry = { id: 'known', name: 'Known camera', region: 'Jeju', direction: '북', category: '해변', description: '', originUrl: 'https://example.test/live.m3u8', active: true };
+const entry = { id: 'known', name: 'Known camera', region: 'Jeju', direction: '북', category: '해변', description: '', originUrl: 'https://cctv.example.kr/live.m3u8', active: true };
 const legacy = { ...entry, latitude: 33.4, longitude: 126.4, status: '실시간', isSaved: false, streamProxyUrl: null };
 function compile(relativePath, stubs, env = {}) {
   const code = ts.transpileModule(readFileSync(new URL(relativePath, import.meta.url), 'utf8'), {
@@ -64,7 +65,7 @@ test('real detail page AND metadata propagate unavailable instead of creating in
   const noop = () => null;
   const component = new Proxy({}, { get: () => noop });
   const imports = [
-    '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/lib/cctv-playback-target',
+    '@/components/cctv/DirectCameraLaunch', '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/lib/cctv-playback-target',
     '@/components/cctv/YoutubePlayer', '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat',
     '@/components/common/DolmangyiIcon', '@/constants/cctv-seo', '@/lib/cctv-location', '@/types/cctv-location',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
@@ -72,6 +73,7 @@ test('real detail page AND metadata propagate unavailable instead of creating in
   ];
   const stubs = Object.fromEntries(imports.map(name => [name, component]));
   Object.assign(stubs, {
+    '@/lib/cctv-direct-link': directLink,
     react: { cache: fn => fn },
     'react/jsx-runtime': require('react/jsx-runtime'),
     'next/link': noop,
@@ -126,14 +128,15 @@ test('installed Next ISR keeps last successful value with bounded retry, then re
 test('real detail page sends HTTP metadata to separate viewer, never embedded HLS', async () => {
   const { loadPlaybackTarget } = await import('./helpers/load-playback-target.mjs');
   const imports = [
-    '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/components/cctv/YoutubePlayer',
+    '@/components/cctv/DirectCameraLaunch', '@/components/cctv/PublicPlaybackBoundary', '@/components/cctv/HlsPlayer', '@/components/cctv/VurixLaunch', '@/components/cctv/HttpsCameraWindow', '@/components/cctv/YoutubePlayer',
     '@/components/common/BetaPlanNotice', '@/components/cctv/LiveChat', '@/components/common/DolmangyiIcon',
     '@/components/cctv/CctvDetailActions', '@/components/cctv/RecentGameBanner', '@/components/cctv/CctvLiveInfo',
     '@/lib/i18n',
   ];
   const stubs = Object.fromEntries(imports.map(name => [name, new Proxy({}, { get: (_, key) => key })]));
-  let camera = { ...entry, id: 'dodu', originUrl: 'http://example.test/live.m3u8' };
+  let camera = { ...entry, id: 'dodu', originUrl: 'http://cctv.example.kr/live.m3u8' };
   Object.assign(stubs, {
+    '@/lib/cctv-direct-link': directLink,
     react: { cache: fn => fn }, 'react/jsx-runtime': require('react/jsx-runtime'), 'next/link': 'Link',
     'next/navigation': { notFound: () => { throw new Error('notFound'); } },
     '@/lib/firestore-cctv-server': { lookupCctvById: async () => ({ state: 'found', entry: camera }), getNearbyCctvs: async () => [] },
@@ -147,9 +150,9 @@ test('real detail page sends HTTP metadata to separate viewer, never embedded HL
   const page = compile('../app/cctv/[id]/page.tsx', stubs);
   const nodes = value => !value || typeof value !== 'object' ? [] : Array.isArray(value) ? value.flatMap(nodes) : [value, ...nodes(value.props?.children)];
   for (const [update, expected] of [
-    [{ originUrl: 'http://example.test/live.m3u8' }, 'HttpsCameraWindow'],
-    [{ originUrl: 'https://example.test/live.m3u8' }, 'HlsPlayer'],
-    [{ originUrl: 'http://example.test/live.m3u8', youtubeId: 'video' }, 'YoutubePlayer'],
+    [{ originUrl: 'http://cctv.example.kr/live.m3u8' }, 'HttpsCameraWindow'],
+    [{ originUrl: 'https://cctv.example.kr/live.m3u8' }, 'HlsPlayer'],
+    [{ originUrl: 'http://cctv.example.kr/live.m3u8', youtubeId: 'video' }, 'YoutubePlayer'],
     [{ active: false }, null],
   ]) {
     camera = { ...entry, id: 'dodu', ...update };
@@ -158,7 +161,7 @@ test('real detail page sends HTTP metadata to separate viewer, never embedded HL
     const preview = compile('../app/cctv/[id]/page.tsx', stubs, {VERCEL_ENV:'preview'});
     const all = nodes(await preview.default({params:Promise.resolve({id:'dodu'})}));
     assert.equal(all.some(n => ['HlsPlayer','VurixLaunch','YoutubePlayer','HttpsCameraWindow'].includes(n.type)), false);
-    const link=all.find(n=>n.props?.href==='/cctv/watch/dodu');
-    assert.equal(!!link, camera.active);if(link){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer');}
+    const launch=all.find(n=>n.type==='DirectCameraLaunch');
+    assert.equal(!!launch,camera.active);if(launch)assert.equal(launch.props.originUrl,directLink.directCameraSourceUrl(camera)??'');
   }
 });

@@ -7,13 +7,14 @@ import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 // Execute the real component with a minimal deterministic hook harness. This
 // covers render/state reconciliation, not browser dialog or Kakao SDK behavior.
-function mapHarness() {
+function mapHarness(preview = false) {
   const state = [];
   const setters = [];
   let cursor = 0;
   let pending = false;
   const jsx = (type, props, key) => ({ type, props, key });
   const stubs = {
+    '@/components/common/PreviewRuntimeProvider': { usePreviewRuntime: () => preview },
     'leaflet/dist/leaflet.css': {},
     '@/lib/cctv-playback-target': loadPlaybackTarget(),
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: Symbol('Fragment') },

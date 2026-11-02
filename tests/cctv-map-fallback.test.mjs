@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 // Execute the real component/effect with SDK-shaped doubles; no network requests.
-function harness({ key = '', leafletFails = false, kakaoReady = false } = {}) {
+function harness({ key = '', leafletFails = false, kakaoReady = false, preview = false } = {}) {
   const navigations = [];
   const memo = []; let memoCursor = 0; let effectDeps, previousEffectDeps;
   const resizeObservers = []; let kakaoRelayouts = 0;
@@ -39,6 +39,7 @@ function harness({ key = '', leafletFails = false, kakaoReady = false } = {}) {
     marker(position, options) { markers.push(options.icon.html); return { addTo() {} }; },
   };
   const stubs = {
+    '@/components/common/PreviewRuntimeProvider': { usePreviewRuntime: () => preview },
     'leaflet/dist/leaflet.css': {},
     '@/lib/cctv-playback-target': loadPlaybackTarget(window),
     '@/components/cctv/CameraDialog': { CameraDialog: () => null },
@@ -287,4 +288,22 @@ test('adding or removing a coordinate-less predecessor updates existing compact 
   assert.equal(h.markers.at(-1).textContent,'2');assert.equal(h.leafletRemoved,1);
   h.render([http],true,callback);h.commit();await h.flush();
   assert.equal(h.markers.at(-1).textContent,'1');assert.equal(h.leafletRemoved,2);h.unmount();
+});
+
+test('preview map SDK and accessible index launch direct sources and official viewers without proxy',async()=>{
+ for(const kakaoReady of [true,false]){
+  const h=harness({preview:true,kakaoReady,key:kakaoReady?'synthetic':''});
+  const raw={...https,active:true,originUrl:'http://cctv.example.kr/live.m3u8'},official={...raw,id:'halla_baengnokdam',name:'백록담'};
+  h.render([raw,official],true);h.mount();await h.flush();assert.equal(h.popups.length,0);
+  h.markers[0].onclick();h.markers[1].onclick();
+  assert.deepEqual(h.popups.map(p=>p[0]),[raw.originUrl,'https://www.jeju.go.kr/tool/halla/cctv_01.html']);
+  assert.equal(h.state[0],null);assert.deepEqual(h.navigations,[]);h.unmount();
+ }
+ const h=harness({preview:true,leafletFails:true}),c={...https,active:true,originUrl:'https://cctv.example.kr/live.m3u8'};
+ h.render([c],true);h.mount();await h.flush();
+ const tree=h.render([c],true),details=tree.props.children.find(n=>n?.type==='details');
+ const item=details.props.children[1].props.children[1].props.children[0];item.props.children[0].props.onClick();
+ assert.equal(h.popups[0][0],c.originUrl);assert.equal(item.props.children[2].props.href,c.originUrl);
+ c.originUrl='http://cctv.example.kr/live?token=secret';item.props.children[0].props.onClick();assert.equal(h.popups.length,1);
+ h.unmount();
 });

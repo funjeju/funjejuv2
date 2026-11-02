@@ -1,5 +1,7 @@
 "use client";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 import { useState } from "react";
 import { CctvCard } from "@/components/cctv/CctvCard";
 import { CameraDialog } from "@/components/cctv/CameraDialog";
@@ -14,6 +16,7 @@ function toEntry(c: AnyEntry): CctvEntry {
 }
 
 export function CctvList({ cctvs, variant = "editorial", onCameraOpen }: { cctvs: readonly AnyEntry[]; variant?: "editorial" | "compact"; onCameraOpen?: (camera: CctvEntry) => void }) {
+  const preview = usePreviewRuntime();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const entries = cctvs.map(toEntry);
   const selected = entries.find(c => c.id === selectedId && c.active && !requiresExternalPlayback(c) && !requiresPlaybackDetail(c));
@@ -25,7 +28,7 @@ export function CctvList({ cctvs, variant = "editorial", onCameraOpen }: { cctvs
         {entries.map((cctv, index) => <CctvCard key={cctv.id} cctv={cctv} index={index} variant={variant} onOpen={() => {
           if (!cctv.active) return;
           onCameraOpen?.(cctv);
-          if (requiresExternalPlayback(cctv)) { setSelectedId(null); openCameraWatch(cctv); }
+          if (preview || requiresExternalPlayback(cctv)) { setSelectedId(null); openCameraWatch(cctv, preview); }
           else if (requiresPlaybackDetail(cctv)) {
             setSelectedId(null);
             window.location.assign(`/cctv/${encodeURIComponent(cctv.id)}`);

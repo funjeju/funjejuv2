@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useRef } from "react";
 import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+import { DirectCameraLaunch } from "@/components/cctv/DirectCameraLaunch";
+import { directCameraSourceUrl } from "@/lib/cctv-direct-link";
 import Link from "next/link";
 import { ArrowUpRight, X } from "lucide-react";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
@@ -46,7 +48,7 @@ export function CameraDialog({ camera, onClose }: { camera: DialogCamera; onClos
       </div>
       <div className="bg-[#101a19]">
         {camera.active === false ? <p role="status" className="p-10 text-center text-white">점검 또는 임시 오류로 재생이 중단되었어요.</p>
-          : preview ? <div className="p-10 text-center"><a href={`/cctv/watch/${encodeURIComponent(camera.id)}`} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-white px-5 py-3 font-bold text-black">로그인 없이 영상 보기 · 새 창</a></div>
+          : preview ? <DirectCameraLaunch id={camera.id} name={camera.name} originUrl={directCameraSourceUrl(camera) ?? ""} />
           : camera.youtubeId ? <YoutubePlayer key={playbackKey} youtubeId={camera.youtubeId} title={camera.name} />
           : requiresExternalPlayback(camera) ? <VurixLaunch key={playbackKey} id={camera.id} name={camera.name} originUrl={camera.originUrl} />
           : <HlsPlayer key={playbackKey} proxyUrl={proxyUrl} label={camera.name} cctvId={camera.id} cctvName={camera.name} />}

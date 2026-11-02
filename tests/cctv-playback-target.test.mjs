@@ -51,7 +51,7 @@ test('only exact legacy HTTP provider or absent metadata known Vurix uses legacy
 });
 test('blocked/noopener-null popup has persistent accessible safe anchor fallback', () => {
   const card = readFileSync(new URL('../components/cctv/CctvCard.tsx', import.meta.url), 'utf8');
-  assert.match(card, /href=\{cameraWatchUrl\(cctv\)\} target="_blank" rel="noopener noreferrer"/);
+  assert.match(card, /href=\{cameraWatchUrl\(cctv(?:,\s*\w+)?\)\} target="_blank" rel="noopener noreferrer"/);
   assert.match(card, /팝업이 열리지 않으면 새 탭으로 보기/);
   let calls = 0;
   const playback = loadPlaybackTarget({ screen: {}, open: () => { calls++; return null; } });
@@ -75,4 +75,29 @@ test('malformed non-string source metadata does not crash the explorer or invent
     assert.equal(target.requiresExternalPlayback({ id: 'dodu', originUrl }), false);
     assert.equal(target.requiresPlaybackDetail({ id: 'dodu', originUrl }), true);
   }
+});
+
+test('direct popup opens exact public source for HTTP and HTTPS with opener protection',()=>{
+ const calls=[];const direct=loadPlaybackTarget({screen:{},open:(...args)=>{calls.push(args);return null}});
+ for(const originUrl of ['http://8.8.8.8/live.m3u8','https://8.8.4.4:8443/live.m3u8']) {
+  const camera={id:'synthetic',name:'Synthetic',active:true,originUrl};
+  assert.equal(direct.cameraWatchUrl(camera,true),originUrl);direct.openCameraWatch(camera,true);
+  assert.equal(calls.at(-1)[0],originUrl);assert.match(calls.at(-1)[2],/noopener,noreferrer/);
+ }
+ const before=calls.length;
+ for(const originUrl of ['http://127.0.0.1/live.m3u8','http://8.8.8.8/live.m3u8?token=secret','javascript:alert(1)']){
+  const camera={id:'sinchang&unsafe',name:'Synthetic',active:true,originUrl};
+  assert.equal(direct.cameraWatchUrl(camera,true),'/cctv/watch/sinchang%26unsafe');direct.openCameraWatch(camera,true);
+ }
+ direct.openCameraWatch({id:'sinchang',name:'Synthetic',originUrl:'http://8.8.8.8/live.m3u8'},true);
+ assert.equal(calls.length,before);
+});
+
+test('direct Hallasan popup and fallback anchor share only the official HTML destination',()=>{
+ const calls=[];const direct=loadPlaybackTarget({screen:{},open:(...args)=>{calls.push(args);return null}});
+ const camera={id:'halla_baengnokdam',name:'Synthetic',active:true,originUrl:'http://8.8.8.8/live.m3u8'};
+ const expected='https://www.jeju.go.kr/tool/halla/cctv_01.html';
+ assert.equal(direct.cameraWatchUrl(camera,true),expected);direct.openCameraWatch(camera,true);assert.equal(calls[0][0],expected);
+ direct.openCameraWatch({...camera,active:false},true);assert.equal(calls.length,1);
+ assert.equal(direct.cameraWatchUrl({...camera,originUrl:'http://127.0.0.1/a'},true),'/cctv/watch/halla_baengnokdam');
 });

@@ -7,7 +7,7 @@ import { loadPlaybackTarget } from './helpers/load-playback-target.mjs';
 
 // Execute the real component with a minimal deterministic hook harness. This
 // covers render/state reconciliation, not browser dialog or Kakao SDK behavior.
-function listHarness() {
+function listHarness(preview = false) {
   const state = [];
   const opened = [];
   const navigated = [];
@@ -18,6 +18,7 @@ function listHarness() {
   let pending = false;
   const jsx = (type, props, key) => ({ type, props, key });
   const stubs = {
+    '@/components/common/PreviewRuntimeProvider': { usePreviewRuntime: () => preview },
     'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: Symbol('Fragment') },
     react: {
       useState(initial) {
@@ -145,4 +146,20 @@ test('list: unknown legacy detail target encodes the camera id', () => {
   list.render([c]); list.click(c.id);
   assert.deepEqual(list.navigated, ['/cctv/a%2Fb%3Fx%3D1']);
   assert.equal(list.render([c]), null);
+});
+
+test('preview list opens safe sources and official Hallasan pages synchronously, without modal or relay', () => {
+  for (const [c, destination] of [
+    [{ ...a, originUrl: 'http://cctv.example.kr/live.m3u8' }, 'http://cctv.example.kr/live.m3u8'],
+    [{ ...a, originUrl: 'https://cctv.example.kr/live.m3u8' }, 'https://cctv.example.kr/live.m3u8'],
+    [{ ...a, id: 'halla_baengnokdam', originUrl: 'http://cctv.example.kr/live.m3u8' }, 'https://www.jeju.go.kr/tool/halla/cctv_01.html'],
+  ]) {
+    const list=listHarness(true);list.render([c]);assert.equal(list.opened.length,0);
+    list.click(c.id);assert.equal(list.opened[0][0],destination);assert.equal(list.render([c]),null);
+    assert.deepEqual(list.navigated,[]);assert.match(list.opened[0][2],/noopener,noreferrer/);
+  }
+  for(const update of [{active:false},{originUrl:'http://127.0.0.1/a'},{originUrl:'http://cctv.example.kr/a?token=secret'},{originUrl:''},{youtubeId:'unverified'}]){
+    const list=listHarness(true),c={...a,...update};list.render([c]);list.click(c.id);
+    assert.equal(list.opened.length,0);assert.equal(list.render([c]),null);
+  }
 });

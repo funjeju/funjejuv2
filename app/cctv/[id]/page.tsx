@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DirectCameraLaunch } from "@/components/cctv/DirectCameraLaunch";
+import { directCameraSourceUrl } from "@/lib/cctv-direct-link";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { VurixLaunch } from "@/components/cctv/VurixLaunch";
 import { requiresDirectHttpViewer, requiresExternalPlayback } from "@/lib/cctv-playback-target";
@@ -206,7 +208,7 @@ export default async function CctvDetailPage({ params }: Props) {
               <Link href="/cctv" className="mt-4 inline-block underline">다른 CCTV 보기</Link>
             </div>
           ) : process.env.VERCEL_ENV === "preview" ? (
-            <div className="p-10 text-center"><a href={`/cctv/watch/${encodeURIComponent(cctv.id)}`} target="_blank" rel="noopener noreferrer" className="inline-block rounded-lg bg-white px-5 py-3 font-bold text-black">로그인 없이 영상 보기 · 새 창</a></div>
+            <DirectCameraLaunch id={cctv.id} name={cctv.name} originUrl={directCameraSourceUrl(cctv) ?? ""} />
           ) : cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
           ) : requiresExternalPlayback(cctv) ? (

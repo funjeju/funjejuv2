@@ -65,3 +65,13 @@ test('public preview explorer omits account destination while production keeps i
   assert.ok(h.all.some(n=>n.type==='map'));
  }
 });
+
+test('preview explorer quicklinks and selected panel navigate directly to official viewer or safe source',()=>{
+ const official={...a,id:'halla_baengnokdam',originUrl:'http://cctv.example.kr/live.m3u8'},raw={...b,id:'jeju_airport',originUrl:'http://cctv.example.kr/airport.m3u8'};
+ const h=harness('',{cctvs:[official,raw],loading:false,error:null},official.id,true);
+ const quick=h.all.filter(n=>n.props?.className==='wind-quick-link');
+ assert.deepEqual(quick.map(n=>n.props.href),[raw.originUrl,'https://www.jeju.go.kr/tool/halla/cctv_01.html']);
+ assert.ok(h.all.some(n=>n.props?.className==='wind-watch-link'&&n.props.href==='https://www.jeju.go.kr/tool/halla/cctv_01.html'));
+ assert.equal(h.all.some(n=>['video','iframe','HlsPlayer','YoutubePlayer','HttpsCameraWindow'].includes(n.type)),false);
+ for(const link of quick){assert.equal(link.props.target,'_blank');assert.equal(link.props.rel,'noopener noreferrer')}
+});

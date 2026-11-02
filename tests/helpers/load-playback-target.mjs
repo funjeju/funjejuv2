@@ -10,7 +10,9 @@ export function loadPlaybackTarget(window = undefined) {
     return mod.exports;
   };
   const constants = load('../../constants/vurix.ts');
+  const direct = load('../../lib/cctv-direct-link.ts');
   return load('../../lib/cctv-playback-target.ts', name => {
+    if (name === '@/lib/cctv-direct-link') return direct;
     if (name !== '@/constants/vurix') throw new Error(`Unexpected import: ${name}`);
     return constants;
   });

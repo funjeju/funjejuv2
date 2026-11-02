@@ -1,3 +1,4 @@
+import { directCameraViewerUrl } from "@/lib/cctv-direct-link";
 import { isVurixId, vurixWatchUrl } from "@/constants/vurix";
 
 type PlaybackCamera = {
@@ -35,7 +36,8 @@ export function requiresHttpsProxyWindow(camera: PlaybackCamera): boolean {
 }
 
 /** Fixed viewer destinations only; never forwards the source URL or its tokens. */
-export function cameraWatchUrl(camera: PlaybackCamera & { name: string }): string {
+export function cameraWatchUrl(camera: PlaybackCamera & { name: string }, direct = false): string {
+  if (direct) return directCameraViewerUrl(camera) ?? `/cctv/watch/${encodeURIComponent(camera.id)}`;
   return requiresDirectHttpViewer(camera)
     ? vurixWatchUrl(camera.id, camera.name)
     : `/cctv/watch/${encodeURIComponent(camera.id)}`;
@@ -44,14 +46,16 @@ export function cameraWatchUrl(camera: PlaybackCamera & { name: string }): strin
 /** Synchronous user gesture only. The always-visible anchor is the popup fallback;
  * noopener may return null even if the window opened, so never infer failure from it.
  */
-export function openCameraWatch(camera: PlaybackCamera & { name: string }): void {
-  if (typeof window === "undefined" || camera.active === false || !requiresExternalPlayback(camera)) return;
+export function openCameraWatch(camera: PlaybackCamera & { name: string }, direct = false): void {
+  if (typeof window === "undefined") return;
+  const directUrl = direct ? directCameraViewerUrl(camera) : null;
+  if (direct ? !directUrl : camera.active === false || !requiresExternalPlayback(camera)) return;
   const aw = window.screen.availWidth || 1280;
   const ah = window.screen.availHeight || 800;
   const width = Math.min(1100, Math.round(aw * 0.72));
   const height = Math.round(width * 9 / 16) + 120;
   const left = Math.round((aw - width) / 2), top = Math.max(0, Math.round((ah - height) / 2));
-  window.open(cameraWatchUrl(camera), `funjeju_cctv_${encodeURIComponent(camera.id)}`,
+  window.open(directUrl ?? cameraWatchUrl(camera), `funjeju_cctv_${encodeURIComponent(camera.id)}`,
     `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,noopener,noreferrer`);
 }
 

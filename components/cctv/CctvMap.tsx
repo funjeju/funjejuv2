@@ -1,5 +1,7 @@
 "use client";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { cameraWatchUrl, openCameraWatch, requiresExternalPlayback, requiresPlaybackDetail } from "@/lib/cctv-playback-target";
@@ -24,6 +26,7 @@ type KakaoNS = {
 function kakao() { return (window as unknown as { kakao?: KakaoNS }).kakao; }
 
 export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: readonly CctvLike[]; compact?: boolean; onCameraOpen?: (id: string) => void }) {
+  const preview = usePreviewRuntime();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mapState, setMapState] = useState<"loading" | "ready" | "osm" | "static">("loading");
@@ -55,9 +58,9 @@ export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: reado
     const choose = (camera: CctvLike) => {
       if (camera.active === false) return;
       onCameraOpen?.(camera.id);
-      if (requiresExternalPlayback(camera)) {
+      if (preview || requiresExternalPlayback(camera)) {
         setSelectedId(null);
-        openCameraWatch(camera); // Synchronous marker gesture, never an effect popup.
+        openCameraWatch(camera, preview); // Synchronous marker gesture, never an effect popup.
       } else if (requiresPlaybackDetail(camera)) {
         setSelectedId(null);
         window.location.assign(`/cctv/${encodeURIComponent(camera.id)}`);
@@ -196,7 +199,7 @@ export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: reado
       leafletMap?.remove();
       container.replaceChildren();
     };
-  }, [valid, retry, compact, onCameraOpen]);
+  }, [valid, retry, compact, onCameraOpen, preview]);
 
   const available = cctvs.filter(camera => camera.active !== false);
   const message = !valid.length ? "현재 조건에 위치가 등록된 CCTV가 없어요. 아래 목록에서 선택해 주세요."
@@ -206,7 +209,7 @@ export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: reado
   const selectCamera = (camera: CctvLike) => {
     if (camera.active === false) return;
     onCameraOpen?.(camera.id);
-    if (requiresExternalPlayback(camera)) { setSelectedId(null); openCameraWatch(camera); }
+    if (preview || requiresExternalPlayback(camera)) { setSelectedId(null); openCameraWatch(camera, preview); }
     else if (requiresPlaybackDetail(camera)) {
       setSelectedId(null);
       window.location.assign(`/cctv/${encodeURIComponent(camera.id)}`);
@@ -221,9 +224,9 @@ export function CctvMap({ cctvs, compact = false, onCameraOpen }: { cctvs: reado
         <h3 className="mb-3 font-bold">CCTV 위치 목록</h3>
         {available.length === 0 ? <p className="text-sm">현재 조건에 맞는 CCTV가 없어요.</p> : <ul className={compact ? "grid gap-3" : "grid gap-3 sm:grid-cols-2"}>
           {available.map(camera => <li key={camera.id}>
-            <button type="button" className="text-left text-sm font-bold underline underline-offset-4" onClick={() => selectCamera(camera)}>{compact ? `${cctvs.findIndex(c => c.id === camera.id) + 1}. ` : valid.findIndex(c => c.id === camera.id) >= 0 ? `${valid.findIndex(c => c.id === camera.id) + 1}. ` : ""}{camera.name}{requiresExternalPlayback(camera) ? " · 새 창 ↗" : requiresPlaybackDetail(camera) ? " · 상세에서 확인" : ""}</button>
+            <button type="button" className="text-left text-sm font-bold underline underline-offset-4" onClick={() => selectCamera(camera)}>{compact ? `${cctvs.findIndex(c => c.id === camera.id) + 1}. ` : valid.findIndex(c => c.id === camera.id) >= 0 ? `${valid.findIndex(c => c.id === camera.id) + 1}. ` : ""}{camera.name}{(preview || requiresExternalPlayback(camera)) ? " · 새 창 ↗" : requiresPlaybackDetail(camera) ? " · 상세에서 확인" : ""}</button>
             <p className="mt-1 text-xs opacity-70">{valid.some(c => c.id === camera.id) ? [camera.region, camera.category].filter(Boolean).join(" · ") || "위치 등록됨" : "위치 미등록"}</p>
-            {requiresExternalPlayback(camera) && <a className="text-xs underline" href={cameraWatchUrl(camera)} target="_blank" rel="noopener noreferrer">새 창이 열리지 않으면 직접 열기</a>}
+            {(preview || requiresExternalPlayback(camera)) && <a className="text-xs underline" href={cameraWatchUrl(camera, preview)} target="_blank" rel="noopener noreferrer">새 창이 열리지 않으면 직접 열기</a>}
           </li>)}
         </ul>}
       </section>
