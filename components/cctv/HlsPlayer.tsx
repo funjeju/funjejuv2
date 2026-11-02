@@ -5,6 +5,9 @@ import { observePlayback } from "@/lib/cctv-playback-health";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 
+type FailureCategory = "network" | "media" | "native-unsupported" | "play-failure" | "player-init";
+type PreviewFailure = { hostname: string; category: FailureCategory; httpCode: number | null };
+
 type Status = "loading" | "playing" | "error" | "offline";
 
 type Props = {
@@ -26,6 +29,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
   const failureRef = useRef<(() => void) | null>(null);
   const verificationStopped = useRef(false); // Sticky for this viewer mount.
   const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
+  const [previewFailure, setPreviewFailure] = useState<PreviewFailure | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
   const [retryKey, setRetryKey] = useState(0); // 재연결 버튼 → effect 재실행
@@ -87,10 +91,19 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
     video.addEventListener("pause",   handlePause);
     video.addEventListener("ended",   handleEnd);
 
-    const failPlayback = () => {
+    const failPlayback = (category: FailureCategory = "media", responseCode?: unknown) => {
       if (failed || cancelled) return;
       failed = true;
-      if (verificationMode) verificationStopped.current = true;
+      if (verificationMode) {
+        verificationStopped.current = true;
+        // Only trusted enum labels, a parsed hostname and an actual HTTP integer.
+        // Never render HLS error text, response URL, path, query or credentials.
+        let hostname = "unavailable";
+        try { hostname = new URL(proxyUrl!).hostname || "unavailable"; } catch { /* No raw fallback. */ }
+        const httpCode = category === "network" && typeof responseCode === "number" &&
+          Number.isInteger(responseCode) && responseCode >= 100 && responseCode <= 599 ? responseCode : null;
+        setPreviewFailure({ hostname, category, httpCode });
+      }
       hls?.destroy();
       hls = null;
       hlsRef.current = null;
@@ -99,15 +112,15 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
       setStatus("error");
       setIsPlaying(false);
     };
-    failureRef.current = failPlayback;
+    failureRef.current = () => failPlayback("play-failure");
     const stopObserving = observePlayback(video, {
       onProgress: () => { if (!failed) { setStatus("playing"); setIsPlaying(true); } },
       onWaiting: () => { if (!failed) { setStatus("loading"); setIsPlaying(false); } },
-      onFailure: failPlayback,
+      onFailure: () => failPlayback("media"),
     });
     const resume = () => { if (failed) return; try { hls?.startLoad(); } catch { /* ignore */ } };
     video.addEventListener("stalled", resume);
-    const startPlayback = () => { if (!failed) video.play().catch(failPlayback); };
+    const startPlayback = () => { if (!failed) video.play().catch(() => failPlayback("play-failure")); };
     video.addEventListener("loadedmetadata", startPlayback);
 
     async function init() {
@@ -121,7 +134,8 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
           video.src = proxyUrl!;
 
         } else {
-          setStatus("error");
+          if (verificationMode) failPlayback("native-unsupported");
+          else setStatus("error");
         }
         return;
       }
@@ -155,7 +169,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
         video.play().catch(() => {
           if (failed || cancelled) return;
           video.muted = true;
-          video.play().catch(failPlayback);
+          video.play().catch(() => failPlayback("play-failure"));
         });
       });
 
@@ -164,7 +178,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
         // Any network error (including nonfatal 401/403/CORS) is terminal in QA.
         // Never let the production recovery path restart an explicitly denied probe.
         if (verificationMode && (data.type === Hls.ErrorTypes.NETWORK_ERROR || data.fatal)) {
-          failPlayback(); return;
+          failPlayback(data.type === Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media", data.response?.code); return;
         }
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
@@ -183,7 +197,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
       if (!failed && !cancelled) hls?.attachMedia(video);
     }
 
-    init().catch(failPlayback);
+    init().catch(() => failPlayback("player-init"));
 
     // 페이지 이탈 시 leave 이벤트
     const handleUnload = () => sendEvent("leave");
@@ -329,6 +343,11 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode 
           <span className="text-4xl">📡</span>
           <p className="text-sm font-bold text-white">영상 재생에 임시 오류가 있어요</p>
           <p className="text-xs leading-relaxed text-white/60">{verificationMode ? "검증 요청을 중단했습니다. 재시도하지 말고 접근 권한과 연결 결과를 검토해 주세요." : <>현재 영상 재생을 확인하지 못했어요.<br />원본 신호 또는 연결 문제일 수 있어요. 잠시 후 다시 시도해 주세요.</>}</p>
+          {verificationMode && previewFailure && <p data-preview-diagnostic="true" className="break-all text-xs leading-relaxed text-white/60">
+            프록시 호스트: {previewFailure.hostname}<br />
+            실패 분류: {previewFailure.category}<br />
+            HTTP 상태: {previewFailure.httpCode ?? "확인 불가"}
+          </p>}
           {!verificationMode && <button
             type="button"
             onClick={() => { setStatus("loading"); setRetryKey((k) => k + 1); }}

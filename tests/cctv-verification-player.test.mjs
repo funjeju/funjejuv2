@@ -6,11 +6,11 @@ import ts from 'typescript';
 
 const nodes=v=>!v||typeof v!=='object'?[]:Array.isArray(v)?v.flatMap(nodes):[v,...nodes(v.props?.children)];
 const text=v=>v==null||typeof v==='boolean'?'':typeof v!=='object'?String(v):Array.isArray(v)?v.map(text).join(' '):text(v.props?.children);
-function harness({supported=true,denyDuringLoad=false,budgetExhausted=false}={}){
+function harness({supported=true,denyDuringLoad=false,budgetExhausted=false,nativeSupported=true}={}){
   const instances=[],refs=[],states=[],sessions=[],videoEvents=new Map(),windowEvents=new Map(),documentEvents=new Map();
   let stateCursor=0,refCursor=0,effects=[],mounted=[],beacons=0,fetches=0,observer,playCalls=0,srcAssignments=0,rejectPlay=false;
   const events=map=>({addEventListener:(e,f)=>map.set(e,f),removeEventListener:e=>map.delete(e)});
-  const video={...events(videoEvents),paused:true,muted:true,pause(){this.paused=true},play(){playCalls++;this.paused=false;return rejectPlay?Promise.reject(new Error('autoplay refused')):Promise.resolve()},removeAttribute(){},load(){},canPlayType(){return 'probably'},set src(v){srcAssignments++}};
+  const video={...events(videoEvents),paused:true,muted:true,pause(){this.paused=true},play(){playCalls++;this.paused=false;return rejectPlay?Promise.reject(new Error('autoplay refused')):Promise.resolve()},removeAttribute(){},load(){},canPlayType(){return nativeSupported?'probably':''},set src(v){srcAssignments++}};
   class Hls {
     static Events={ERROR:'error',MANIFEST_PARSED:'parsed'};
     static ErrorTypes={NETWORK_ERROR:'networkError',MEDIA_ERROR:'mediaError'};
@@ -38,6 +38,8 @@ function harness({supported=true,denyDuringLoad=false,budgetExhausted=false}={})
     unmount(){mounted.forEach(e=>e.cleanup?.())},
     async flush(){await new Promise(r=>setImmediate(r))},
     deny(code=403,fatal=false){instances.at(-1).handlers.error('error',{type:'networkError',fatal,response:{code}})},
+    error:data=>instances.at(-1).handlers.error('error',data),
+    failObservation:()=>observer?.onFailure(),
     emitVideo:e=>videoEvents.get(e)?.(),emitDocument:e=>documentEvents.get(e)?.(),emitWindow:e=>windowEvents.get(e)?.(),progress:()=>observer?.onProgress(),
     rejectPlay:()=>{rejectPlay=true},get playCalls(){return playCalls},get srcAssignments(){return srcAssignments},get beacons(){return beacons},get fetches(){return fetches},
   };
@@ -93,4 +95,29 @@ test('public preview cannot be masked by cached consumer budget; production stil
   const prod=harness({budgetExhausted:true});nodes=prod.render({verificationMode:false});prod.commit();await prod.flush();
   assert.equal(text(nodes).includes('오늘 시청시간을 다 썼어요'),true);
   nodes.find(n=>n.type==='video').props.onClick();assert.equal(prod.playCalls,0);prod.unmount();
+});
+
+const diagnostic=all=>text(all.find(n=>n.props?.['data-preview-diagnostic']==='true'));
+test('preview diagnostic exposes only configured hostname, static category and valid HTTP status',async()=>{
+ for(const code of [403,502,0,NaN,Infinity,-1,600,403.5,'403','secret-token']){
+  const h=harness();const proxyUrl='https://username:password@proxy.example.test:8443/private-token?key=secret#fragment';
+  h.render({proxyUrl});h.commit();await h.flush();
+  h.error({type:'networkError',fatal:false,response:{code,url:'https://secret-upstream.test/token'},details:'secret-details',error:new Error('secret-exception')});
+  const all=h.render({proxyUrl}),message=diagnostic(all);
+  assert.ok(message.includes('proxy.example.test'));assert.ok(message.includes('network'));
+  assert.ok(message.includes([403,502].includes(code)?String(code):'확인 불가'));
+  for(const secret of ['username','password','8443','private-token','secret','fragment','https://'])assert.equal(message.includes(secret),false,secret);
+  assert.equal(h.instances[0].starts,0);assert.equal(h.instances[0].destroyed,1);h.unmount();
+ }
+});
+test('preview diagnostics distinguish media, unsupported native and play rejection without raw errors',async()=>{
+ const media=harness();media.render();media.commit();await media.flush();media.error({type:'mediaError',fatal:true,response:{code:403},details:'private'});
+ assert.ok(diagnostic(media.render()).includes('media'));assert.ok(diagnostic(media.render()).includes('확인 불가'));media.unmount();
+ const native=harness({supported:false,nativeSupported:false});native.render();native.commit();await native.flush();assert.ok(diagnostic(native.render()).includes('native-unsupported'));assert.equal(native.srcAssignments,0);native.unmount();
+ const play=harness();let all=play.render();play.commit();await play.flush();play.rejectPlay();all.find(n=>n.type==='video').props.onClick();await play.flush();assert.ok(diagnostic(play.render()).includes('play-failure'));assert.equal(diagnostic(play.render()).includes('autoplay refused'),false);play.unmount();
+ const invalid=harness();invalid.render({proxyUrl:'not a URL secret'});invalid.commit();await invalid.flush();invalid.failObservation();assert.ok(diagnostic(invalid.render()).includes('unavailable'));invalid.unmount();
+});
+test('production errors never display preview diagnostics',async()=>{
+ const h=harness();h.render({verificationMode:false});h.commit();await h.flush();h.error({type:'other',fatal:true,response:{code:403}});
+ assert.equal(diagnostic(h.render({verificationMode:false})),'');h.unmount();
 });
