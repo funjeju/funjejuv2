@@ -81,3 +81,27 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ───────── 별자리(CCTV 전용) 화면 — components/sky/* ───────── */
+.sky-root { font-family: Pretendard, system-ui, sans-serif; }
+.sky-serif { font-family: "Nanum Myeongjo", serif; }
+.sky-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.sky-tw { animation: sky-twinkle 3.4s ease-in-out infinite; }
+.sky-bgtw { animation: sky-twinkle 7s ease-in-out infinite; }
+.sky-pulse { animation: sky-twinkle 1.8s ease-in-out infinite; }
+.sky-breathe { animation: sky-breathe 7s ease-in-out infinite; }
+.sky-comet { animation: sky-comet 16s linear infinite; }
+.sky-comet-slow { animation: sky-comet 26s linear infinite reverse; }
+.sky-cta { animation: sky-ctaglow 3.2s ease-in-out infinite; }
+.sky-spin { animation: sky-spin 1s linear infinite; }
+@keyframes sky-twinkle { 0%, 100% { opacity: .4; transform: scale(.72); } 50% { opacity: 1; transform: scale(1.18); } }
+@keyframes sky-breathe { 0%, 100% { stroke-opacity: .16; fill-opacity: .02; } 50% { stroke-opacity: .7; fill-opacity: .06; } }
+@keyframes sky-comet { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+@keyframes sky-ctaglow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 196, 92, 0), 0 14px 44px rgba(255, 186, 72, .22); }
+  50% { box-shadow: 0 0 0 9px rgba(255, 196, 92, .12), 0 14px 70px rgba(255, 186, 72, .48); }
+}
+@keyframes sky-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sky-tw, .sky-bgtw, .sky-pulse, .sky-breathe, .sky-comet, .sky-comet-slow, .sky-cta { animation: none; }
+}

@@ -7,6 +7,7 @@ import { listPublished } from "@/lib/contents";
 import { listPublishedSites } from "@/lib/biz/store";
 import { listLocations } from "@/lib/cctv-location";
 import { GROUP_HUB } from "@/types/cctv-location";
+import { SKY_ONLY_PUBLIC } from "@/constants/public-mode";
 
 // canonical 도메인(non-www, 네이버 등록 도메인)으로 통일 — 색인 신호 분산 방지
 const BASE = "https://funjeju.com";
@@ -19,6 +20,14 @@ const STATIC_LAST_MODIFIED = new Date("2026-07-21T00:00:00.000Z");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = STATIC_LAST_MODIFIED;
+
+  // CCTV 전용 공개 모드 — 열려 있는 공개 화면만 알린다(나머지는 / 로 리다이렉트되므로). 아래 원래 목록은 그대로 보존.
+  if (SKY_ONLY_PUBLIC) {
+    return [
+      { url: BASE, lastModified: new Date("2026-11-02T00:00:00.000Z"), changeFrequency: "always", priority: 1.0 },
+      { url: `${BASE}/promo`, lastModified: new Date("2026-11-02T00:00:00.000Z"), changeFrequency: "monthly", priority: 0.6 },
+    ];
+  }
 
   // 정적 페이지
   const staticPages: MetadataRoute.Sitemap = [

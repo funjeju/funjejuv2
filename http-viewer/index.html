@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>FunJeju · 실시간 CCTV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#03050A;color:#E8EEFF;overflow:hidden;font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
+.app{position:fixed;inset:0;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.05)}
+.t{display:flex;align-items:baseline;gap:12px;min-width:0}
+h1{font-family:'Nanum Myeongjo',serif;font-weight:800;font-size:20px;color:#F6F8FF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r{display:flex;align-items:center;gap:16px}
+.st,.clk{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;color:#93A0C4;display:flex;align-items:center;gap:8px}
+.clk{color:#6F7BA0;letter-spacing:.08em}
+.dot{width:8px;height:8px;border-radius:50%;background:#5D6A8E}
+.on .dot{background:#7CF0C8;animation:tw 1.8s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:.4;transform:scale(.72)}50%{opacity:1;transform:scale(1.18)}}
+button.x{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:transparent;color:#E8EEFF;cursor:pointer;display:flex;align-items:center;justify-content:center}
+button.x:hover{border-color:rgba(255,255,255,.4)}
+.stage{position:relative;flex:1;background:#000;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:24px}
+.sp{width:44px;height:44px;border-radius:50%;border:1.5px solid #2A3039;border-top-color:#7CF0C8;animation:rt 1s linear infinite}
+@keyframes rt{to{transform:rotate(360deg)}}
+.m{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.2em;color:#6E7684}
+.e1{font-family:'Nanum Myeongjo',serif;font-weight:800;font-size:22px;color:#F6F8FF}
+.e2{font-size:14px;line-height:1.7;color:#93A0C4;max-width:420px}
+.rb{height:44px;padding:0 20px;border-radius:999px;border:0;background:#F6F8FF;color:#03050A;font-size:14px;font-weight:500;cursor:pointer}
+footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:10px 20px;border-top:1px solid rgba(255,255,255,.05);font-size:11px;color:#6F7BA0}
+footer a{color:#93A0C4;text-decoration:none}
+@media (max-width:640px){.clk,.st{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="t"><h1 id="nm">제주 CCTV</h1></div>
+    <div class="r">
+      <span class="st" id="st"><span class="dot"></span><span id="stt">CONNECTING</span></span>
+      <span class="clk" id="clk"></span>
+      <button class="x" type="button" aria-label="창 닫기" onclick="window.close()">
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2l10 10M12 2L2 12"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="stage">
+    <video id="v" autoplay muted playsinline></video>
+    <div class="ov" id="ld"><span class="sp"></span><span class="m">신호 수신 중</span></div>
+    <div class="ov" id="er" hidden>
+      <span class="e1">지금은 영상이 들어오지 않아요</span>
+      <span class="e2" id="erm">제공기관 쪽 송출이 잠시 멈췄을 수 있어요. 잠시 뒤 다시 연결해 보세요.</span>
+      <button class="rb" type="button" onclick="start()">다시 연결</button>
+    </div>
+  </div>
+  <footer>
+    <span>영상 제공 · 제주특별자치도 · 서귀포시 재난안전대책본부 · 한국공항공사</span>
+    <span><a href="https://funjeju.com">funjeju.com</a> · FunJeju는 영상을 저장하지 않습니다 · ESC로 닫기</span>
+  </footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>
+<script>
+/*
+ * FunJeju HTTP CCTV 뷰어 — 평문 HTTP 원본(서귀포·공항·방재)은 HTTPS 페이지에서 재생할 수 없어서
+ * 이 파일을 HTTP로 서빙되는 곳(GitHub Pages + 커스텀 도메인, Enforce HTTPS 끔)에 둔다.
+ * 사용: index.html?src=<원본 m3u8 주소>&name=<카메라 이름>
+ * 영상은 시청자 브라우저가 원본에서 직접 받는다. 중계 서버 없음.
+ */
+var ALLOWED_HOSTS = ["211.34.191.215:1935", "211.34.191.218", "123.140.197.51", "59.8.86.94:8080"];
+var q = new URLSearchParams(location.search);
+var SRC = q.get("src") || "";
+var NAME = (q.get("name") || "제주 CCTV").slice(0, 40);
+var v = document.getElementById("v"), ld = document.getElementById("ld"), er = document.getElementById("er");
+var st = document.getElementById("st"), stt = document.getElementById("stt");
+var hls = null, attempts = 0;
+
+document.getElementById("nm").textContent = NAME;
+document.title = "FunJeju · " + NAME;
+
+function allowed(u) {
+  try { var x = new URL(u); return x.protocol === "http:" && ALLOWED_HOSTS.indexOf(x.host) !== -1 && /\.m3u8$/i.test(x.pathname); }
+  catch (e) { return false; }
+}
+function state(s) {
+  ld.hidden = s !== "loading"; er.hidden = s !== "error";
+  st.className = "st" + (s === "playing" ? " on" : "");
+  stt.textContent = s === "playing" ? "LIVE" : s === "loading" ? "CONNECTING" : "OFFLINE";
+  v.controls = s === "playing";
+}
+function fail() {
+  if (hls) { hls.destroy(); hls = null; }
+  attempts++;
+  if (attempts < 3) setTimeout(start, 1500); else state("error");
+}
+function start() {
+  if (!allowed(SRC)) { state("error"); document.getElementById("erm").textContent = "알 수 없는 카메라 주소예요. funjeju.com에서 다시 열어 주세요."; return; }
+  state("loading");
+  if (hls) { hls.destroy(); hls = null; }
+  if (window.Hls && Hls.isSupported()) {
+    hls = new Hls({ liveSyncDurationCount: 2, maxBufferLength: 20, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 500 });
+    hls.loadSource(SRC); hls.attachMedia(v);
+    hls.on(Hls.Events.MANIFEST_PARSED, function () { v.play().catch(function () {}); });
+    hls.on(Hls.Events.ERROR, function (_e, d) { if (d.fatal) fail(); });
+  } else if (v.canPlayType("application/vnd.apple.mpegurl")) {
+    v.src = SRC; v.play().catch(function () {});
+  } else { state("error"); }
+}
+v.addEventListener("playing", function () { attempts = 0; state("playing"); });
+v.addEventListener("error", function () { if (!hls) fail(); });
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") window.close(); });
+(function tick() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, "0"); };
+  document.getElementById("clk").textContent = d.getFullYear() + "." + p(d.getMonth() + 1) + "." + p(d.getDate()) + "  " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  setTimeout(tick, 1000);
+})();
+start();
+</script>
+</body>
+</html>

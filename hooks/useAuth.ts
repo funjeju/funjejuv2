@@ -11,11 +11,15 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "@/lib/firebase";
 
+// Firebase 설정이 비어 있으면(로컬 .env 등) getAuth 가 throw 해서 페이지 전체가 죽는다 → 비로그인으로 진행
+const FIREBASE_CONFIGURED = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(FIREBASE_CONFIGURED);
 
   useEffect(() => {
+    if (!FIREBASE_CONFIGURED) return;
     const auth = getFirebaseAuth();
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);

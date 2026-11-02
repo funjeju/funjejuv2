@@ -8,6 +8,7 @@ import { FloatingChat } from "@/components/common/FloatingChat";
 import { ServiceNoticePopup } from "@/components/common/ServiceNoticePopup";
 import { usePageViewTracker } from "@/hooks/usePageViewTracker";
 import { LangProvider } from "@/lib/i18n";
+import { isSkyBarePath } from "@/constants/public-mode";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,6 +16,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (pathname.startsWith("/admin")) {
     return <div className="min-h-screen bg-bg-primary">{children}</div>;
+  }
+
+  // CCTV 별자리 화면(/, /promo, /watch/*) — 사이드바·헤더·챗봇·공지 팝업 없이 전체 화면 (constants/public-mode.ts)
+  if (isSkyBarePath(pathname)) {
+    return <>{children}</>;
   }
 
   // 비즈 홈페이지(/biz/[slug])는 독립 페이지 — funjeju 네비/사이드바 없이 풀스크린
