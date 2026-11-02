@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
 import { SkyFonts } from "@/components/sky/SkyFonts";
+import { PROMO_CONTACT, PROMO_MAILTO } from "@/lib/sky/contact";
 
 export const metadata: Metadata = {
   title: { absolute: "CCTV 설치하고 우리 업소 홍보하기 | 펀제주" },
@@ -17,14 +18,8 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * 상담 연락처 — 펀제주 유튜브 채널 설명에 공개된 제휴 연락처.
- * 상담 접수 방식(폼/카카오 오픈채팅 등)이 정해지면 여기만 바꾸면 된다.
- */
-const CONTACT = {
-  phone: "010-4434-2483",
-  email: "naggu1999@naver.com",
-};
+// 상담 연락처는 lib/sky/contact.ts 한 곳에서 관리한다(메인 화면과 공용).
+const CONTACT = PROMO_CONTACT;
 const LIVE_CASE_URL = "https://www.youtube.com/watch?v=bc2Icv1PVVI";
 
 const STATS = [
@@ -55,6 +50,15 @@ const GOLD = "linear-gradient(180deg, #FFD978, #F4B54A)";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <span className="sky-mono text-xs tracking-[0.3em] text-[#FFD58A]">{children}</span>;
+}
+
+function MailIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFE2A8" strokeWidth="1.6">
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="M4 7l8 6 8-6" />
+    </svg>
+  );
 }
 
 function Arrow() {
@@ -106,6 +110,13 @@ export default function PromoPage() {
                 실제 송출 화면 보기
               </a>
             </div>
+            <a href={PROMO_MAILTO} className="flex items-center gap-3 self-start rounded-2xl border border-[rgba(255,214,140,0.35)] bg-[rgba(3,5,10,0.55)] px-5 py-3.5">
+              <MailIcon />
+              <span className="flex flex-col">
+                <span className="text-xs tracking-[0.12em] text-[#C9B98F]">메일로 바로 문의</span>
+                <span className="sky-mono text-lg tracking-[0.02em] text-[#FFE2A8] md:text-xl">{CONTACT.email}</span>
+              </span>
+            </a>
           </div>
         </section>
 
@@ -314,19 +325,23 @@ export default function PromoPage() {
             <div className="flex flex-col gap-4 rounded-3xl border border-[rgba(255,206,120,0.35)] bg-[rgba(8,12,24,0.88)] p-8 md:p-9">
               <span className="sky-serif text-2xl font-extrabold text-[#F6F8FF]">설치 상담</span>
               <p className="text-[15px] leading-[1.75] text-[#B7C2E2]">가게 이름과 위치, 가게에서 보이는 풍경을 알려 주시면 뷰 포인트부터 함께 봐 드립니다.</p>
+              <a href={PROMO_MAILTO} className="mt-2 flex flex-col gap-1 rounded-2xl border border-[rgba(255,214,140,0.45)] bg-[rgba(255,214,140,0.06)] px-6 py-5 hover:bg-[rgba(255,214,140,0.1)]">
+                <span className="flex items-center gap-2 text-xs tracking-[0.12em] text-[#C9B98F]"><MailIcon />메일 문의</span>
+                <span className="sky-mono break-all text-[22px] text-[#FFE2A8] md:text-2xl">{CONTACT.email}</span>
+              </a>
               <a
-                href={`tel:${CONTACT.phone.replace(/-/g, "")}`}
-                className="sky-cta mt-2 flex h-[60px] items-center justify-between rounded-full px-7 text-[17px] font-bold text-[#1A1204]"
+                href={PROMO_MAILTO}
+                className="sky-cta flex h-[60px] items-center justify-between rounded-full px-7 text-[17px] font-bold text-[#1A1204]"
                 style={{ background: GOLD }}
               >
-                <span>전화 상담 {CONTACT.phone}</span>
+                <span>메일 보내기</span>
                 <Arrow />
               </a>
               <a
-                href={`mailto:${CONTACT.email}?subject=${encodeURIComponent("[펀제주 CCTV 설치 상담] 업소명:")}`}
-                className="flex h-[56px] items-center justify-between rounded-full border border-[rgba(255,206,120,0.5)] px-7 text-base text-[#FFE7A8]"
+                href={`tel:${CONTACT.phone.replace(/-/g, "")}`}
+                className="flex h-[52px] items-center justify-between rounded-full border border-white/20 px-7 text-base text-[#E8EEFF]"
               >
-                <span>메일 문의 {CONTACT.email}</span>
+                <span>전화 상담 {CONTACT.phone}</span>
                 <Arrow />
               </a>
             </div>

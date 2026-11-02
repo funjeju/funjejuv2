@@ -90,12 +90,15 @@ select {
 .sky-bgtw { animation: sky-twinkle 7s ease-in-out infinite; }
 .sky-pulse { animation: sky-twinkle 1.8s ease-in-out infinite; }
 .sky-breathe { animation: sky-breathe 7s ease-in-out infinite; }
+/* 해안선 숨쉬기 — 별도 레이어의 opacity 만 바꿔 GPU 합성으로 처리(매 프레임 다시 그리지 않음) */
+.sky-breathe-layer { animation: sky-breathe-layer 7s ease-in-out infinite; will-change: opacity; }
 .sky-comet { animation: sky-comet 16s linear infinite; }
 .sky-comet-slow { animation: sky-comet 26s linear infinite reverse; }
 .sky-cta { animation: sky-ctaglow 3.2s ease-in-out infinite; }
 .sky-spin { animation: sky-spin 1s linear infinite; }
 @keyframes sky-twinkle { 0%, 100% { opacity: .4; transform: scale(.72); } 50% { opacity: 1; transform: scale(1.18); } }
 @keyframes sky-breathe { 0%, 100% { stroke-opacity: .16; fill-opacity: .02; } 50% { stroke-opacity: .7; fill-opacity: .06; } }
+@keyframes sky-breathe-layer { 0%, 100% { opacity: .1; } 50% { opacity: 1; } }
 @keyframes sky-comet { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
 @keyframes sky-ctaglow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 196, 92, 0), 0 14px 44px rgba(255, 186, 72, .22); }
@@ -103,5 +106,5 @@ select {
 }
 @keyframes sky-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .sky-tw, .sky-bgtw, .sky-pulse, .sky-breathe, .sky-comet, .sky-comet-slow, .sky-cta { animation: none; }
+  .sky-tw, .sky-bgtw, .sky-pulse, .sky-breathe, .sky-breathe-layer, .sky-comet, .sky-comet-slow, .sky-cta { animation: none; }
 }

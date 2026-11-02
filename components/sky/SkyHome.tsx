@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SKY_CAMERAS, skyCameraSub, type SkyCamera, type SkyGroup } from "@/lib/sky/cameras";
 import { JEJU_ISLANDS, JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
 import { openWatch, watchUrl } from "@/lib/sky/watch";
+import { PROMO_CONTACT, PROMO_MAILTO } from "@/lib/sky/contact";
 
 const LOOK: Record<SkyGroup, { core: string; glow: string }> = {
   J: { core: "#EAF2FF", glow: "0 0 6px 2px rgba(150,190,255,.85), 0 0 18px 6px rgba(110,150,255,.30)" },
@@ -60,6 +61,21 @@ export function SkyHome() {
   const leaveStar = (c: SkyCamera) => {
     if (canHover()) setFocusId((cur) => (cur === c.id ? null : cur));
   };
+  const onMapTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (canHover()) { setFocusId(null); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    const py = e.clientY - r.top;
+    let best: SkyCamera | null = null;
+    let bestDist = Infinity;
+    for (const c of SKY_CAMERAS) {
+      const d = Math.hypot((c.x / 100) * r.width - px, (c.y / 100) * r.height - py);
+      if (d < bestDist) { bestDist = d; best = c; }
+    }
+    if (!best || bestDist > 36) { setFocusId(null); return; }
+    if (focusId === best.id) openWatch(best);
+    else setFocusId(best.id);
+  };
 
   const cardPos = !focus ? "" :
     focus.x > 55
@@ -76,10 +92,11 @@ export function SkyHome() {
       }}
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[1300px]">
+        {/* 성능: 배경 별은 대부분 고정, 일곱 개 중 하나만 반짝인다 */}
         {bg.map((b, i) => (
           <span
             key={i}
-            className="sky-bgtw absolute rounded-full bg-white"
+            className={`absolute rounded-full bg-white ${i % 7 === 0 ? "sky-bgtw" : ""}`}
             style={{ left: `${b.x}%`, top: `${b.y}%`, width: b.s, height: b.s, opacity: b.o, animationDelay: `${b.d}s` }}
           />
         ))}
@@ -113,49 +130,55 @@ export function SkyHome() {
               별 하나가 카메라 하나입니다. 별을 누르면 지금 그 바다와 하늘이 새 창에 뜹니다.
             </p>
           </div>
-          <div className="flex flex-[0_1_480px] flex-col gap-3.5 rounded-[22px] border border-[rgba(255,206,120,0.28)] bg-[rgba(255,196,92,0.05)] p-6 md:p-7">
-            <span className="text-[13px] tracking-[0.12em] text-[#FFD58A]">뷰맛집 사장님께</span>
+          {/* 업소 홍보 — 별자리 흐름을 방해하지 않게 차분한 테두리 버튼, 메일 주소는 바로 보이게 */}
+          <div className="flex flex-[0_1_420px] flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+            <span className="text-xs tracking-[0.14em] text-[#C9B98F]">뷰맛집 사장님께</span>
             <Link
               href="/promo"
-              className="sky-cta flex min-h-[64px] items-center justify-between gap-4 rounded-full px-6 py-3 text-[17px] font-bold text-[#1A1204] [word-break:keep-all] md:min-h-[68px] md:px-7 md:text-[18px]"
-              style={{ background: "linear-gradient(180deg, #FFD978, #F4B54A)" }}
+              className="flex min-h-12 items-center justify-between gap-3 rounded-full border border-[rgba(255,214,140,0.45)] px-5 py-2.5 text-[15px] font-medium text-[#FFE2A8] [word-break:keep-all] hover:bg-[rgba(255,214,140,0.08)]"
             >
               <span>CCTV 설치하고 우리 업소 홍보하기</span>
-              <svg aria-hidden="true" width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 11h13M12 5l6 6-6 6" /></svg>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 11h13M12 5l6 6-6 6" /></svg>
             </Link>
-            <span className="text-[13px] leading-[1.7] text-[#C9C2AE]">장비와 위치는 사장님이, 365일 24시간 송출은 펀제주가 책임집니다.</span>
+            <a href={PROMO_MAILTO} className="flex items-center gap-2.5 px-1 text-[15px] text-[#E8EEFF] hover:text-white">
+              <MailIcon />
+              <span className="sky-mono tracking-[0.02em]">{PROMO_CONTACT.email}</span>
+            </a>
+            <span className="px-1 text-xs leading-[1.7] text-[#8E97B5]">장비와 위치는 사장님이, 365일 24시간 송출은 펀제주가 책임집니다.</span>
           </div>
         </div>
 
-        {/* 지도 빈 곳을 누르면 미리보기 닫힘 (별 버튼은 stopPropagation) */}
+        {/* 마우스: 빈 곳을 누르면 미리보기 닫힘. 터치: 누른 곳에서 가장 가까운 별을 고른다(별이 촘촘해도 손가락으로 집기 쉽게) */}
         <div
           role="presentation"
-          onClick={() => setFocusId(null)}
+          onClick={onMapTap}
           className="relative mx-auto w-full max-w-[1328px]"
           style={{ aspectRatio: "1000 / 543" }}
         >
+          {/* 성능: 정적 그림 / 숨 쉬는 해안선(별도 레이어 opacity 애니메이션 → GPU 합성) / 빛줄기(블러 필터 없이 굵은 반투명 선으로 번짐 표현) */}
           <svg viewBox={JEJU_VIEWBOX} aria-hidden="true" className="absolute inset-0 h-full w-full overflow-visible">
-            <defs>
-              <filter id="sky-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3.2" result="b" />
-                <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-              </filter>
-            </defs>
             {[[70, 40, 0.1], [150, 88, 0.07], [250, 150, 0.05]].map(([rx, ry, o]) => (
               <ellipse key={rx} cx="465" cy="300" rx={rx} ry={ry} fill="none" stroke="#8FB4FF" strokeOpacity={o} strokeDasharray="2 6" />
             ))}
-            <path className="sky-breathe" d={JEJU_OUTLINE} fill="#5B7CFF" stroke="#A9C0FF" strokeWidth="1.1" strokeLinejoin="round" />
-            <path className="sky-breathe" d={JEJU_ISLANDS} fill="#5B7CFF" stroke="#A9C0FF" strokeWidth="0.9" />
-            <path className="sky-comet" d={JEJU_OUTLINE} pathLength={1000} fill="none" stroke="#E6EEFF" strokeWidth="2.2" strokeLinecap="round" strokeDasharray="70 930" filter="url(#sky-glow)" />
-            <path className="sky-comet-slow" d={JEJU_OUTLINE} pathLength={1000} fill="none" stroke="#8FE6FF" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="36 964" filter="url(#sky-glow)" />
+            <path d={JEJU_OUTLINE} fill="#5B7CFF" fillOpacity="0.03" stroke="#A9C0FF" strokeOpacity="0.18" strokeWidth="1.1" strokeLinejoin="round" />
+            <path d={JEJU_ISLANDS} fill="#5B7CFF" fillOpacity="0.03" stroke="#A9C0FF" strokeOpacity="0.18" strokeWidth="0.9" />
             <rect x="74" y="18" width="62" height="58" rx="10" fill="none" stroke="#8FB4FF" strokeOpacity="0.22" strokeDasharray="3 5" />
+          </svg>
+          <svg viewBox={JEJU_VIEWBOX} aria-hidden="true" className="sky-breathe-layer absolute inset-0 h-full w-full overflow-visible">
+            <path d={JEJU_OUTLINE} fill="none" stroke="#A9C0FF" strokeOpacity="0.6" strokeWidth="1.1" strokeLinejoin="round" />
+            <path d={JEJU_ISLANDS} fill="none" stroke="#A9C0FF" strokeOpacity="0.6" strokeWidth="0.9" />
+          </svg>
+          <svg viewBox={JEJU_VIEWBOX} aria-hidden="true" className="absolute inset-0 h-full w-full overflow-visible">
+            <path className="sky-comet" d={JEJU_OUTLINE} pathLength={1000} fill="none" stroke="#9FC0FF" strokeOpacity="0.28" strokeWidth="7" strokeLinecap="round" strokeDasharray="70 930" />
+            <path className="sky-comet" d={JEJU_OUTLINE} pathLength={1000} fill="none" stroke="#E6EEFF" strokeWidth="2" strokeLinecap="round" strokeDasharray="70 930" />
           </svg>
 
           <span className="sky-mono absolute left-[7.4%] top-[15.4%] hidden text-[10px] tracking-[0.18em] text-[#7E8BB0] sm:block">추자도 · 45km N</span>
 
           {SKY_CAMERAS.map((c, i) => {
             const isFocus = c.id === focus?.id;
-            const size = c.label || isFocus ? 5 : 3.5;
+            // 모바일은 별을 크게, 데스크톱은 작게
+            const sizeClass = c.label || isFocus ? "h-[8px] w-[8px] md:h-[5px] md:w-[5px]" : "h-[6px] w-[6px] md:h-[3.5px] md:w-[3.5px]";
             return (
               <div key={c.id}>
                 <button
@@ -165,14 +188,19 @@ export function SkyHome() {
                   onMouseLeave={() => leaveStar(c)}
                   onFocus={() => setFocusId(c.id)}
                   onBlur={() => leaveStar(c)}
-                  onClick={(e) => { e.stopPropagation(); onStar(c); }}
+                  onClick={(e) => {
+                    // 터치에서는 지도(onMapTap)가 가장 가까운 별을 고른다. 키보드(detail 0)·마우스는 이 별을 바로 연다
+                    if (!canHover() && e.detail !== 0) return;
+                    e.stopPropagation();
+                    onStar(c);
+                  }}
                   className="absolute z-[2] flex h-[22px] w-[22px] md:h-[14px] md:w-[14px] -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
                   style={{ left: `${c.x}%`, top: `${c.y}%` }}
                 >
                   <span
-                    className="sky-tw block rounded-full"
+                    className={`sky-tw block rounded-full ${sizeClass}`}
                     style={{
-                      width: size, height: size, background: LOOK[c.group].core, boxShadow: LOOK[c.group].glow,
+                      background: LOOK[c.group].core, boxShadow: LOOK[c.group].glow,
                       animationDelay: `${((i * 0.37) % 3.4).toFixed(2)}s`, animationDuration: `${(2.6 + (i % 5) * 0.55).toFixed(2)}s`,
                     }}
                   />
@@ -343,6 +371,15 @@ function FocusCard({ cam, preview }: { cam: SkyCamera; preview?: boolean }) {
         )}
       </div>
     </>
+  );
+}
+
+function MailIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFE2A8" strokeWidth="1.6">
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="M4 7l8 6 8-6" />
+    </svg>
   );
 }
 
