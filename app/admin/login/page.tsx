@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminLoginTarget } from "@/lib/admin-login-target";
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
@@ -23,7 +24,7 @@ export default function AdminLoginPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push("/admin/cctv");
+      router.push(adminLoginTarget(new URLSearchParams(window.location.search).get("next"), false));
     } else {
       setError("비밀번호가 틀렸습니다");
     }

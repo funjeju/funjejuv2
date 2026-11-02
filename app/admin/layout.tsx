@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
+  { href: "/admin/cctv-directory", label: "🗂️ 새 CCTV 목록", short: "새 CCTV" },
   { href: "/admin/stats",  label: "📊 통계",     short: "통계"  },
   { href: "/admin/origin", label: "🔴 Origin",  short: "Origin" },
   { href: "/admin/logs",   label: "📋 로그",     short: "로그"  },
@@ -43,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* 네비 — 항목이 많아 줄바꿈(2줄) 허용 */}
           <nav className="flex flex-1 flex-wrap gap-1">
             {NAV.map((item) => {
-              const active = pathname.startsWith(item.href);
+              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.href}

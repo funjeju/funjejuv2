@@ -82,6 +82,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // New directory backups/history remain server-only.
+    match /cctv_directory_v1/{document=**} {
+      allow read, write: if false;
+    }
+
     // 기본: 나머지 모두 거부
     match /{document=**} {
       allow read, write: if false;
