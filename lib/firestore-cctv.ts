@@ -28,6 +28,7 @@ function toEntry(id: string, data: DocumentData): CctvEntry {
     originUrl: data.originUrl ?? "",
     youtubeId: data.youtubeId || undefined,
     active: !!data.active,
+    proxySyncPending: data.proxySyncPending === true,
     description: data.description ?? "",
     lat: data.lat,
     lng: data.lng,
@@ -36,14 +37,18 @@ function toEntry(id: string, data: DocumentData): CctvEntry {
 }
 
 /** 활성 CCTV 실시간 구독 (공개) */
-export function subscribeCctvs(callback: (entries: CctvEntry[]) => void) {
+export function subscribeCctvs(callback: (entries: CctvEntry[]) => void, onError?: (error: Error) => void, requireServer = false) {
   const db = getFirebaseDb();
   const q = query(
     collection(db, "cctvs"),
     where("active", "==", true),
     orderBy("name")
   );
-  return onSnapshot(q, (snap) => {
+  return onSnapshot(q, { includeMetadataChanges: requireServer }, (snap) => {
+    if (requireServer && (snap.metadata.fromCache || snap.metadata.hasPendingWrites)) {
+      onError?.(new Error("Current server inventory has not been confirmed."));
+      return;
+    }
     const entries = snap.docs.map((d) => toEntry(d.id, d.data()));
     // YouTube 항목 최상단 정렬
     entries.sort((a, b) => {
@@ -52,7 +57,7 @@ export function subscribeCctvs(callback: (entries: CctvEntry[]) => void) {
       return 0;
     });
     callback(entries);
-  });
+  }, onError);
 }
 
 /**
@@ -78,6 +83,9 @@ export async function fetchCctvsByIds(ids: string[]): Promise<CctvEntry[]> {
 // ── 어드민 작업은 서버 API(/api/admin/cctv) 호출 → Admin SDK가 Firestore 쓰기
 //    Firestore 보안 규칙이 잠겨있어도 작동함
 
+export type CctvSaveResult = { ok: boolean; kvSync: boolean | null; warning?: string };
+export type PlaybackAttestation = { sourceRevision: string; observedPlayback: true; observedAt: string; method: "operator-observed" };
+
 async function apiCall(method: string, body?: unknown): Promise<unknown> {
   const res = await fetch("/api/admin/cctv", {
     method,
@@ -98,13 +106,13 @@ export async function adminListCctvs(): Promise<CctvEntry[]> {
 }
 
 /** 어드민 저장/업데이트 */
-export async function adminSetCctv(entry: Omit<CctvEntry, "addedAt">): Promise<void> {
-  await apiCall("POST", entry);
+export async function adminSetCctv(entry: Omit<CctvEntry, "addedAt">): Promise<CctvSaveResult> {
+  return await apiCall("POST", entry) as CctvSaveResult;
 }
 
 /** 어드민 활성화 토글 */
-export async function adminToggleCctv(id: string, active: boolean): Promise<void> {
-  await apiCall("PATCH", { id, active });
+export async function adminToggleCctv(id: string, active: boolean, review?: PlaybackAttestation): Promise<CctvSaveResult> {
+  return await apiCall("PATCH", { id, active, review }) as CctvSaveResult;
 }
 
 /** 어드민 삭제 */

@@ -6,11 +6,12 @@ import "leaflet/dist/leaflet.css";
 import type { MiniMiKind, RoomConcept } from "@/lib/biz/types";
 import { useAuth } from "@/hooks/useAuth";
 import { listMySpots } from "@/lib/my-spots";
-import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
+import { CameraDialog } from "@/components/cctv/CameraDialog";
+import { cameraWatchUrl, openCameraWatch, requiresExternalPlayback } from "@/lib/cctv-playback-target";
 import { track } from "@/lib/analytics";
 import { MINIMI, MINIMI_ORDER, ROOM_CONCEPTS, ROOM_ORDER } from "./minimi-config";
 
-const CCTV_PROXY = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLIC_PROXY_URL || "";
 
 /**
  * 제주 미니홈피 지도 — OSM 위에 레이어: 미니홈피 깃발(열기구)·CCTV·도민맛집·내 마이스팟.
@@ -69,8 +70,13 @@ function emojiPin(emoji: string, color: string) {
 const emojiIcon = (e: string, size = 24) => `<div style="font-size:${size}px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));">${e}</div>`;
 function esc(s: string) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!)); }
 
-export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: FoodPt[] }) {
+export function JejuMap({ food = [] }: { cctv?: CctvPt[]; food?: FoodPt[] }) {
   const { user, signInWithGoogle } = useAuth();
+  // Legacy passed camera points are not authority for publication or playback.
+  const publicInventory = usePublicCctvs();
+  const cctv = useMemo(() => publicInventory.error || publicInventory.loading ? [] : publicInventory.cctvs
+    .filter(c => Number.isFinite(c.lat) && Number.isFinite(c.lng) && Math.abs(c.lat!) <= 90 && Math.abs(c.lng!) <= 180),
+    [publicInventory.cctvs, publicInventory.error, publicInventory.loading]);
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LMap | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
@@ -91,6 +97,11 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
     return [...cnt.entries()].sort((a, b) => b[1] - a[1]);
   }, [food]);
   const [sel, setSel] = useState<Sel | null>(null);
+  const [externalId, setExternalId] = useState<string | null>(null);
+  const selectedCamera = sel?.kind === "cctv" ? cctv.find(c => c.id === sel.id && !requiresExternalPlayback(c)) : undefined;
+  if (sel?.kind === "cctv" && !selectedCamera) setSel(null);
+  const externalCamera = cctv.find(c => c.id === externalId && requiresExternalPlayback(c));
+  if (externalId !== null && !externalCamera) setExternalId(null);
 
   // 깃발 꽂기
   const [plantMode, setPlantMode] = useState(false);
@@ -138,7 +149,10 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
     const select = (s: Sel) => { track("map_marker", { kind: s.kind }); setSel(s); };
 
     if (show.home) flags.forEach((f) => mk(f.lat, f.lng, avatarPin(f.level, f.minimi), () => select({ kind: "flag", title: f.name, sub: `Lv.${f.level} · ${ROOM_CONCEPTS[f.concept].label}`, msg: f.message, href: `/minihome/u/${f.id}`, cta: "미니홈피 입장" }), 500));
-    if (show.cctv) cctv.forEach((c) => mk(c.lat, c.lng, emojiPin("📷", "#3b82f6"), () => select({ kind: "cctv", id: c.id, title: c.name, sub: "실시간 CCTV", href: `/cctv/${c.id}`, cta: "전체 화면" })));
+    if (show.cctv) cctv.forEach((c) => mk(c.lat!, c.lng!, emojiPin("📷", "#3b82f6"), () => {
+      if (requiresExternalPlayback(c)) { setSel(null); openCameraWatch(c); setExternalId(c.id); }
+      else select({ kind: "cctv", id: c.id, title: c.name, sub: "CCTV", href: `/cctv/${encodeURIComponent(c.id)}`, cta: "상세 정보" });
+    }));
     if (show.food) food.filter((f) => foodMenu === "all" || (f.menu || "").trim() === foodMenu).forEach((f) => mk(f.lat, f.lng, emojiPin("🍴", "#ef4444"), () => select({ kind: "food", title: f.title, sub: f.menu ? `${f.menu} · ${f.address}` : f.address, img: f.img, summary: f.summary, href: `/food/${f.id}`, cta: "맛집 보기" })));
     if (show.spot) myspots.forEach((s) => mk(s.lat, s.lng, emojiPin("⭐", "#f59e0b"), () => select({ kind: "spot", title: s.name, sub: `${s.category ?? ""} ${s.address ?? ""}`.trim(), href: "/mypage", cta: "마이페이지에서 보기" })));
   }, [show, flags, cctv, food, myspots, foodMenu]);
@@ -205,14 +219,14 @@ export function JejuMap({ cctv = [], food = [] }: { cctv?: CctvPt[]; food?: Food
       )}
 
       {/* 마커 클릭 모달 */}
-      {sel && (
+      {selectedCamera && <CameraDialog key={selectedCamera.id} camera={selectedCamera} onClose={() => setSel(null)} />}
+      {externalCamera && <div role="status" style={{ position: "absolute", bottom: 70, left: 12, right: 12, zIndex: 1000, background: "white", padding: 12, borderRadius: 8, fontSize: 12 }}>
+        {externalCamera.name} · 영상은 별도 창에서 확인해 주세요. <a href={cameraWatchUrl(externalCamera)} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>팝업이 열리지 않으면 새 탭으로 보기</a>
+        <button type="button" onClick={() => setExternalId(null)} aria-label="새 창 안내 닫기" style={{ marginLeft: 12 }}>닫기</button>
+      </div>}
+      {sel && sel.kind !== "cctv" && (
         <div onClick={() => setSel(null)} style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 14, padding: 18, width: 320, maxWidth: "90vw", boxShadow: "0 8px 30px rgba(0,0,0,.3)" }}>
-            {sel.kind === "cctv" && (
-              <div style={{ marginBottom: 10 }}>
-                <HlsMiniPlayer id={sel.id} name={sel.title} proxyUrl={CCTV_PROXY ? `${CCTV_PROXY}/cctv/${sel.id}` : null} forcePlay />
-              </div>
-            )}
             {sel.kind === "food" && sel.img && <div style={{ height: 140, borderRadius: 10, background: `center/cover no-repeat url(${sel.img})`, marginBottom: 10 }} />}
             <div style={{ fontSize: 16, fontWeight: 800, color: "#2b3a52" }}>{sel.title}</div>
             <div style={{ fontSize: 12, color: "#7a6e58", marginTop: 3 }}>{sel.sub}</div>

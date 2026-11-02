@@ -5,8 +5,9 @@ import {
   adminListCctvs,
   adminSetCctv,
   adminToggleCctv,
-  adminDeleteCctv,
+  type PlaybackAttestation,
 } from "@/lib/firestore-cctv";
+import { AdminPlaybackReview } from "@/components/cctv/AdminPlaybackReview";
 import { getDirection, extractYoutubeId, DIRECTION_META } from "@/constants/cctv-directions";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import type { CctvEntry, CctvDirection } from "@/types/cctv";
@@ -58,13 +59,15 @@ const ORIGIN_URLS: Record<string, string> = {
 const EMPTY: Omit<CctvEntry, "addedAt"> = {
   id: "", name: "", region: "", direction: "북",
   category: "해변", originUrl: "", youtubeId: undefined,
-  active: true, description: "",
+  active: false, description: "",
 };
 
 const CATEGORIES = ["해변", "오름", "항구", "포구", "관광지", "드라이브", "공항", "기타"];
 const DIRECTIONS: CctvDirection[] = ["북", "동", "남", "서"];
 
 export default function AdminCctvPage() {
+  const [reviewEntry, setReviewEntry] = useState<CctvEntry | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
   const [entries, setEntries] = useState<CctvEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,12 +81,20 @@ export default function AdminCctvPage() {
     setLoading(true);
     try {
       setEntries(await adminListCctvs());
+    } catch (error) {
+      setMsg({ type: "err", text: error instanceof Error ? error.message : "목록 조회 실패" });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    adminListCctvs().then((data) => { if (!cancelled) setEntries(data); })
+      .catch((error) => { if (!cancelled) setMsg({ type: "err", text: error instanceof Error ? error.message : "목록 조회 실패" }); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   function notify(type: "ok" | "err", text: string) {
     setMsg({ type, text });
@@ -109,8 +120,9 @@ export default function AdminCctvPage() {
     }
     setSaving(true);
     try {
-      await adminSetCctv(form);
-      notify("ok", editingId ? "수정 완료!" : "추가 완료!");
+      const result = await adminSetCctv(form);
+      notify(result.warning ? "err" : "ok", result.warning || "저장 완료. 신규·변경된 영상은 비활성 상태입니다. 목록에서 재생 검토 후 게시 승인해주세요.");
+      setReviewEntry(null);
       setForm(EMPTY);
       setYoutubeInput("");
       setEditingId(null);
@@ -123,23 +135,34 @@ export default function AdminCctvPage() {
   }
 
   async function handleToggle(entry: CctvEntry) {
-    await adminToggleCctv(entry.id, !entry.active);
-    load();
+    if (!entry.active) { setReviewEntry(entry); return; }
+    try {
+      const result = await adminToggleCctv(entry.id, false);
+      notify(result.warning ? "err" : "ok", result.warning || "비활성화 완료. 카메라 기록과 URL은 보존됩니다.");
+      setReviewEntry(null);
+      await load();
+    } catch (error) { notify("err", error instanceof Error ? error.message : "변경 실패"); }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm(`"${id}" CCTV를 삭제할까요?`)) return;
-    await adminDeleteCctv(id);
-    notify("ok", "삭제 완료");
-    load();
+  async function handleApprove(review: PlaybackAttestation) {
+    if (!reviewEntry) return;
+    setReviewBusy(true);
+    try {
+      const result = await adminToggleCctv(reviewEntry.id, true, review);
+      notify(result.warning ? "err" : "ok", result.warning || "관리자 관찰 기록과 게시 승인이 저장되었습니다.");
+      setReviewEntry(null);
+      await load();
+    } catch (error) { notify("err", error instanceof Error ? error.message : "승인 실패"); }
+    finally { setReviewBusy(false); }
   }
 
   function startEdit(entry: CctvEntry) {
+    setReviewEntry(null);
     setForm({
       id: entry.id, name: entry.name, region: entry.region,
       direction: entry.direction, category: entry.category,
       originUrl: entry.originUrl, youtubeId: entry.youtubeId,
-      active: entry.active, description: entry.description,
+      active: entry.active, description: entry.description, lat: entry.lat, lng: entry.lng,
     });
     setYoutubeInput(entry.youtubeId ? `https://www.youtube.com/watch?v=${entry.youtubeId}` : "");
     setEditingId(entry.id);
@@ -173,7 +196,7 @@ export default function AdminCctvPage() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-text-primary">📡 CCTV 관리</h1>
-          <p className="text-sm text-text-secondary">Firestore 단일 소스 · Lightsail 자동 반영</p>
+          <p className="text-sm text-text-secondary">저장 → 실제 재생 검토 → 관리자 게시 승인 · 기존 카메라 기록 보존</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-jeju-green/10 px-3 py-1.5 text-xs font-bold text-jeju-green border border-jeju-green/20">
@@ -280,17 +303,7 @@ export default function AdminCctvPage() {
             </select>
           </div>
 
-          {/* 활성화 */}
-          <div className="flex items-center gap-2 pt-5">
-            <input
-              type="checkbox"
-              id="active"
-              checked={form.active}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })}
-              className="h-4 w-4 accent-brand-orange"
-            />
-            <label htmlFor="active" className="text-sm font-medium text-text-primary">활성화</label>
-          </div>
+          <p className="pt-5 text-xs text-text-secondary">신규·소스 변경은 비활성으로 저장됩니다. 저장 후 목록에서 재생 검토 / 게시 승인을 진행하세요.</p>
 
           {/* 유튜브 URL */}
           <div className="md:col-span-2">
@@ -315,7 +328,7 @@ export default function AdminCctvPage() {
           {!form.youtubeId && (
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs font-semibold text-text-secondary">
-                원본 HLS URL <span className="text-live-red">(서버에만 저장, 외부 노출 안됨)</span>
+                원본 HLS URL <span className="text-live-red">(저장된 카메라 메타데이터 · 비밀 토큰 입력 금지)</span>
               </label>
               <input
                 value={form.originUrl}
@@ -359,6 +372,8 @@ export default function AdminCctvPage() {
         </div>
       </div>
 
+      {reviewEntry && <AdminPlaybackReview key={reviewEntry.id + reviewEntry.sourceRevision} entry={reviewEntry} busy={reviewBusy} onApprove={handleApprove} onClose={() => setReviewEntry(null)} />}
+
       {/* 목록 */}
       <div className="rounded-2xl border border-border-soft bg-bg-card shadow-card overflow-hidden">
         <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
@@ -376,7 +391,7 @@ export default function AdminCctvPage() {
           <div className="flex flex-col items-center py-16 text-center">
             <p className="text-3xl">📡</p>
             <p className="mt-3 text-sm font-bold text-text-primary">등록된 CCTV가 없어요</p>
-            <p className="text-xs text-text-secondary">위 "Mock에서 마이그레이션" 버튼으로 기존 데이터를 가져오세요</p>
+            <p className="text-xs text-text-secondary">위 &quot;Mock에서 마이그레이션&quot; 버튼으로 기존 데이터를 가져오세요</p>
           </div>
         ) : (
           <div className="divide-y divide-border-soft">
@@ -403,6 +418,7 @@ export default function AdminCctvPage() {
                       {entry.active ? "● 활성" : "○ 비활성"}
                     </span>
                   </div>
+                  {entry.proxySyncPending && <p className="mt-1 text-xs font-bold text-live-red">프록시 동기화 보류 · 재검토 전 운영 점검 필요</p>}
                   <p className="mt-0.5 font-mono text-[11px] text-text-secondary">ID: {entry.id}</p>
                   {entry.youtubeId ? (
                     <p className="mt-0.5 font-mono text-[11px] text-red-500">YouTube: {entry.youtubeId}</p>
@@ -419,7 +435,7 @@ export default function AdminCctvPage() {
                       entry.active ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-jeju-green/10 text-jeju-green hover:bg-jeju-green/20",
                     ].join(" ")}
                   >
-                    {entry.active ? "비활성화" : "활성화"}
+                    {entry.active ? "비활성화" : "재생 검토 / 승인"}
                   </button>
                   <button
                     type="button"
@@ -428,13 +444,7 @@ export default function AdminCctvPage() {
                   >
                     수정
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(entry.id)}
-                    className="rounded-lg bg-live-red/10 px-3 py-1.5 text-[11px] font-bold text-live-red hover:bg-live-red/20 transition-colors"
-                  >
-                    삭제
-                  </button>
+
                 </div>
               </div>
             ))}

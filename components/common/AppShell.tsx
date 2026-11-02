@@ -8,10 +8,17 @@ import { FloatingChat } from "@/components/common/FloatingChat";
 import { ServiceNoticePopup } from "@/components/common/ServiceNoticePopup";
 import { usePageViewTracker } from "@/hooks/usePageViewTracker";
 import { LangProvider } from "@/lib/i18n";
+import { CCTV_FOCUSED_PUBLIC } from "@/constants/public-features";
+import { CctvHeader } from "@/components/common/CctvHeader";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, trackPageViews = true }: { children: React.ReactNode; trackPageViews?: boolean }) {
   const pathname = usePathname();
-  usePageViewTracker(); // 페이지 이동마다 자동 기록
+  usePageViewTracker(trackPageViews); // 서버가 preview 분석 기록을 비활성화할 수 있음
+
+  // The user-opened camera window is deliberately video-only on this origin.
+  if (pathname.startsWith("/cctv/watch/")) {
+    return <LangProvider><main id="main-content" className="min-h-dvh bg-[#071413] text-white">{children}</main></LangProvider>;
+  }
 
   if (pathname.startsWith("/admin")) {
     return <div className="min-h-screen bg-bg-primary">{children}</div>;
@@ -20,6 +27,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // 비즈 홈페이지(/biz/[slug])는 독립 페이지 — funjeju 네비/사이드바 없이 풀스크린
   if (pathname.startsWith("/biz/")) {
     return <LangProvider>{children}</LangProvider>;
+  }
+
+  if (CCTV_FOCUSED_PUBLIC) {
+    return (
+      <LangProvider>
+        <div className="wind-site-shell min-h-screen">
+          <CctvHeader />
+          <main id="main-content">{children}</main>
+        </div>
+      </LangProvider>
+    );
   }
 
   return (

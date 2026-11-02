@@ -1,9 +1,16 @@
+import { cctvSourceRevision } from "@/lib/cctv-review";
+import { PublicPlaybackBoundary } from "@/components/cctv/PublicPlaybackBoundary";
+import { filterLaunchCameras, isLaunchCameraVisible } from "@/lib/cctv-launch-policy";
 import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DirectCameraLaunch } from "@/components/cctv/DirectCameraLaunch";
+import { directCameraSourceUrl } from "@/lib/cctv-direct-link";
 import { HlsPlayer } from "@/components/cctv/HlsPlayer";
 import { VurixLaunch } from "@/components/cctv/VurixLaunch";
-import { isVurixId } from "@/constants/vurix";
+import { requiresDirectHttpViewer, requiresExternalPlayback } from "@/lib/cctv-playback-target";
+import { HttpsCameraWindow } from "@/components/cctv/HttpsCameraWindow";
 import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
 import { LiveChat } from "@/components/cctv/LiveChat";
@@ -11,13 +18,15 @@ import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 import { getCctvSeo } from "@/constants/cctv-seo";
 import { getLocation } from "@/lib/cctv-location";
 import { GROUP_HUB } from "@/types/cctv-location";
-import { getCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
+import { getCctvById, lookupCctvById, getNearbyCctvs } from "@/lib/firestore-cctv-server";
+import { resolveCctvDetail } from "@/lib/cctv-detail";
 import { mockCctvs } from "@/constants/mock-cctvs";
 import { CctvDetailActions } from "@/components/cctv/CctvDetailActions";
 import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
 import { CctvLiveInfo } from "@/components/cctv/CctvLiveInfo";
 import { listGames } from "@/lib/spot";
 import { T } from "@/lib/i18n";
+import { CCTV_FOCUSED_PUBLIC } from "@/constants/public-features";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -37,41 +46,32 @@ export const dynamicParams = true;
 // → 봇이 아무리 크롤해도 ISR Write 0 (시간 기반 재생성 제거).
 export const revalidate = false;
 
-// Firestore → fallback mock 순서로 조회
-async function loadCctv(id: string) {
-  const fromFirestore = await getCctvById(id);
-  if (fromFirestore) return fromFirestore;
-  // Firestore에 없으면 mock에서 fallback
-  const mock = mockCctvs.find((c) => c.id === id);
-  if (mock) {
-    return {
-      id: mock.id, name: mock.name, region: mock.region,
-      direction: mock.direction, category: mock.category,
-      originUrl: "", youtubeId: mock.youtubeId,
-      active: true, description: mock.description,
-      lat: mock.latitude, lng: mock.longitude,
-    };
-  }
-  return null;
-}
+// Request-local memoization shares one authoritative result between metadata/page.
+// Do not catch unavailable here: failed regeneration must not cache an inactive page.
+const loadCctv = cache(async (id: string) => resolveCctvDetail(
+  await lookupCctvById(id),
+  mockCctvs.find((c) => c.id === id),
+));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const cctv = await loadCctv(id);
   if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
 
+  if (!await isLaunchCameraVisible(cctv)) return { title: `${cctv.name} 장소 안내 | FunJeju`, description: "재생 확인 전까지 영상 공개를 보류합니다. 장소 기록은 보존됩니다.", robots: { index: false, follow: true } };
+
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
   const url = `${SITE_URL}/cctv/${id}`;
 
   // 지역 SEO 데이터(cctv_locations)가 있으면 출력 계약(2-1) 우선 적용
-  const loc = await getLocation(id);
+  const loc = await getLocation(id).catch(() => null);
   let title: string;
   let description: string;
   if (loc) {
     const fac = loc.facility?.[0] ?? loc.short;
     const regionShort = loc.region ? loc.region.split(" ").slice(1).join(" ") : "";
     title = `${loc.formal}날씨·실시간 CCTV·가볼만한곳 | ${fac} - 펀제주`;
-    description = `${loc.region ? loc.region + " " : ""}${loc.formal}(${loc.short}) 실시간 CCTV로 지금 날씨·파도·바람을 확인하고, ${loc.formal} 가볼만한 곳·주변 여행 코스·가는 길까지 한눈에. 펀제주가 24시간 송출하는 ${fac} 라이브 화면.`;
+    description = `${loc.region ? loc.region + " " : ""}${loc.formal}(${loc.short}) 실시간 CCTV로 지금 날씨·파도·바람을 확인하고, ${loc.formal} 가볼만한 곳·주변 여행 코스·가는 길까지 한눈에. ${fac} 영상 안내. 원본 제공처 상황에 따라 재생이 중단될 수 있습니다.`;
     // 관광 + 날씨 키워드
     void regionShort;
   } else {
@@ -104,32 +104,19 @@ export default async function CctvDetailPage({ params }: Props) {
     : (PROXY_BASE ? `${PROXY_BASE}/cctv/${cctv.id}` : null);
 
   const seo = getCctvSeo(id, cctv.name, cctv.region, cctv.category, cctv.description);
-  const loc = await getLocation(id); // 지역 SEO 데이터(있으면 출력 계약 본문 렌더)
+  const loc = await getLocation(id).catch(() => null); // 지역 SEO 데이터(있으면 출력 계약 본문 렌더)
   // nearby 내부링크용 이름 매핑 (실제 cctv id → 이름)
   const nearbyLinks = loc
     ? (await Promise.all(loc.nearby.map(async (nid) => ({ id: nid, name: (await getCctvById(nid))?.name ?? nid }))))
     : [];
 
-  // 같은 지역 + 부족하면 mock에서 보충
-  const nearbyFromDb = await getNearbyCctvs(cctv.region, cctv.id, 3);
-  let finalNearby: typeof nearbyFromDb = nearbyFromDb;
-  if (nearbyFromDb.length < 3) {
-    const extra = mockCctvs
-      .filter((c) => c.id !== id && c.region === cctv.region && !nearbyFromDb.some((n) => n.id === c.id))
-      .slice(0, 3 - nearbyFromDb.length)
-      .map((m) => ({
-        id: m.id, name: m.name, region: m.region,
-        direction: m.direction, category: m.category,
-        originUrl: "", youtubeId: m.youtubeId,
-        active: true, description: m.description,
-        lat: m.latitude, lng: m.longitude,
-      }));
-    finalNearby = [...nearbyFromDb, ...extra];
-  }
+  // Only authoritative published cameras are suggested.
+  const finalNearby = await filterLaunchCameras(await getNearbyCctvs(cctv.region, cctv.id, 12));
+  const publiclyVisible = await isLaunchCameraVisible(cctv);
 
   // 날씨·조석은 CctvLiveInfo가 브라우저에서 /api/weather로 라이브 호출한다.
   // (서버에서 미리 fetch해 HTML에 박으면 ISR 캐시에 옛 날씨가 굳어버리므로 제거)
-  const spotGames = await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
+  const spotGames = CCTV_FOCUSED_PUBLIC ? [] : await listGames({ publishedOnly: true, limit: 3 }).catch(() => []);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -163,8 +150,8 @@ export default async function CctvDetailPage({ params }: Props) {
     ],
   };
 
-  // VideoObject + BroadcastEvent(상시 라이브 · startDate만, endDate 없음) — loc 있을 때
-  const videoLd = loc ? {
+  // Published video metadata does not imply verified, uninterrupted live playback.
+  const videoLd = loc && publiclyVisible ? {
     "@context": "https://schema.org",
     "@type": "VideoObject",
     name: `${loc.formal} 실시간 CCTV — 지금 제주 ${loc.formal} 날씨`,
@@ -173,7 +160,6 @@ export default async function CctvDetailPage({ params }: Props) {
     uploadDate: loc.updatedAt || new Date().toISOString(),
     ...(streamProxyUrl ? { contentUrl: streamProxyUrl } : {}),
     embedUrl: `${SITE_URL}/cctv/${id}`,
-    publication: { "@type": "BroadcastEvent", isLiveBroadcast: true, startDate: loc.updatedAt || "2026-01-01T00:00:00+09:00" },
   } : null;
 
   // AEO — FAQPage JSON-LD ([E]FAQ를 AI 답변엔진·구글 리치결과에 노출)
@@ -213,11 +199,22 @@ export default async function CctvDetailPage({ params }: Props) {
       <div className="flex flex-col gap-5 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-4">
 
-          {/* 플레이어 — YouTube / vurix(원본 새창) / HLS */}
-          {cctv.youtubeId ? (
+          {/* 플레이어 — YouTube / HTTP 원본(별도 새 창) / HTTPS HLS */}
+          <PublicPlaybackBoundary id={cctv.id} sourceRevision={cctvSourceRevision(cctv)}>
+          {!publiclyVisible ? (
+            <div role="status" className="rounded-2xl border border-border-soft bg-bg-secondary p-10 text-center">
+              <p className="font-bold">현재 영상을 확인할 수 없어요</p>
+              <p className="mt-2 text-sm text-text-secondary">점검 또는 임시 오류로 재생을 잠시 중단했어요. 장소 정보와 주소는 그대로 유지됩니다.</p>
+              <Link href="/cctv" className="mt-4 inline-block underline">다른 CCTV 보기</Link>
+            </div>
+          ) : process.env.VERCEL_ENV === "preview" ? (
+            <DirectCameraLaunch id={cctv.id} name={cctv.name} originUrl={directCameraSourceUrl(cctv) ?? ""} />
+          ) : cctv.youtubeId ? (
             <YoutubePlayer youtubeId={cctv.youtubeId} title={cctv.name} />
-          ) : isVurixId(cctv.id) ? (
-            <VurixLaunch id={cctv.id} name={cctv.name} />
+          ) : requiresExternalPlayback(cctv) ? (
+            requiresDirectHttpViewer(cctv)
+              ? <VurixLaunch id={cctv.id} name={cctv.name} originUrl={cctv.originUrl} />
+              : <HttpsCameraWindow id={cctv.id} name={cctv.name} originUrl={cctv.originUrl} proxyUrl={streamProxyUrl} />
           ) : (
             <HlsPlayer
               proxyUrl={streamProxyUrl}
@@ -227,11 +224,13 @@ export default async function CctvDetailPage({ params }: Props) {
             />
           )}
 
+          </PublicPlaybackBoundary>
+
           {/* 모바일: 영상 바로 아래 최근 틀린그림 배너 */}
-          <RecentGameBanner games={spotGames} className="lg:hidden" />
+          {!CCTV_FOCUSED_PUBLIC && <RecentGameBanner games={spotGames} className="lg:hidden" />}
 
           {/* 베타 안내 — 정식 오픈 시 요금제 적용 */}
-          {!cctv.youtubeId && (
+          {publiclyVisible && !cctv.youtubeId && (
             <div className="px-4 md:px-0">
               <BetaPlanNotice />
             </div>
@@ -252,24 +251,8 @@ export default async function CctvDetailPage({ params }: Props) {
             </div>
 
             <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
-              {cctv.youtubeId ? (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-red-100 border border-red-200 px-2.5 py-1 text-[11px] font-semibold text-red-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" />
-                  <T k="cctv.badge.youtube" />
-                </span>
-              ) : streamProxyUrl ? (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-jeju-green/10 border border-jeju-green/20 px-2.5 py-1 text-[11px] font-semibold text-jeju-green">
-                  <span className="h-1.5 w-1.5 rounded-full bg-jeju-green animate-pulse" />
-                  <T k="cctv.badge.connected" />
-                </span>
-              ) : (
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gray-100 border border-gray-200 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  <T k="cctv.badge.notset" />
-                </span>
-              )}
               <span className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
-                <T k="cctv.tag.live" />
+                {!publiclyVisible ? "재생 확인 전 · 비공개" : cctv.youtubeId ? "YouTube · 재생 시 확인" : requiresExternalPlayback(cctv) ? "새 창에서 재생 확인" : "재생 상태는 플레이어에서 확인"}
               </span>
               {[cctv.category, cctv.region].map((tag) => (
                 <span key={tag} className="shrink-0 rounded-full bg-bg-secondary px-2.5 py-1 text-[11px] font-medium text-text-secondary">
@@ -291,7 +274,7 @@ export default async function CctvDetailPage({ params }: Props) {
                   {loc.region ? `${loc.region} ` : ""}실시간 {loc.formal} CCTV — {loc.facility?.[0] ?? loc.formal} 날씨·여행정보
                 </h1>
                 <p className="mt-2 text-sm leading-7 text-text-primary">
-                  {loc.formal}({loc.short}) 날씨와 지금 현장 상태가 궁금하다면 위 실시간 영상으로 바로 확인하세요. {loc.region ? `${loc.region} ` : ""}{loc.facility?.[0] ?? loc.formal}를 펀제주 CCTV가 24시간 송출합니다.
+                  {loc.formal}({loc.short}) 날씨와 지금 현장 상태가 궁금하다면 위 실시간 영상으로 바로 확인하세요. {loc.region ? `${loc.region} ` : ""}{loc.facility?.[0] ?? loc.formal} 영상은 원본 제공처 상황에 따라 중단될 수 있습니다.
                 </p>
               </header>
 
@@ -454,8 +437,8 @@ export default async function CctvDetailPage({ params }: Props) {
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-[10px] text-live-red font-semibold">
-                      <span className="h-1.5 w-1.5 rounded-full bg-live-red animate-pulse" />
-                      LIVE
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                      CCTV 보기
                     </span>
                   )}
                 </div>
@@ -463,16 +446,16 @@ export default async function CctvDetailPage({ params }: Props) {
             </Link>
           ))}
 
-          <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
+          {!CCTV_FOCUSED_PUBLIC && <div className="mx-4 rounded-2xl bg-gradient-to-br from-brand-navy to-blue-600 p-4 text-white md:mx-0">
             <p className="flex items-center gap-1.5 text-xs font-bold"><DolmangyiIcon size={20} /> <T k="cctv.askAi" /></p>
             <p className="mt-1 text-[11px] text-white/80"><T k="cctv.askAi.sub" /></p>
             <Link href="/chat" className="mt-3 block rounded-xl bg-white/20 py-2 text-center text-xs font-bold hover:bg-white/30 transition-colors">
               <T k="cctv.askAi.cta" />
             </Link>
-          </div>
+          </div>}
 
           {/* 데스크톱: 돌AI 버튼 아래 최근 틀린그림 배너 */}
-          <RecentGameBanner games={spotGames} className="hidden lg:block" />
+          {!CCTV_FOCUSED_PUBLIC && <RecentGameBanner games={spotGames} className="hidden lg:block" />}
         </aside>
       </div>
     </div>

@@ -1,4 +1,15 @@
 @import "tailwindcss";
+@import "./cctv-editorial.css";
+@import "./cctv-wind.css";
+
+/* Official unmodified Pretendard Variable v1.3.9. See /fonts/pretendard/LICENSE.txt. */
+@font-face {
+  font-family: "Pretendard Variable";
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url("/fonts/pretendard/PretendardVariable-v1.3.9.woff2") format("woff2");
+}
 
 @theme {
   --color-bg-primary: #fffbf2;
@@ -18,7 +29,7 @@
   --radius-full: 9999px;
   --shadow-soft: 0 4px 16px rgba(0, 0, 0, 0.07);
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --font-sans: Pretendard, SUIT, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 :root {
@@ -81,3 +92,68 @@ select {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.cctv-explorer button:focus-visible,
+.cctv-explorer a:focus-visible,
+.cctv-explorer select:focus-visible {
+  outline: 2px solid #426c4f;
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cctv-explorer *, .cctv-explorer *::before, .cctv-explorer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Unlayered anchor reset above outranks Tailwind's layered color utilities.
+   Keep quick-view colors together in this scoped, unlayered rule (also visited). */
+.editorial-explorer .editorial-quick-views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #17252433;
+  border-radius: 16px;
+  background: #e9ede6;
+  color: #172524;
+}
+.editorial-explorer .editorial-quick-heading {
+  margin-right: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.editorial-explorer a.editorial-quick-link,
+.editorial-explorer a.editorial-quick-link:visited {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #172524;
+  border-radius: 999px;
+  background: #172524;
+  color: #d9ff60;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 700;
+  text-decoration: none;
+}
+.editorial-explorer a.editorial-quick-link:hover,
+.editorial-explorer a.editorial-quick-link:focus-visible {
+  background: #d9ff60;
+  color: #172524;
+}
+.editorial-explorer a.editorial-quick-link:focus-visible {
+  outline: 2px solid #172524;
+  outline-offset: 3px;
+}
+.editorial-explorer .editorial-quick-name { overflow-wrap: anywhere; }
+.editorial-explorer .editorial-quick-action { white-space: nowrap; font-size: 11px; }
+.editorial-explorer .editorial-quick-link > svg { flex-shrink: 0; }
+
+.editorial-review-time { margin: -4px 0 18px; color: #52605a; font-size: 11px; line-height: 1.7; }
+.editorial-review-time time { font-weight: 700; }

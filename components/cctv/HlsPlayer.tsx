@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { observePlayback } from "@/lib/cctv-playback-health";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
+
+type FailureCategory = "network" | "media" | "native-unsupported" | "play-failure" | "player-init";
+type PreviewFailure = { hostname: string; category: FailureCategory; httpCode: number | null };
 
 type Status = "loading" | "playing" | "error" | "offline";
 
@@ -16,28 +19,37 @@ type Props = {
   cctvId?: string;
   /** 통계용 cctv 이름 */
   cctvName?: string;
+  /** Public preview: no account budget/telemetry; terminal errors, no reconnect loop. */
+  verificationMode?: boolean;
 };
 
-export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
+export function HlsPlayer({ proxyUrl, label, cctvId, cctvName, verificationMode = false }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<import("hls.js").default | null>(null); // togglePlay/스톨에서 startLoad 재개용
+  const failureRef = useRef<(() => void) | null>(null);
+  const verificationStopped = useRef(false); // Sticky for this viewer mount.
   const [status,    setStatus]    = useState<Status>(proxyUrl ? "loading" : "offline");
+  const [previewFailure, setPreviewFailure] = useState<PreviewFailure | null>(null);
   const [isPlaying, setIsPlaying] = useState(false); // 실제 비디오 재생 중 여부
   const [serverBudget, setServerBudget] = useState<WatchBudgetResult | null>(null);
   const [retryKey, setRetryKey] = useState(0); // 재연결 버튼 → effect 재실행
-  const [failCause, setFailCause] = useState<"external" | "network" | null>(null); // 실패 원인 판정
 
   // 시청 세션 추적 + 서버 시청예산: 비디오가 실제 재생 중일 때만 (단일 스트림)
   useCctvSession({
-    cctvId: cctvId && isPlaying ? cctvId : null,
-    cctvName,
+    cctvId: !verificationMode && cctvId && isPlaying ? cctvId : null,
+    cctvName: verificationMode ? undefined : cctvName,
     isPlaying,
     activeStreams: isPlaying ? 1 : 0,
     onBudget: setServerBudget,
   });
 
   // 시청시간 예산 — 서버 권위 + 클라 보간
-  const budget = useWatchBudget(isPlaying ? 1 : 0, serverBudget);
+  const productionBudget = useWatchBudget(!verificationMode && isPlaying ? 1 : 0, serverBudget);
+  // Anonymous public-preview viewing must not be masked by stale consumer usage
+  // caches. Normal production entitlements are unchanged.
+  const budget = verificationMode ? {
+    ...productionBudget, exhausted: false, unlimited: true, usedSeconds: 0,
+  } : productionBudget;
 
   // 소진되면 재생 정지
   useEffect(() => {
@@ -47,11 +59,13 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
   }, [budget.exhausted]);
 
   useEffect(() => {
-    if (!proxyUrl || !videoRef.current) return;
+    if (verificationMode && verificationStopped.current) { setStatus("error"); return; }
+    if (!proxyUrl || !videoRef.current) { setStatus("offline"); return; }
+    setStatus("loading");
 
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
-    let stallTimerId: ReturnType<typeof setInterval> | null = null;
+    let failed = false;
     let cancelled = false; // 동적 import 대기 중 언마운트되면 hls 생성 자체를 막음
 
     // ★ 프록시 origin 추출 → /event 호출용
@@ -60,7 +74,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       try { return new URL(proxyUrl!).origin; } catch { return ""; }
     })();
     const sendEvent = (action: "start" | "stop" | "leave") => {
-      if (!proxyBase || !cctvId) return;
+      if (verificationMode || !proxyBase || !cctvId) return;
       const url = `${proxyBase}/event?cctv=${encodeURIComponent(cctvId)}&action=${action}`;
       try {
         if (navigator.sendBeacon) navigator.sendBeacon(url, "");
@@ -70,28 +84,63 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
 
     // video element 자체의 재생 상태 추적
     // waiting(버퍼링)은 일시정지가 아니므로 ▶ 오버레이 안 띄움
-    const handlePlay  = () => { setIsPlaying(true); sendEvent("start"); };
+    const handlePlay  = () => { sendEvent("start"); };
     const handlePause = () => { if (video.paused) { setIsPlaying(false); sendEvent("stop"); } };
     const handleEnd   = () => { setIsPlaying(false); sendEvent("stop"); };
     video.addEventListener("playing", handlePlay);
     video.addEventListener("pause",   handlePause);
     video.addEventListener("ended",   handleEnd);
 
+    const failPlayback = (category: FailureCategory = "media", responseCode?: unknown) => {
+      if (failed || cancelled) return;
+      failed = true;
+      if (verificationMode) {
+        verificationStopped.current = true;
+        // Only trusted enum labels, a parsed hostname and an actual HTTP integer.
+        // Never render HLS error text, response URL, path, query or credentials.
+        let hostname = "unavailable";
+        try { hostname = new URL(proxyUrl!).hostname || "unavailable"; } catch { /* No raw fallback. */ }
+        const httpCode = category === "network" && typeof responseCode === "number" &&
+          Number.isInteger(responseCode) && responseCode >= 100 && responseCode <= 599 ? responseCode : null;
+        setPreviewFailure({ hostname, category, httpCode });
+      }
+      hls?.destroy();
+      hls = null;
+      hlsRef.current = null;
+      video.pause();
+      if (verificationMode) { video.removeAttribute("src"); video.load(); }
+      setStatus("error");
+      setIsPlaying(false);
+    };
+    failureRef.current = () => failPlayback("play-failure");
+    const stopObserving = observePlayback(video, {
+      onProgress: () => { if (!failed) { setStatus("playing"); setIsPlaying(true); } },
+      onWaiting: () => { if (!failed) { setStatus("loading"); setIsPlaying(false); } },
+      onFailure: () => failPlayback("media"),
+    });
+    const resume = () => { if (failed) return; try { hls?.startLoad(); } catch { /* ignore */ } };
+    video.addEventListener("stalled", resume);
+    const startPlayback = () => { if (!failed) video.play().catch(() => failPlayback("play-failure")); };
+    video.addEventListener("loadedmetadata", startPlayback);
+
     async function init() {
       const Hls = (await import("hls.js")).default;
-      if (cancelled) return;
+      if (cancelled || failed) return;
 
       if (!Hls.isSupported()) {
+        // Safari/native HLS is part of public viewing. Its video error event is
+        // terminal; HTTP status details are not available through this API.
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl!;
-          video.addEventListener("loadedmetadata", () => setStatus("playing"));
-          video.addEventListener("error", () => setStatus("error"));
+
         } else {
-          setStatus("error");
+          if (verificationMode) failPlayback("native-unsupported");
+          else setStatus("error");
         }
         return;
       }
 
+      const noRetry = () => ({ default: { maxTimeToFirstByteMs: 8000, maxLoadTimeMs: 12000, timeoutRetry: null, errorRetry: null } });
       hls = new Hls({
         enableWorker: true,
         // ★ 라이브 끝단 추격(lowLatency) 끔 — 끝단에 붙으면 1초 세그먼트(vurix)에서 지터에 바로 끊김.
@@ -102,63 +151,53 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
         liveMaxLatencyDurationCount: 10,
         maxBufferLength: 20,
         backBufferLength: 0,
-        manifestLoadingMaxRetry: 4,
-        levelLoadingMaxRetry: 4,
-        fragLoadingMaxRetry: 6,
+        manifestLoadingMaxRetry: verificationMode ? 0 : 4,
+        levelLoadingMaxRetry: verificationMode ? 0 : 4,
+        fragLoadingMaxRetry: verificationMode ? 0 : 6,
         fragLoadingRetryDelay: 500,
+        ...(verificationMode ? {
+          manifestLoadPolicy: noRetry(), playlistLoadPolicy: noRetry(),
+          fragLoadPolicy: noRetry(), keyLoadPolicy: noRetry(), certLoadPolicy: noRetry(),
+          steeringManifestLoadPolicy: noRetry(), interstitialAssetListLoadPolicy: noRetry(),
+          enableInterstitialPlayback: false, emeEnabled: false,
+          contentSteeringController: undefined,
+        } : {}),
       });
 
-      hlsRef.current = hls;
-      hls.loadSource(proxyUrl!);
-      hls.attachMedia(video);
-
-      // ★ 버퍼 바닥(waiting/stalled) → 즉시 로딩 재개 + 재생 시도 (수동 클릭 없이 자가복구)
-      const resume = () => { try { hls?.startLoad(); } catch { /* */ } video.play().catch(() => { /* */ }); };
-      video.addEventListener("waiting", resume);
-      video.addEventListener("stalled", resume);
-
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setStatus("playing");
+        if (failed || cancelled) return;
         video.play().catch(() => {
+          if (failed || cancelled) return;
           video.muted = true;
-          video.play().catch(() => setStatus("error"));
+          video.play().catch(() => failPlayback("play-failure"));
         });
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (failed || cancelled) return;
+        // Any network error (including nonfatal 401/403/CORS) is terminal in QA.
+        // Never let the production recovery path restart an explicitly denied probe.
+        if (verificationMode && (data.type === Hls.ErrorTypes.NETWORK_ERROR || data.fatal)) {
+          failPlayback(data.type === Hls.ErrorTypes.NETWORK_ERROR ? "network" : "media", data.response?.code); return;
+        }
         if (data.fatal) {
           if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
             hls!.startLoad();
           } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-            try { hls!.recoverMediaError(); } catch { setStatus("error"); }
+            try { hls!.recoverMediaError(); } catch { failPlayback(); }
           } else {
-            setStatus("error");
-            hls!.destroy();
+            failPlayback();
           }
         }
       });
 
-      // ★ stalled 감지 — 8초간 currentTime 안 움직이면 재시작
-      let lastTime = -1;
-      let lastTick = Date.now();
-      stallTimerId = setInterval(() => {
-        if (!video || video.paused) return;
-        const now = Date.now();
-        const t = video.currentTime;
-        if (t !== lastTime) {
-          lastTime = t;
-          lastTick = now;
-          return;
-        }
-        if (now - lastTick > 5000) {
-          try { hls?.startLoad(); } catch { /* ignore */ }
-          video.play().catch(() => { /* */ }); // 로딩 재개 후 재생까지 (멈춤 자동복구)
-          lastTick = now;
-        }
-      }, 2000);
+      // Register denial handlers before starting any source/media work.
+      hlsRef.current = hls;
+      hls.loadSource(proxyUrl!);
+      if (!failed && !cancelled) hls?.attachMedia(video);
     }
 
-    init();
+    init().catch(() => failPlayback("player-init"));
 
     // 페이지 이탈 시 leave 이벤트
     const handleUnload = () => sendEvent("leave");
@@ -167,6 +206,7 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     // ★ 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
     let pausedByHidden = false;
     const handleVisibility = () => {
+      if (failed || cancelled) return;
       if (document.hidden) {
         if (!video.paused) {
           pausedByHidden = true;
@@ -186,8 +226,11 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
     return () => {
       // 강제 정리: HLS destroy + video 완전 해제 → origin 다운로드 즉시 중단
       cancelled = true;
+      failureRef.current = null;
       sendEvent("leave"); // 슬롯 제거/페이지 이동
-      if (stallTimerId) clearInterval(stallTimerId);
+      stopObserving();
+      video.removeEventListener("stalled", resume);
+      video.removeEventListener("loadedmetadata", startPlayback);
       hls?.destroy();
       hlsRef.current = null;
       video.removeEventListener("playing", handlePlay);
@@ -200,29 +243,10 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       video.load();
       setIsPlaying(false);
     };
-  }, [proxyUrl, retryKey]);
-
-  // ★ "연결 실패" 후 자동 재시도 — 12초마다 전체 재연결 (origin 복구 시 알아서 부활).
-  // 멈춰서 끝까지 못 받는 카메라(모슬포·대포 등)도 방치하면 계속 재시도해 결국 잡힘.
-  useEffect(() => {
-    if (status !== "error" || budget.exhausted) return;
-    const id = setTimeout(() => { setStatus("loading"); setRetryKey((k) => k + 1); }, 12000);
-    return () => clearTimeout(id);
-  }, [status, budget.exhausted]);
-
-  // ★ 실패 원인 판정 — error 진입 시 서버 헬스체크로 외부/네트워크 구분
-  useEffect(() => {
-    if (status !== "error") { setFailCause(null); return; }
-    if (!cctvId) { setFailCause("external"); return; } // id 없으면 외부로 간주
-    let alive = true;
-    fetch(`/api/cctv/health?id=${encodeURIComponent(cctvId)}`)
-      .then((r) => r.json())
-      .then((d: { cause?: "external" | "network" }) => { if (alive) setFailCause(d.cause === "network" ? "network" : "external"); })
-      .catch(() => { if (alive) setFailCause("external"); });
-    return () => { alive = false; };
-  }, [status, cctvId, retryKey]);
+  }, [proxyUrl, retryKey, cctvId, verificationMode]);
 
   function togglePlay() {
+    if (verificationMode && verificationStopped.current) return;
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
@@ -230,8 +254,12 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       // ★ 멈춰있을 땐 hls 로딩부터 재개해야 버퍼가 차서 실제로 재생됨 (play()만으론 안 먹음)
       try { hlsRef.current?.startLoad(); } catch { /* */ }
       v.play().catch(() => {
+        if (verificationMode && verificationStopped.current) return;
         v.muted = true;
-        v.play().catch(() => setRetryKey((k) => k + 1)); // 그래도 안 되면 전체 재연결
+        v.play().catch(() => {
+          if (verificationMode) failureRef.current?.();
+          else setRetryKey((k) => k + 1);
+        }); // Production retains reconnect; QA never restarts a failed attempt.
       });
     } else {
       v.pause();
@@ -312,29 +340,21 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       {/* 에러 오버레이 — 원인(외부 신호 중단 / 내 네트워크)에 따라 다른 메시지 */}
       {status === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-950 px-6 text-center">
-          {failCause === "network" ? (
-            <>
-              <span className="text-4xl">📶</span>
-              <p className="text-sm font-bold text-white">연결이 불안정해요</p>
-              <p className="text-xs leading-relaxed text-white/60">네트워크 상태를 확인하고<br />다시 시도해 주세요.</p>
-            </>
-          ) : (
-            <>
-              <span className="text-4xl">📡</span>
-              <p className="text-sm font-bold text-white">외부 영상 신호가 일시적으로 중단되었어요</p>
-              <p className="flex items-center gap-1.5 text-xs text-white/60">
-                <span className="h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white/70" />
-                신호가 복구되면 자동으로 다시 연결됩니다.
-              </p>
-            </>
-          )}
-          <button
+          <span className="text-4xl">📡</span>
+          <p className="text-sm font-bold text-white">영상 재생에 임시 오류가 있어요</p>
+          <p className="text-xs leading-relaxed text-white/60">{verificationMode ? "검증 요청을 중단했습니다. 재시도하지 말고 접근 권한과 연결 결과를 검토해 주세요." : <>현재 영상 재생을 확인하지 못했어요.<br />원본 신호 또는 연결 문제일 수 있어요. 잠시 후 다시 시도해 주세요.</>}</p>
+          {verificationMode && previewFailure && <p data-preview-diagnostic="true" className="break-all text-xs leading-relaxed text-white/60">
+            프록시 호스트: {previewFailure.hostname}<br />
+            실패 분류: {previewFailure.category}<br />
+            HTTP 상태: {previewFailure.httpCode ?? "확인 불가"}
+          </p>}
+          {!verificationMode && <button
             type="button"
             onClick={() => { setStatus("loading"); setRetryKey((k) => k + 1); }}
             className="mt-1 rounded-full bg-white/10 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
           >
             지금 재연결
-          </button>
+          </button>}
         </div>
       )}
 
@@ -348,12 +368,12 @@ export function HlsPlayer({ proxyUrl, label, cctvId, cctvName }: Props) {
       )}
 
       {/* 재생 중 배지들 */}
-      {status === "playing" && (
+      {status === "playing" && isPlaying && (
         <>
           <div className="absolute left-3 top-3 flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full bg-live-red px-2.5 py-1 text-[11px] font-bold text-white shadow">
               <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-              LIVE
+              재생 확인
             </span>
           </div>
           {/* 볼륨 토글 */}

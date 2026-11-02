@@ -1,3 +1,4 @@
+import { isLaunchCameraVisible } from "@/lib/cctv-launch-policy";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const hub = GROUP_HUB[group];
   const url = `${SITE}/cctv/theme/${slug}`;
   const title = `${hub.title} | 지금 제주 날씨 - 펀제주`;
-  const description = `${hub.desc}. 펀제주가 24시간 송출하는 ${hub.title} 라이브 화면 모음.`;
+  const description = `${hub.desc}. ${hub.title} 장소 정보. 공개 영상은 최근 재생 확인 목록에서 확인하세요.`;
   return {
     title, description,
     alternates: { canonical: url },
@@ -43,13 +44,17 @@ export default async function ThemeHubPage({ params }: { params: Promise<{ slug:
   const hub = GROUP_HUB[group];
   const locs = await listLocationsByGroup(group);
   // 카메라 이름 매핑
-  const items = await Promise.all(locs.map(async (l) => ({ loc: l, name: (await getCctvById(l.id))?.name ?? l.formal })));
+  const reviewed = await Promise.all(locs.map(async (loc) => {
+    const camera = await getCctvById(loc.id);
+    return camera && await isLaunchCameraVisible(camera) ? { loc, name: camera.name } : null;
+  }));
+  const items = reviewed.filter((item): item is NonNullable<typeof item> => item !== null);
 
   const itemListLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: hub.title,
-    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: `${it.loc.formal} 실시간 CCTV`, url: `${SITE}/cctv/${it.loc.id}` })),
+    itemListElement: items.map((it, i) => ({ "@type": "ListItem", position: i + 1, name: `${it.loc.formal} 장소 안내`, url: `${SITE}/cctv/${it.loc.id}` })),
   };
 
   return (
@@ -60,7 +65,7 @@ export default async function ThemeHubPage({ params }: { params: Promise<{ slug:
       </nav>
 
       <h1 className="text-xl font-black text-text-primary">{hub.emoji} {hub.title} — 지금 제주 날씨 바로 확인</h1>
-      <p className="mt-2 text-sm leading-7 text-text-secondary">{hub.desc}. 아래 지역별 실시간 CCTV로 파도·바람·하늘을 직접 확인하세요. 펀제주가 24시간 송출합니다.</p>
+      <p className="mt-2 text-sm leading-7 text-text-secondary">{hub.desc}. 아래 링크는 장소 정보입니다. 영상은 최근 재생 확인을 마친 카메라만 공개합니다.</p>
 
       {items.length === 0 ? (
         <p className="mt-8 text-center text-sm text-text-secondary">준비 중입니다.</p>
@@ -68,7 +73,7 @@ export default async function ThemeHubPage({ params }: { params: Promise<{ slug:
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {items.map(({ loc, name }) => (
             <Link key={loc.id} href={`/cctv/${loc.id}`} className="block rounded-2xl border border-border-soft bg-bg-card p-4 hover:border-brand-navy">
-              <h2 className="text-sm font-bold text-text-primary">{name} 실시간 CCTV</h2>
+              <h2 className="text-sm font-bold text-text-primary">{name} 장소 안내</h2>
               <p className="mt-1 line-clamp-2 text-xs leading-6 text-text-secondary">{loc.weatherNote}</p>
             </Link>
           ))}

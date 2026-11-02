@@ -10,8 +10,8 @@ import { useMySpot } from "@/hooks/useMySpot";
 import { getAuthor, countMyFeeds, updateUserProfile } from "@/lib/feed";
 import { listTripPlans, deleteTripPlan } from "@/lib/trip-plans";
 import { getEntitlements } from "@/lib/entitlements";
-import { mockCctvs } from "@/constants/mock-cctvs";
-import { HlsMiniPlayer } from "@/components/cctv/HlsMiniPlayer";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
+import { CctvList } from "@/components/cctv/CctvList";
 import { BusinessCtaSettings } from "@/components/mypage/BusinessCtaSettings";
 import { MyBizSites } from "@/components/mypage/MyBizSites";
 import { ExternalHomepagesManager } from "@/components/mypage/ExternalHomepagesManager";
@@ -32,6 +32,7 @@ const menuItems = [
 export default function MyPage() {
   const { user, loading, signInWithGoogle, logout } = useAuth();
   const { favoriteIds } = useCctvFavorite();
+  const publicInventory = usePublicCctvs();
   const { spotIds: mySpotIds } = useMySpot();
   const [author, setAuthor] = useState<FeedAuthor | null>(null);
   const [viewMode, setViewMode] = useState<"personal" | "business">("personal");
@@ -330,8 +331,8 @@ export default function MyPage() {
 
           {/* 즐겨찾기 CCTV */}
           {(() => {
-            const savedCctvs = mockCctvs.filter((c) => favoriteIds.has(c.id));
-            if (savedCctvs.length === 0) return null;
+            const savedCctvs = publicInventory.error || publicInventory.loading ? [] : publicInventory.cctvs.filter((c) => favoriteIds.has(c.id));
+            if (favoriteIds.size === 0) return null;
             return (
               <section className="mx-4 mb-5 md:mx-0">
                 <div className="mb-3 flex items-center justify-between">
@@ -341,20 +342,11 @@ export default function MyPage() {
                       {savedCctvs.length}
                     </span>
                   </h2>
-                  <Link href="/cctv/multiview" className="text-xs font-medium text-brand-orange">
-                    4분할로 보기 →
-                  </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                  {savedCctvs.map((cctv) => (
-                    <HlsMiniPlayer
-                      key={cctv.id}
-                      id={cctv.id}
-                      proxyUrl={cctv.streamProxyUrl}
-                      name={cctv.name}
-                    />
-                  ))}
-                </div>
+                {publicInventory.loading ? <p role="status" className="text-sm text-text-secondary">공개 카메라를 확인하고 있어요.</p>
+                  : publicInventory.error ? <p role="status" className="text-sm text-text-secondary">카메라 목록을 불러올 수 없습니다. 즐겨찾기 기록은 유지됩니다.</p>
+                  : savedCctvs.length ? <CctvList cctvs={savedCctvs} />
+                  : <p role="status" className="text-sm text-text-secondary">지금 공개 가능한 즐겨찾기 카메라가 없어요. 저장한 기록은 유지됩니다.</p>}
               </section>
             );
           })()}

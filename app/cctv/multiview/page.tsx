@@ -4,11 +4,14 @@ import { useState, useRef, useEffect, useMemo, type DragEvent } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ShareButton } from "@/components/common/ShareButton";
-import { useCctvs } from "@/hooks/useCctvs";
+import { usePublicCctvs } from "@/hooks/usePublicCctvs";
 import { useCctvFavorite } from "@/hooks/useCctvFavorite";
 import { useWatchBudget, fmtDuration, type WatchBudgetResult } from "@/hooks/useWatchBudget";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { BetaPlanNotice } from "@/components/common/BetaPlanNotice";
+import { YoutubePlayer } from "@/components/cctv/YoutubePlayer";
+import { observePlayback } from "@/lib/cctv-playback-health";
+import { CCTV_FOCUSED_PUBLIC } from "@/constants/public-features";
 import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
 import type { SpotGame } from "@/types/spot";
 import { BgmPlayer } from "@/components/cctv/BgmPlayer";
@@ -71,27 +74,12 @@ function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => 
   return (
     <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
       {enabled ? (
-        <iframe
-          className="absolute inset-0 h-full w-full"
-          src={`https://www.youtube.com/embed/${cctv.youtubeId}?autoplay=1&mute=1&playsinline=1&modestbranding=1&rel=0&controls=0&iv_load_policy=3&disablekb=1`}
-          title={cctv.name}
-          loading="lazy"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
+        <div className="absolute inset-0 [&>div]:h-full"><YoutubePlayer youtubeId={cctv.youtubeId!} title={cctv.name} /></div>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 text-white/50">
           <span className="text-2xl">▶</span>
           <span className="text-[10px]">{t("mv.waiting")}</span>
         </div>
-      )}
-
-      {/* YouTube 뱃지 */}
-      {enabled && (
-        <span className="absolute left-1.5 top-1.5 z-10 rounded-full bg-red-600 px-1.5 py-0.5 text-[7px] font-bold text-white shadow">
-          ▶ LIVE
-        </span>
       )}
 
       <button
@@ -111,15 +99,17 @@ function YoutubeSlot({ cctv, onRemove, enabled }: { cctv: Cctv; onRemove: () => 
 }
 
 /** 단일 슬롯 플레이어 - 멀티뷰 전용
- *  initDelay: 봇 탐지 회피용 초기 지연 (0~3000ms 랜덤 권장)
+ *  initDelay: 동시에 시작하는 스트림의 부하 분산용 초기 지연
  */
 function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: Cctv | null; onRemove: () => void; initDelay?: number; enabled?: boolean }) {
   const t = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamProxyUrl = cctv?.streamProxyUrl;
   const [status, setStatus] = useState<"loading" | "playing" | "error" | "waiting" | "idle">(
     !enabled ? "idle" : (initDelay > 0 ? "waiting" : "loading")
   );
   const [paused, setPaused] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [countdown, setCountdown] = useState(Math.ceil(initDelay / 1000));
 
   function togglePlay() {
@@ -143,11 +133,11 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
 
   useEffect(() => {
     if (!enabled) {
-      setStatus("idle");
+      queueMicrotask(() => setStatus("idle"));
       return;
     }
-    if (!cctv?.streamProxyUrl || !videoRef.current) {
-      if (cctv && !cctv.streamProxyUrl) setStatus("error");
+    if (!streamProxyUrl || !videoRef.current) {
+      if (!streamProxyUrl) queueMicrotask(() => setStatus("error"));
       return;
     }
 
@@ -155,51 +145,42 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
     let hls: import("hls.js").default | null = null;
     let cancelled = false;
     let delayTimerId: ReturnType<typeof setTimeout> | null = null;
-    let stallTimerId: ReturnType<typeof setInterval> | null = null;
-    let recoveryTimerId: ReturnType<typeof setTimeout> | null = null;
-    let restartCount = 0;
-    const MAX_RESTARTS = 5;
-    const STALL_THRESHOLD = 8000; // 8초 동안 currentTime 변화 없으면 = 죽음
-    const RECOVERY_INTERVAL = 60_000; // 연결 실패 후 1분마다 조용히 재시도 (origin 복구 감지)
-
-    // 초기 상태 설정
-    setStatus(initDelay > 0 ? "waiting" : "loading");
-    setCountdown(Math.ceil(initDelay / 1000));
-
-    // 초기 지연 후 init 시작 (봇 탐지 회피)
+    let failed = false;
+    let stopObserving: (() => void) | undefined;
+    const fail = () => {
+      if (cancelled || failed) return;
+      failed = true;
+      hls?.destroy();
+      hls = null;
+      video.pause();
+      setStatus("error");
+    };
+    const startPlayback = () => {
+      if (failed || cancelled) return;
+      video.muted = true;
+      video.play().catch(fail);
+    };
+    video.addEventListener("loadedmetadata", startPlayback);
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setStatus(initDelay > 0 ? "waiting" : "loading");
+      setCountdown(Math.ceil(initDelay / 1000));
+      setPaused(false);
+    });
     delayTimerId = setTimeout(() => {
       if (cancelled) return;
       setStatus("loading");
-      init();
+      stopObserving = observePlayback(video, {
+        onProgress: () => { if (!failed) { setStatus("playing"); setPaused(false); } },
+        onWaiting: () => { if (!failed) setStatus("loading"); },
+        onFailure: fail,
+      });
+      init().catch(fail);
     }, initDelay);
-
-    function hardRestart(reason: string) {
-      if (cancelled) return;
-      if (restartCount >= MAX_RESTARTS) {
-        console.warn(`[SlotPlayer ${cctv?.id}] 재시도 한도 초과 (${reason}) → 1분 후 재시도 예약`);
-        setStatus("error");
-        // 5번 즉시 재시도 실패 → "연결 실패" 표시 후 1분마다 조용히 재시도.
-        // origin이 되살아나면 자동 부활. 슬롯 삭제/교체 시 cleanup에서 멈춤.
-        if (recoveryTimerId) clearTimeout(recoveryTimerId);
-        recoveryTimerId = setTimeout(() => {
-          if (cancelled) return;
-          restartCount = 0;
-          setStatus("loading");
-          init();
-        }, RECOVERY_INTERVAL);
-        return;
-      }
-      restartCount++;
-      console.log(`[SlotPlayer ${cctv?.id}] 자동 재시작 #${restartCount} (${reason})`);
-      setStatus("loading");
-      try { hls?.destroy(); } catch { /* ignore */ }
-      hls = null;
-      setTimeout(() => { if (!cancelled) init(); }, 1500 + Math.random() * 1000);
-    }
 
     async function init() {
       const Hls = (await import("hls.js")).default;
-      if (cancelled) return;
+      if (cancelled || failed) return;
 
       // ★ 이전 hls 인스턴스 강제 정리 — recovery/재시도에서 destroy 없이 new Hls()하면
       // 죽은 디코더·버퍼가 계속 쌓여(누수) 14시간쯤 뒤 처음 켠 스트림부터 죽음.
@@ -207,9 +188,8 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
 
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = cctv!.streamProxyUrl!;
-          video.addEventListener("loadedmetadata", () => setStatus("playing"));
-        }
+          video.src = streamProxyUrl!;
+        } else { fail(); }
         return;
       }
 
@@ -231,68 +211,19 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         fragLoadingMaxRetry: 4,
         fragLoadingRetryDelay: 800,
       });
-      hls.loadSource(cctv!.streamProxyUrl!);
+      hls.loadSource(streamProxyUrl!);
       hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setStatus("playing");
-        video.muted = true;
-        video.play().catch(() => setStatus("error"));
-      });
-
-      let netErrSoft = 0;
+      hls.on(Hls.Events.MANIFEST_PARSED, startPlayback);
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-          // ★ 디코더 세션 유지하며 가볍게 재개(startLoad) — destroy+new Hls()는 새 디코더를 만들어
-          // 다른 스트림 디코더를 밀어내는 cascade를 일으킴. 2회까지 가볍게, 그래도 안 되면 전체 재시작.
-          if (netErrSoft < 2) {
-            netErrSoft++;
-            try { hls?.startLoad(); } catch { hardRestart("network softfail"); }
-          } else {
-            netErrSoft = 0;
-            hardRestart("HLS NETWORK_ERROR");
-          }
-        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          try { hls?.recoverMediaError(); } catch { hardRestart("MEDIA recover failed"); }
-        } else {
-          hardRestart("HLS fatal");
-        }
+        if (data.fatal) fail();
       });
-
-      // ★ stalled 감지 — 먼저 가벼운 재개(startLoad)로 시도, 그래도 안 되면 전체 재시작.
-      // (9분할 동시 부하 때 stall마다 전체 재로딩하면 요청 폭주 → 악순환이라 단계적 회복)
-      let lastTime = -1;
-      let lastTick = Date.now();
-      let softTries = 0;
-      stallTimerId = setInterval(() => {
-        if (cancelled || !video) return;
-        if (video.paused) return; // 사용자가 일부러 정지한 거면 무시
-        const now = Date.now();
-        const t = video.currentTime;
-        if (t !== lastTime) {
-          lastTime = t;
-          lastTick = now;
-          softTries = 0;
-          return;
-        }
-        if (now - lastTick > STALL_THRESHOLD) {
-          if (softTries < 2) {
-            softTries++;
-            try { hls?.startLoad(); } catch { /* */ }
-            video.play().catch(() => { /* */ });
-          } else {
-            hardRestart(`stalled ${Math.floor((now - lastTick) / 1000)}s`);
-            softTries = 0;
-          }
-          lastTick = now;
-        }
-      }, 2000);
     }
 
     // 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
     let pausedByHidden = false;
     const handleVisibility = () => {
+      if (failed || cancelled) return;
       if (document.hidden) {
         if (!video.paused) {
           pausedByHidden = true;
@@ -312,8 +243,8 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
     return () => {
       cancelled = true;
       if (delayTimerId) clearTimeout(delayTimerId);
-      if (stallTimerId) clearInterval(stallTimerId);
-      if (recoveryTimerId) clearTimeout(recoveryTimerId);
+      stopObserving?.();
+      video.removeEventListener("loadedmetadata", startPlayback);
       document.removeEventListener("visibilitychange", handleVisibility);
       hls?.destroy();
       if (video) {
@@ -322,7 +253,7 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
         video.load();
       }
     };
-  }, [cctv?.streamProxyUrl, initDelay, enabled]);
+  }, [streamProxyUrl, initDelay, enabled, retryKey]);
 
   return (
     <div className="group relative h-full w-full overflow-hidden rounded-lg bg-gray-900">
@@ -361,13 +292,13 @@ function SlotPlayer({ cctv, onRemove, initDelay = 0, enabled = true }: { cctv: C
       {status === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 px-2 text-center text-white/60">
           <span className="text-2xl">📡</span>
-          <span className="text-[10px]">{t("mv.connFail")}</span>
-          <span className="text-[9px] text-white/40">{t("mv.retryNote")}</span>
+          <span className="text-[10px]">영상 재생 임시 오류</span>
+          <button type="button" onClick={() => setRetryKey(k => k + 1)} className="rounded-full bg-white/10 px-3 py-1 text-xs text-white">다시 시도</button>
         </div>
       )}
 
       {/* LIVE — 빨간 점만 */}
-      {status === "playing" && (
+      {status === "playing" && !paused && (
         <span className="absolute left-1.5 top-1.5 h-2 w-2 rounded-full bg-live-red shadow-sm animate-pulse" />
       )}
 
@@ -434,9 +365,10 @@ export default function MultiviewPage() {
   const { favoriteIds: savedIds } = useCctvFavorite();
   const [spotGames, setSpotGames] = useState<SpotGame[]>([]);
   useEffect(() => {
+    if (CCTV_FOCUSED_PUBLIC) return;
     fetch("/api/spot/recent?limit=3").then((r) => r.json()).then((d) => setSpotGames(d.games ?? [])).catch(() => {});
   }, []);
-  const { cctvs } = useCctvs(); // 목록 페이지와 같은 소스 (Firestore + mock 폴백)
+  const { cctvs } = usePublicCctvs(); // 목록 페이지와 같은 공개 Firestore 소스
   // vurix + 간헐적 rtmp(모슬포·대포·논짓물)는 멀티뷰에서 제외 (개별 화면으로만)
   const allCctvs = useMemo(() => cctvs.map(toView).filter((c) => !isMultiviewExcluded(c.id)), [cctvs]);
   const [slotCount, setSlotCount] = useState<SlotCount>(4);
@@ -821,7 +753,7 @@ export default function MultiviewPage() {
       </div>
 
       {/* 멀티뷰 → 최근 틀린그림찾기 송객 배너 (좌측 소형 — CCTV 사이드처럼) */}
-      <RecentGameBanner games={spotGames} className="mb-3 max-w-xs" />
+      {!CCTV_FOCUSED_PUBLIC && <RecentGameBanner games={spotGames} className="mb-3 max-w-xs" />}
 
       {/* 어드민/무제한 — 차단 없이 오늘 누적 사용량 위로 카운트 */}
       {budget.unlimited && budget.usedSeconds > 0 && (

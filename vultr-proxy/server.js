@@ -8,7 +8,7 @@ const PORT = Number(process.env.PORT) || 8080; // Caddy(443/80) → 8080 리버�
 const NEXT_APP_URL = process.env.NEXT_APP_URL || "https://funjeju.com";
 const PROXY_CONFIG_SECRET = process.env.ADMIN_SECRET || "";
 
-let CCTVS = {
+const LEGACY_CCTVS = {
   gimnyeong:       "http://211.114.96.121:1935/jejusi6/11-20.stream/playlist.m3u8",
   woljeong:        "http://211.114.96.121:1935/jejusi7/11-21.stream/playlist.m3u8",
   pyeongdae:       "http://211.114.96.121:1935/jejusi7/11-22.stream/playlist.m3u8",
@@ -59,8 +59,88 @@ let CCTVS = {
   seogwipo_hang2:  "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8",
 };
 
+// Config-managed mode fails closed until its first valid snapshot.
+// No-secret deployments retain the existing explicit static/manual configuration.
+let CCTVS = PROXY_CONFIG_SECRET ? Object.create(null) : LEGACY_CCTVS;
+const allowedSegments = new Map(); // id -> recent media URL -> last use/advertisement
+const playlistReferences = new Map(); // id -> active playlist URL -> last use/advertisement
+const AUTHORIZATION_IDLE_TTL = 60_000;
+function pruneIdle(urls, now) {
+  for (const [url, usedAt] of urls) if (now - usedAt >= AUTHORIZATION_IDLE_TTL) urls.delete(url);
+}
+function isSegmentAllowed(id, url) {
+  const now = Date.now();
+  for (const urls of [playlistReferences.get(id), allowedSegments.get(id)]) {
+    if (!urls) continue;
+    pruneIdle(urls, now);
+    if (urls.has(url)) { urls.delete(url); urls.set(url, now); return true; }
+  }
+  return false;
+}
+function rememberSegments(id, urls) {
+  const now = Date.now();
+  const media = new Map(allowedSegments.get(id) || []);
+  const playlists = new Map(playlistReferences.get(id) || []);
+  pruneIdle(media, now); pruneIdle(playlists, now);
+  for (const url of urls) {
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) continue;
+      const target = url.includes(".m3u8") ? playlists : media;
+      target.delete(url); target.set(url, now);
+    } catch { /* malformed manifest entries are not relay authority */ }
+  }
+  // Origin sessions can rotate on every root fetch. Keep already-advertised
+  // sessions while viewers use them, rather than replacing viewer A with B.
+  // Never evict an active playlist silently to admit a new session at capacity.
+  if (playlists.size > 256) throw new Error("active playlist authorization limit exceeded");
+  while (media.size > 1000) media.delete(media.keys().next().value);
+  playlistReferences.set(id, playlists);
+  allowedSegments.set(id, media);
+}
+
+// Versions also revoke in-flight responses across disable -> re-enable of the same URL.
+const sourceVersions = new Map();
+let refreshing = false;
+function cameraOrigin(id) {
+  return Object.hasOwn(CCTVS, id) ? CCTVS[id] : undefined;
+}
+function sourceCurrent(id, origin, version) {
+  return cameraOrigin(id) === origin && (sourceVersions.get(id) || 0) === version;
+}
+function validConfig(config) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return false;
+  return Object.entries(config).every(([id, value]) => {
+    if (!/^[a-zA-Z0-9_-]+$/.test(id) || ["__proto__", "constructor", "prototype", "error", "ok", "status", "hint"].includes(id)) return false;
+    if (typeof value !== "string" || value !== value.trim()) return false;
+    try {
+      const url = new URL(value);
+      return ["http:", "https:"].includes(url.protocol) && !!url.hostname && !url.username && !url.password;
+    } catch { return false; }
+  });
+}
+function applyConfig(fresh) {
+  for (const id of new Set([...Object.keys(CCTVS), ...Object.keys(fresh)])) {
+    if (cameraOrigin(id) === fresh[id]) continue;
+    sourceVersions.set(id, (sourceVersions.get(id) || 0) + 1);
+    m3u8Cache.delete(id);
+    m3u8Cache.delete(`chunklist:${id}`);
+    for (const key of m3u8Cache.keys()) if (key.startsWith(`chunklist:${id}:`)) m3u8Cache.delete(key);
+    for (const key of tsCache.keys()) if (key.startsWith(`ts:${id}:`)) tsCache.delete(key);
+    for (const key of inflight.keys()) {
+      if (key === `m3u8:${id}` || key === `chunklist:${id}` || key.startsWith(`chunklist:${id}:`) || key.startsWith(`ts:${id}:`)) inflight.delete(key);
+    }
+    allowedSegments.delete(id);
+    playlistReferences.delete(id);
+    delete relays[id];
+    delete circuit[id];
+  }
+  // An authenticated successful {} is authoritative, never a fallback trigger.
+  CCTVS = Object.assign(Object.create(null), fresh);
+}
 async function refreshCctvs() {
-  if (!PROXY_CONFIG_SECRET) return;
+  if (!PROXY_CONFIG_SECRET || refreshing) return;
+  refreshing = true;
   try {
     const res = await fetch(
       `${NEXT_APP_URL}/api/proxy-config?secret=${encodeURIComponent(PROXY_CONFIG_SECRET)}`,
@@ -68,13 +148,13 @@ async function refreshCctvs() {
     );
     if (!res.ok) return;
     const fresh = await res.json();
-    if (fresh && typeof fresh === "object" && Object.keys(fresh).length > 0) {
-      CCTVS = fresh;
+    if (validConfig(fresh)) {
+      applyConfig(fresh);
       console.log(`[refresh] CCTVS updated — ${Object.keys(CCTVS).length} entries`);
     }
   } catch (e) {
     console.error("[refresh] failed:", e.message);
-  }
+  } finally { refreshing = false; }
 }
 refreshCctvs();
 setInterval(refreshCctvs, 5 * 60 * 1000);
@@ -89,7 +169,7 @@ const TS_MAX = 200;
 // ★ vurix(59.8.86.94)는 1초 세그먼트 + 보관 ~3초라 묵은 재생목록이면 404.
 // origin이 /vurix/ 면: m3u8 캐시를 1초로 줄여 거의 실시간 + 콜드스타트(4.5s) 대비 타임아웃 확대.
 function isVurix(id) {
-  const o = CCTVS[id];
+  const o = cameraOrigin(id);
   return !!o && o.includes("/vurix/");
 }
 function m3u8TtlFor(id) {
@@ -151,7 +231,9 @@ async function dedupedFetch(cacheKey, fetchFn) {
   if (inflight.has(cacheKey)) {
     return inflight.get(cacheKey);
   }
-  const promise = fetchFn().finally(() => inflight.delete(cacheKey));
+  const promise = fetchFn().finally(() => {
+    if (inflight.get(cacheKey) === promise) inflight.delete(cacheKey);
+  });
   inflight.set(cacheKey, promise);
   return promise;
 }
@@ -255,8 +337,9 @@ function ensureRelay(id) {
 }
 
 async function relayPullOnce(id) {
-  const origin = CCTVS[id];
+  const origin = cameraOrigin(id);
   const rel = relays[id];
+  const version = sourceVersions.get(id) || 0;
   if (!origin || !rel) return;
   let text;
   const ctrl = new AbortController();
@@ -268,6 +351,7 @@ async function relayPullOnce(id) {
     cbSuccess(id);
   } finally { clearTimeout(to); }
 
+  if (!sourceCurrent(id, origin, version) || relays[id] !== rel) return;
   // 새 세그먼트 목록 추출(재생목록 순서 유지)
   const lines = text.split("\n");
   const fresh = [];
@@ -293,6 +377,7 @@ async function relayPullOnce(id) {
     } catch { rel.seen.delete(segUrl); return null; }
     finally { clearTimeout(sto); }
   }));
+  if (!sourceCurrent(id, origin, version) || relays[id] !== rel) return;
   for (const f of fetched) {
     if (!f) continue;
     rel.lastSeq++;
@@ -308,7 +393,7 @@ function relayLoop(id) {
     if (!rel) return;
     if (Date.now() - rel.lastAccess > RELAY_IDLE_STOP) { delete relays[id]; return; } // 시청자 없음→정지
     try { await relayPullOnce(id); } catch { /* 다음 틱 */ }
-    if (relays[id]) setTimeout(tick, RELAY_PULL_INTERVAL);
+    if (relays[id] === rel) setTimeout(tick, RELAY_PULL_INTERVAL);
   };
   tick();
 }
@@ -322,11 +407,15 @@ function buildRelayPlaylist(id, host) {
 }
 
 async function serveVurixPlaylist(id, req, res) {
+  const origin = cameraOrigin(id);
+  const version = sourceVersions.get(id) || 0;
+  if (!origin) return res.status(404).json({ error: "not found" });
   ensureRelay(id);
   const deadline = Date.now() + 7000; // 콜드스타트: 버퍼 채워질 때까지 최대 7초 대기
   while ((relays[id]?.segments.length ?? 0) < 3 && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
   }
+  if (!sourceCurrent(id, origin, version)) return res.status(404).json({ error: "camera configuration changed" });
   const body = buildRelayPlaylist(id, publicHost(req));
   if (!body) { logEvent(req, id, "m3u8", "relay-cold"); return res.status(503).json({ error: "relay warming up" }); }
   logEvent(req, id, "m3u8", "relay");
@@ -337,7 +426,8 @@ async function serveVurixPlaylist(id, req, res) {
 
 // 메인 m3u8 — vurix는 릴레이, 그 외는 6초 캐시 + circuit breaker + dedup
 app.get("/cctv/:id", async (req, res) => {
-  const origin = CCTVS[req.params.id];
+  const origin = cameraOrigin(req.params.id);
+  const version = sourceVersions.get(req.params.id) || 0;
   if (!origin) return res.status(404).json({ error: "not found" });
 
   // vurix는 새창(/watch) 직접재생으로 전환됨 → 릴레이 백그라운드 루프 비활성화(CPU 부하 제거).
@@ -374,19 +464,25 @@ app.get("/cctv/:id", async (req, res) => {
         }
         const text = await r.text();
         const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
+        const advertised = [];
         const out = text.split("\n").map((line) => {
           const t = line.trim();
           if (!t || t.startsWith("#")) return line;
-          return proxyBase + encodeURIComponent(resolveUrl(t, origin));
+          const resolved = resolveUrl(t, origin);
+          advertised.push(resolved);
+          return proxyBase + encodeURIComponent(resolved);
         }).join("\n");
         cbSuccess(req.params.id);
-        setCache(m3u8Cache, cacheKey, out);
+        if (!sourceCurrent(req.params.id, origin, version)) return null;
+        rememberSegments(req.params.id, advertised);
+        setCache(m3u8Cache, cacheKey, out, 512);
         return out;
       } finally {
         clearTimeout(timeoutId);
       }
     });
 
+    if (!sourceCurrent(req.params.id, origin, version)) return res.status(404).json({ error: "camera configuration changed" });
     logEvent(req, req.params.id, "m3u8", "origin");
     if (!res.headersSent) {
       res.set("Content-Type", "application/vnd.apple.mpegurl");
@@ -402,20 +498,20 @@ app.get("/cctv/:id", async (req, res) => {
 });
 
 app.get("/cctv/:id/seg", async (req, res) => {
+  const origin = cameraOrigin(req.params.id);
+  const version = sourceVersions.get(req.params.id) || 0;
+  if (!origin) return res.status(404).json({ error: "not found" });
   const segUrl = req.query.path;
-  if (!segUrl) return res.status(400).json({ error: "missing path" });
+  if (typeof segUrl !== "string" || !segUrl) return res.status(400).json({ error: "missing path" });
+  // Only URLs advertised by the current approved playlist revision may be relayed.
+  // This allows genuine cross-CDN manifests without guessing same-directory rules.
+  if (!isSegmentAllowed(req.params.id, segUrl)) {
+    return res.status(400).json({ error: "path not in current camera playlist" });
+  }
   const isM3u8 = segUrl.includes(".m3u8");
 
-  // ★ 캐시 키 정규화
-  // chunklist: cctv id 기반 (origin이 매번 새 timestamp 박아도 같은 cctv면 같은 키)
-  // ts: chunk 번호만 추출 (사용자/세션별 prefix 무시)
-  const cacheKey = isM3u8
-    ? `chunklist:${req.params.id}`
-    : (() => {
-        // ts URL에서 chunk 번호 추출 (예: media_w123_140284.ts → 140284)
-        const m = String(segUrl).match(/_(\d+)\.ts/);
-        return m ? `ts:${req.params.id}:${m[1]}` : `ts:${segUrl}`;
-      })();
+  // Session/variant URLs are not interchangeable, even for the same camera.
+  const cacheKey = `${isM3u8 ? "chunklist" : "ts"}:${req.params.id}:${segUrl}`;
 
   if (isM3u8) {
     const cached = getCache(m3u8Cache, cacheKey, m3u8TtlFor(req.params.id));
@@ -460,13 +556,18 @@ app.get("/cctv/:id/seg", async (req, res) => {
           }
           const text = await r.text();
           const proxyBase = `${publicHost(req)}/cctv/${req.params.id}/seg?path=`;
+          const advertised = [];
           const rewritten = text.split("\n").map((line) => {
             const t = line.trim();
             if (!t || t.startsWith("#")) return line;
-            return proxyBase + encodeURIComponent(resolveUrl(t, segUrl));
+            const resolved = resolveUrl(t, segUrl);
+            advertised.push(resolved);
+            return proxyBase + encodeURIComponent(resolved);
           }).join("\n");
           cbSuccess(req.params.id);
-          setCache(m3u8Cache, cacheKey, rewritten);
+          if (!sourceCurrent(req.params.id, origin, version)) return null;
+          rememberSegments(req.params.id, advertised);
+          setCache(m3u8Cache, cacheKey, rewritten, 512);
           return { type: "m3u8", body: rewritten };
         }
 
@@ -477,6 +578,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
         }
         const buf = Buffer.from(await r.arrayBuffer());
         cbSuccess(req.params.id);
+        if (!sourceCurrent(req.params.id, origin, version)) return null;
         if (buf.length < 5 * 1024 * 1024) {
           setCache(tsCache, cacheKey, buf, TS_MAX);
         }
@@ -487,6 +589,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
     });
 
     if (res.headersSent || res.destroyed) return;
+    if (!sourceCurrent(req.params.id, origin, version)) return res.status(404).json({ error: "camera configuration changed" });
 
     if (result.type === "m3u8") {
       logEvent(req, req.params.id, "chunklist", "origin");
@@ -514,7 +617,7 @@ app.get("/cctv/:id/seg", async (req, res) => {
 // CCTV 모니터 프레임 느낌. id=카메라, name=표시이름(쿼리)
 app.get("/watch", (req, res) => {
   const id = String(req.query.id || "");
-  const stream = CCTVS[id];
+  const stream = cameraOrigin(id);
   if (!stream) return res.status(404).send("<h1 style='font-family:sans-serif'>카메라를 찾을 수 없어요</h1>");
   res.set("Content-Type", "text/html; charset=utf-8");
   res.send(`<!doctype html><html lang="ko"><head>
@@ -545,37 +648,60 @@ video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
 <video id="v" autoplay muted playsinline></video>
 <div class="fx"></div><div class="vig"></div>
 <div class="osd">
-<div class="live"><span class="dot"></span>LIVE</div>
-<div class="clk" id="clk"></div>
+<div class="live" id="playback-status">연결 확인 중</div>
+<div class="clk" id="clk" title="내 기기 시간 · 영상 촬영 시간이 아닙니다"></div>
 <div class="x" onclick="window.close()" title="닫기">✕</div>
 <div class="nm" id="nm"></div>
 <div class="br">FunJeju</div>
 </div>
-<div class="ld" id="ld"><div class="sp"></div><div>원본 연결 중…</div></div>
+<div class="ld" id="ld" role="status"><div id="playback-message">원본 연결 중…</div><button id="retry" type="button" hidden style="padding:10px 18px;border:0;border-radius:20px;cursor:pointer">다시 재생</button></div>
 </div></div>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 <script>
-var STREAM=${JSON.stringify(stream)};
+var STREAM=${JSON.stringify(stream).replace(/</g, "\\u003c")};
 var nm=new URLSearchParams(location.search).get('name')||'제주 CCTV';
 document.getElementById('nm').textContent=nm;document.title='FunJeju · '+nm;
 function tk(){var d=new Date(),p=function(n){return String(n).padStart(2,'0')};
 document.getElementById('clk').textContent=d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'  '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())}
-tk();setInterval(tk,1000);
-var v=document.getElementById('v'),ld=document.getElementById('ld');function hd(){ld.style.display='none'}
-document.addEventListener('keydown',function(e){if(e.key==='Escape')window.close()});
+tk();var clockTimer=setInterval(tk,1000);
+var v=document.getElementById('v'),ld=document.getElementById('ld');
+var label=document.getElementById('playback-status'),message=document.getElementById('playback-message'),retry=document.getElementById('retry');
+var hls=null,failed=false,disposed=false,lastTime=0,lastProgress=Date.now();
+function stopMedia(){if(hls){hls.destroy();hls=null}v.pause();v.removeAttribute('src');v.load()}
+function unavailable(text){if(failed||disposed)return;failed=true;label.textContent='임시 오류';message.textContent=text||'영상을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.';ld.style.display='flex';retry.hidden=false;stopMedia()}
+function play(){var result=v.play();if(result&&result.catch)result.catch(function(){if(!disposed&&!failed){label.textContent='재생 대기';message.textContent='다시 재생 버튼을 눌러 영상을 시작해 주세요.';retry.hidden=false}})}
+function start(){
+if(disposed)return;failed=true;stopMedia();failed=false;lastTime=0;lastProgress=Date.now();
+label.textContent='연결 확인 중';message.textContent='원본 연결 중…';ld.style.display='flex';retry.hidden=true;
 if(window.Hls&&Hls.isSupported()){
-var hls=new Hls({lowLatencyMode:false,liveSyncDurationCount:2,maxBufferLength:30,fragLoadingMaxRetry:8,fragLoadingRetryDelay:500});
+hls=new Hls({lowLatencyMode:false,liveSyncDurationCount:2,maxBufferLength:30,fragLoadingMaxRetry:2,fragLoadingRetryDelay:500});
+var session=hls;
+hls.on(Hls.Events.MANIFEST_PARSED,function(){if(hls===session)play()});
+hls.on(Hls.Events.ERROR,function(_e,d){if(hls===session&&d.fatal)unavailable()});
 hls.loadSource(STREAM);hls.attachMedia(v);
-hls.on(Hls.Events.MANIFEST_PARSED,function(){v.play().catch(function(){});hd()});
-hls.on(Hls.Events.ERROR,function(_e,d){if(d.fatal){try{hls.startLoad()}catch(x){}}});
-}else if(v.canPlayType('application/vnd.apple.mpegurl')){
-v.src=STREAM;v.addEventListener('loadedmetadata',function(){v.play();hd()});
+}else if(v.canPlayType('application/vnd.apple.mpegurl')){v.src=STREAM;play()}
+else unavailable('이 브라우저에서는 원본 영상을 재생할 수 없어요.');
 }
+retry.addEventListener('click',start);
+v.addEventListener('error',function(){unavailable()});
+var playbackTimer=setInterval(function(){
+if(disposed||failed)return;
+if(document.hidden){lastProgress=Date.now();lastTime=v.currentTime;return}
+if(v.readyState>=2&&v.videoWidth>0&&v.videoHeight>0&&!v.paused&&v.currentTime>lastTime+0.05){
+lastProgress=Date.now();label.textContent='재생 확인됨';ld.style.display='none';retry.hidden=true;
+}else if(Date.now()-lastProgress>=20000){unavailable();return}
+lastTime=v.currentTime;
+},1000);
+function cleanup(){if(disposed)return;disposed=true;clearInterval(clockTimer);clearInterval(playbackTimer);stopMedia()}
+window.addEventListener('pagehide',cleanup);window.addEventListener('beforeunload',cleanup);
+document.addEventListener('keydown',function(e){if(e.key==='Escape')window.close()});
+start();
 </script></body></html>`);
 });
 
 // ★ vurix 릴레이 세그먼트 — 메모리 버퍼에서 서빙
 app.get("/cctv/:id/relayseg/:file", (req, res) => {
+  if (!cameraOrigin(req.params.id)) return res.status(404).json({ error: "not found" });
   const rel = relays[req.params.id];
   if (rel) rel.lastAccess = Date.now();
   const seq = parseInt(String(req.params.file).replace(".ts", ""), 10);
@@ -696,7 +822,8 @@ app.get("/snapshot", (req, res) => {
   const key = req.query.key;
   if (process.env.PROXY_KEY && key !== process.env.PROXY_KEY) return res.status(403).json({ error: "forbidden" });
   const id = String(req.query.cctv || "");
-  const origin = CCTVS[id];
+  const origin = cameraOrigin(id);
+  const version = sourceVersions.get(id) || 0;
   if (!origin) return res.status(404).json({ error: "unknown cctv" });
   // -frames:v 1 → 첫 키프레임 1장만 mjpeg로 stdout. 짧은 타임아웃으로 멈춘 카메라 방어.
   execFile(
@@ -704,6 +831,7 @@ app.get("/snapshot", (req, res) => {
     ["-y", "-loglevel", "error", "-i", origin, "-frames:v", "1", "-q:v", "3", "-f", "image2", "-vcodec", "mjpeg", "pipe:1"],
     { timeout: 15000, maxBuffer: 12 * 1024 * 1024, encoding: "buffer" },
     (err, stdout) => {
+      if (!sourceCurrent(id, origin, version)) return res.status(404).json({ error: "camera configuration changed" });
       if (err || !stdout || !stdout.length) return res.status(502).json({ error: "capture failed" });
       res.setHeader("Content-Type", "image/jpeg");
       res.setHeader("Cache-Control", "no-store");

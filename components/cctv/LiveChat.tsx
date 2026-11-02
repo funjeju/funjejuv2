@@ -15,6 +15,8 @@ import { getFirebaseDb } from "@/lib/firebase";
 import { useAuth } from "@/hooks/useAuth";
 import { DolmangyiIcon } from "@/components/common/DolmangyiIcon";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 const CHAT_EXPIRE_MS = 3 * 60 * 60 * 1000; // 3시간
 
 type ChatMessage = {
@@ -41,7 +43,13 @@ type LiveChatProps = {
   fillHeight?: boolean;
 };
 
-export function LiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps) {
+export function LiveChat(props: LiveChatProps) {
+  const preview = usePreviewRuntime();
+  // Public playback QA never mounts account chat, its subscriptions or archival writes.
+  return preview ? <p className="p-4 text-sm text-text-secondary">CCTV는 로그인 없이 볼 수 있어요. 미리보기에서는 채팅을 운영하지 않습니다.</p> : <AccountLiveChat {...props} />;
+}
+
+function AccountLiveChat({ cctvId, cctvName, fillHeight = false }: LiveChatProps) {
   const { user, signInWithGoogle } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");

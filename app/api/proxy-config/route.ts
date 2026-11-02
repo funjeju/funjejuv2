@@ -29,13 +29,18 @@ export async function GET(req: NextRequest) {
 
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/cctvs?key=${apiKey}&pageSize=500`;
-    const res = await fetch(url, { next: { revalidate: 60 } });
+    // A proxy refresh must see the authoritative publication state, not a cached list.
+    const res = await fetch(url, { cache: "no-store" });
 
     if (!res.ok) {
       return NextResponse.json({ error: `Firestore error ${res.status}` }, { status: 500 });
     }
 
-    const data = await res.json() as { documents?: FirestoreDoc[] };
+    const data = await res.json() as { documents?: FirestoreDoc[]; error?: unknown };
+    if (!data || typeof data !== "object" || Array.isArray(data) || "error" in data ||
+      (data.documents !== undefined && !Array.isArray(data.documents))) {
+      return NextResponse.json({ error: "Invalid camera inventory response" }, { status: 502 });
+    }
     const result: Record<string, string> = {};
 
     for (const doc of data.documents ?? []) {
@@ -43,12 +48,14 @@ export async function GET(req: NextRequest) {
       if (!id) continue;
       const active = doc.fields?.active?.booleanValue;
       const originUrl = doc.fields?.originUrl?.stringValue;
-      if (active && originUrl) {
+      const youtubeId = doc.fields?.youtubeId?.stringValue;
+      // A retained HLS URL is history when YouTube is selected, not a second source.
+      if (active && originUrl && !youtubeId) {
         result[id] = originUrl;
       }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

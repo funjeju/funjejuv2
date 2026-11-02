@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
+import { observePlayback } from "@/lib/cctv-playback-health";
 import { useCctvSession } from "@/hooks/useCctvSession";
 import { track } from "@/lib/analytics";
 
@@ -25,6 +26,7 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
     forcePlay ? "loading" : "idle"
   );
   const [isPlaying, setIsPlaying] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   // 시청 세션 추적
   useCctvSession({
@@ -34,30 +36,44 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
   });
   useEffect(() => {
     if (!activated || !proxyUrl || !videoRef.current) {
-      if (activated && !proxyUrl) setStatus("error");
+      if (activated && !proxyUrl) queueMicrotask(() => setStatus("error"));
       return;
     }
 
-    setStatus("loading");
+    queueMicrotask(() => setStatus("loading"));
     const video = videoRef.current;
     let hls: import("hls.js").default | null = null;
+    let failed = false;
     let cancelled = false; // 동적 import 대기 중 언마운트되면 hls 생성 자체를 막음
 
-    const onPlay  = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    video.addEventListener("playing", onPlay);
     video.addEventListener("pause",   onPause);
     video.addEventListener("waiting", onPause);
 
+    const failPlayback = () => {
+      if (failed || cancelled) return;
+      failed = true;
+      hls?.destroy();
+      hls = null;
+      video.pause();
+      setStatus("error");
+      setIsPlaying(false);
+    };
+    const stopObserving = observePlayback(video, {
+      onProgress: () => { if (!failed) { setStatus("playing"); setIsPlaying(true); } },
+      onWaiting: () => { if (!failed) { setStatus("loading"); setIsPlaying(false); } },
+      onFailure: failPlayback,
+    });
+    const startPlayback = () => { if (!failed) video.play().catch(failPlayback); };
+    video.addEventListener("loadedmetadata", startPlayback);
     async function init() {
       const Hls = (await import("hls.js")).default;
-      if (cancelled) return;
+      if (cancelled || failed) return;
 
       if (!Hls.isSupported()) {
         if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = proxyUrl!;
-          video.addEventListener("loadedmetadata", () => setStatus("playing"));
-          video.addEventListener("error", () => setStatus("error"));
+
         } else {
           setStatus("error");
         }
@@ -81,24 +97,25 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       hls.attachMedia(video);
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        setStatus("playing");
+        if (failed || cancelled) return;
         video.muted = true;
-        video.play().catch(() => setStatus("error"));
+        video.play().catch(failPlayback);
       });
 
       hls.on(Hls.Events.ERROR, (_e, data) => {
+        if (failed || cancelled) return;
         if (data.fatal) {
-          setStatus("error");
-          hls?.destroy();
+          failPlayback();
         }
       });
     }
 
-    init();
+    init().catch(failPlayback);
 
     // 탭 전환/앱 백그라운드 — 즉시 정지 + 다운로드 중단, 복귀 시 자동 재개
     let pausedByHidden = false;
     const handleVisibility = () => {
+      if (failed || cancelled) return;
       if (document.hidden) {
         if (!video.paused) {
           pausedByHidden = true;
@@ -117,8 +134,9 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
 
     return () => {
       cancelled = true;
+      stopObserving();
+      video.removeEventListener("loadedmetadata", startPlayback);
       hls?.destroy();
-      video.removeEventListener("playing", onPlay);
       video.removeEventListener("pause",   onPause);
       video.removeEventListener("waiting", onPause);
       document.removeEventListener("visibilitychange", handleVisibility);
@@ -127,7 +145,7 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       video.load();
       setIsPlaying(false);
     };
-  }, [proxyUrl, activated]);
+  }, [proxyUrl, activated, retryKey]);
 
   function handlePlayClick(e: MouseEvent) {
     // 카드의 Link 이동을 막고 재생만 활성화
@@ -177,15 +195,16 @@ export function HlsMiniPlayer({ id, proxyUrl, name, forcePlay = false }: Props) 
       {activated && status === "error" && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-900 px-2 text-center text-white/60">
           <span className="text-2xl">📡</span>
-          <span className="text-[10px] leading-tight">외부 신호 일시 중단<br />자동 복구 중…</span>
+          <span className="text-[10px] leading-tight">영상 재생 임시 오류</span>
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setRetryKey(k => k + 1); }} className="rounded-full bg-white/10 px-3 py-1 text-xs text-white">다시 시도</button>
         </div>
       )}
 
       {/* LIVE 뱃지 */}
-      {status === "playing" && (
+      {status === "playing" && isPlaying && (
         <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-live-red px-2 py-0.5 text-[10px] font-bold text-white shadow">
           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-          LIVE
+          재생 확인
         </span>
       )}
 

@@ -36,6 +36,6 @@ export function openVurixWatch(id: string, name: string): void {
   window.open(
     vurixWatchUrl(id, name),
     `funjeju_cctv_${id}`,
-    `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`,
+    `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes,noopener,noreferrer`,
   );
 }

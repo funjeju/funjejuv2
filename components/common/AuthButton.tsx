@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { useT } from "@/lib/i18n";
 
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+
 export function AuthButton() {
+  const preview = usePreviewRuntime();
+  return preview ? null : <AccountAuthButton />;
+}
+
+function AccountAuthButton() {
   const { user, loading, signInWithGoogle, logout } = useAuth();
   const t = useT();
 
