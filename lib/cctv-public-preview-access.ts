@@ -6,10 +6,10 @@ export function publicPreviewAccess(pathname: string, method: string): "allow" |
   // Account and legacy multiview workflows are deliberately not part of this
   // anonymous single-camera preview, even when someone follows an old URL.
   if (["/mypage", "/search", "/cctv/multiview"].includes(pathname.replace(/\/$/, ""))) return "cctv";
-  if (pathname === "/" || pathname === "/cctv" || pathname === "/cctv/") return "allow";
+  if (pathname === "/" || pathname === "/cctv" || pathname === "/cctv/" || pathname === "/cctv-directory") return "allow";
   if (/^\/cctv\/(?:watch\/[a-zA-Z0-9_-]{1,100}|region\/[^/]+|theme\/[a-zA-Z0-9_-]+|[a-zA-Z0-9_-]{1,100})\/?$/.test(pathname)) return "allow";
   // The only application API needed by these public pages is read-only weather.
-  if (pathname === "/api/weather") return "allow";
+  if (pathname === "/api/weather" || pathname === "/api/cctv-directory") return "allow";
   if ((pathname.startsWith("/_next/static/") || pathname === "/_next/image") || pathname.startsWith("/fonts/") || pathname.startsWith("/cctv-editorial/")) return "allow";
   if (["/favicon.ico", "/icon.png", "/apple-icon.png", "/og-image.png", "/robots.txt"].includes(pathname)) return "allow";
   // All admin/auth/config/cron/stats/write APIs and unrelated product surfaces

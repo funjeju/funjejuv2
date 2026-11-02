@@ -1,3 +1,4 @@
+import { DirectoryExplorer } from "@/components/cctv/DirectoryExplorer";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { CctvExplorer, ExplorerSkeleton } from "@/components/cctv/CctvExplorer";
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 };
 export const revalidate = false;
 export default function HomePage() {
+  if (process.env.VERCEL_ENV === "preview") return <Suspense fallback={<ExplorerSkeleton />}><DirectoryExplorer /></Suspense>;
   if (!CCTV_FOCUSED_PUBLIC) return <LegacyHomePage />;
   return <Suspense fallback={<ExplorerSkeleton />}><CctvExplorer /></Suspense>;
 }

@@ -6,7 +6,7 @@ import ts from 'typescript';
 import { publicPreviewAccess } from '../lib/cctv-public-preview-access.ts';
 
 test('public preview exposes only read-only CCTV, weather and required assets', () => {
-  for (const path of ['/', '/cctv', '/cctv/', '/cctv/camera_1', '/cctv/watch/camera-1', '/cctv/region/%EC%A0%9C%EC%A3%BC', '/cctv/theme/beach', '/api/weather', '/fonts/font.woff2', '/cctv-editorial/photo.jpg', '/_next/static/chunk.js', '/_next/image', '/favicon.ico']) {
+  for (const path of ['/', '/cctv', '/cctv/', '/cctv/camera_1', '/cctv/watch/camera-1', '/cctv/region/%EC%A0%9C%EC%A3%BC', '/cctv/theme/beach', '/api/weather', '/api/cctv-directory', '/cctv-directory', '/fonts/font.woff2', '/cctv-editorial/photo.jpg', '/_next/static/chunk.js', '/_next/image', '/favicon.ico']) {
     for (const method of ['GET','HEAD']) assert.equal(publicPreviewAccess(path,method),'allow',path);
     for (const method of ['POST','PUT','PATCH','DELETE','OPTIONS']) assert.equal(publicPreviewAccess(path,method),'deny',`${method} ${path}`);
   }
@@ -28,10 +28,10 @@ function middleware(env) {
   const mod={exports:{}};vm.runInNewContext(code,{module:mod,exports:mod.exports,process:{env},URL,require:name=>name==='next/server'?{NextResponse:Response}:{publicPreviewAccess}});
   return mod.exports;
 }
-test('preview middleware never reads admin cookies and stops writes before handlers', () => {
+test('unrelated preview admin paths remain denied and public pages never read admin cookies', () => {
   const m=middleware({VERCEL_ENV:'preview',ADMIN_SECRET:'synthetic'});
   const request=(pathname,method='GET')=>({nextUrl:{pathname},url:`https://preview.example.test${pathname}`,method,cookies:{get(){throw Error('must not read admin session');}}});
-  for (const path of ['/admin','/admin/login','/api/admin/cctv']) assert.equal(m.middleware(request(path)).status,404);
+  for (const path of ['/admin','/admin/cctv','/api/admin/cctv']) assert.equal(m.middleware(request(path)).status,404);
   assert.equal(m.middleware(request('/cctv','POST')).status,404);
   const allowed=m.middleware(request('/cctv/watch/a'));assert.equal(allowed.next,true);assert.equal(allowed.headers.get('X-Robots-Tag'),'noindex, nofollow');
   assert.equal(m.middleware(request('/mypage')).location,'https://preview.example.test/cctv');
@@ -44,4 +44,19 @@ test('production retains existing administrator authentication and application r
   assert.equal(m.middleware(request('/admin','wrong')).status,307);
   assert.equal(m.middleware(request('/admin','synthetic')).next,true);
   for (const path of ['/admin/login','/api/admin/cctv','/mypage','/cctv/multiview']) assert.equal(m.middleware(request(path,undefined,'POST')).next,true);
+});
+
+test('only the new editor, existing login and its separately authenticated API pass preview routing',()=>{
+ const m=middleware({VERCEL_ENV:'preview',ADMIN_SECRET:'synthetic'});
+ const request=(pathname,cookie,method='GET')=>({nextUrl:{pathname},url:`https://preview.example.test${pathname}`,method,cookies:{get:()=>cookie?{value:cookie}:undefined}});
+ for(const cookie of [undefined,'wrong']) assert.equal(m.middleware(request('/admin/cctv-directory',cookie)).location,'https://preview.example.test/admin/login?next=%2Fadmin%2Fcctv-directory');
+ const allowed=m.middleware(request('/admin/cctv-directory','synthetic'));assert.equal(allowed.next,true);assert.equal(allowed.headers.get('Cache-Control'),'no-store');
+ for(const path of ['/admin/cctv-directory/other','/admin/cctv','/api/admin/cctv-directory/other','/api/admin/cctv'])assert.equal(m.middleware(request(path,'synthetic')).status,404);
+ assert.equal(m.middleware(request('/admin/login')).next,true);
+ assert.equal(m.middleware(request('/api/admin/cctv-directory',undefined,'POST')).next,true); // handler enforces auth+CSRF
+ assert.equal(m.middleware(request('/api/admin/auth',undefined,'POST')).next,true);
+ for(const method of ['PUT','PATCH','DELETE'])assert.equal(m.middleware(request('/api/admin/cctv-directory','synthetic',method)).status,404);
+ assert.equal(m.middleware(request('/api/admin/auth',undefined,'GET')).status,404);
+ const missing=middleware({VERCEL_ENV:'preview'});assert.equal(missing.middleware(request('/admin/cctv-directory')).status,307);
+ const prod=middleware({VERCEL_ENV:'production'});assert.equal(prod.middleware(request('/admin/cctv-directory')).status,307);
 });

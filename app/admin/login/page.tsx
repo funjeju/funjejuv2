@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePreviewRuntime } from "@/components/common/PreviewRuntimeProvider";
+import { adminLoginTarget } from "@/lib/admin-login-target";
 
 export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const preview = usePreviewRuntime();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,7 +26,7 @@ export default function AdminLoginPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push("/admin/cctv");
+      router.push(adminLoginTarget(new URLSearchParams(window.location.search).get("next"), preview));
     } else {
       setError("비밀번호가 틀렸습니다");
     }
