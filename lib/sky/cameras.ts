@@ -2,6 +2,7 @@
  * funjeju.com CCTV 전용 화면(별자리 지도)의 카메라 목록 — 2026-11-02 기준 53대.
  *
  * - x, y: 별자리 지도 위 위치(%). 실제 위·경도를 lib/sky/outline.ts 해안선과 같은 투영으로 환산.
+ *   거의 같은 자리의 카메라(서귀포항·새연교·천지연, 법환 2곳, 모슬포·하모 3곳, 화순·산방산)는 마우스로 고를 수 있게 1~2%씩 벌려 놓았다.
  *   추자도 4대는 지도 밖이라 북서쪽 상자 안에 모아 둔다.
  * - group: J 제주시 · S 서귀포시 · H 한라산 · A 공항(제주시 소속)
  * - source.kind
@@ -51,21 +52,21 @@ export const SKY_CAMERAS: SkyCamera[] = [
   { id: "udo_haumoktong", name: "우도하우목동", area: "우도면", group: "J", x: 95.47, y: 21.28, label: false, thumb: true, source: { kind: "jejusi", point: 10017 } },
   { id: "udo_cheonjin", name: "우도천진항", area: "우도면", group: "J", x: 96.63, y: 18.97, label: true, thumb: true, source: { kind: "jejusi", point: 10018 } },
   { id: "jeju_airport", name: "제주공항", area: "용담동", group: "A", x: 43.37, y: 17.69, label: true, thumb: true, source: { kind: "http", url: "http://123.140.197.51/stream/33/play.m3u8" } },
-  { id: "mosulpo", name: "모슬포항", area: "대정읍", group: "S", x: 15.35, y: 93.85, label: true, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-155.stream/playlist.m3u8" } },
-  { id: "hamo_beach", name: "하모해변", area: "대정읍", group: "S", x: 15.7, y: 93.08, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-24.stream/playlist.m3u8" } },
-  { id: "daejeong_hamo", name: "대정하모", area: "대정읍", group: "S", x: 15.93, y: 92.82, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-73.stream/playlist.m3u8" } },
+  { id: "mosulpo", name: "모슬포항", area: "대정읍", group: "S", x: 14.4, y: 94.3, label: true, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-155.stream/playlist.m3u8" } },
+  { id: "hamo_beach", name: "하모해변", area: "대정읍", group: "S", x: 15.8, y: 93.5, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-24.stream/playlist.m3u8" } },
+  { id: "daejeong_hamo", name: "대정하모", area: "대정읍", group: "S", x: 17.1, y: 92.7, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-73.stream/playlist.m3u8" } },
   { id: "sindo", name: "신도포구", area: "대정읍", group: "S", x: 7.33, y: 90.77, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-71.stream/playlist.m3u8" } },
   { id: "nonjitmul", name: "논짓물", area: "하예동", group: "S", x: 42.79, y: 88.97, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-193.stream/playlist.m3u8" } },
   { id: "daepo", name: "대포포구", area: "중문동", group: "S", x: 35.81, y: 88.72, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-115.stream/playlist.m3u8" } },
   { id: "bomok", name: "보목포구", area: "보목동", group: "S", x: 53.72, y: 88.21, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-152.stream/playlist.m3u8" } },
-  { id: "hwasun", name: "화순해변", area: "안덕면", group: "S", x: 23.02, y: 87.44, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-25.stream/playlist.m3u8" } },
-  { id: "sanbangsan", name: "산방산", area: "안덕면", group: "S", x: 22.67, y: 87.18, label: true, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100012/0/1/1.m3u8" } },
-  { id: "seogwipo_hang1", name: "서귀포항", area: "서귀포시", group: "S", x: 51.28, y: 87.18, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100009/0/1/1.m3u8" } },
-  { id: "seogwipo_hang2", name: "서귀포항2", area: "서귀포시", group: "S", x: 51.51, y: 86.92, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8" } },
-  { id: "saeyeongyo", name: "새연교", area: "서홍동", group: "S", x: 51.4, y: 86.67, label: true, thumb: true, source: { kind: "http", url: "http://123.140.197.51/stream/35/play.m3u8" } },
-  { id: "beophwan_eo", name: "법환어촌계", area: "법환동", group: "S", x: 47.5, y: 86.15, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100008/0/1/1.m3u8" } },
-  { id: "beophwan_po", name: "법환포구", area: "법환동", group: "S", x: 47.73, y: 85.97, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100007/0/1/1.m3u8" } },
-  { id: "cheonjiyeon", name: "천지연", area: "서홍동", group: "S", x: 51.05, y: 85.9, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-72.stream/playlist.m3u8" } },
+  { id: "hwasun", name: "화순해변", area: "안덕면", group: "S", x: 23.9, y: 88.0, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-25.stream/playlist.m3u8" } },
+  { id: "sanbangsan", name: "산방산", area: "안덕면", group: "S", x: 22.1, y: 86.5, label: true, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100012/0/1/1.m3u8" } },
+  { id: "seogwipo_hang1", name: "서귀포항", area: "서귀포시", group: "S", x: 51.1, y: 88.4, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100009/0/1/1.m3u8" } },
+  { id: "seogwipo_hang2", name: "서귀포항2", area: "서귀포시", group: "S", x: 52.3, y: 87.9, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-34.stream/playlist.m3u8" } },
+  { id: "saeyeongyo", name: "새연교", area: "서홍동", group: "S", x: 50.0, y: 87.6, label: true, thumb: true, source: { kind: "http", url: "http://123.140.197.51/stream/35/play.m3u8" } },
+  { id: "beophwan_eo", name: "법환어촌계", area: "법환동", group: "S", x: 46.7, y: 86.7, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100008/0/1/1.m3u8" } },
+  { id: "beophwan_po", name: "법환포구", area: "법환동", group: "S", x: 48.3, y: 86.3, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100007/0/1/1.m3u8" } },
+  { id: "cheonjiyeon", name: "천지연", area: "서홍동", group: "S", x: 51.2, y: 85.4, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-72.stream/playlist.m3u8" } },
   { id: "jungmun", name: "중문해수욕장", area: "중문동", group: "S", x: 33.95, y: 85.9, label: true, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100010/0/1/1.m3u8" } },
   { id: "namwon_taeheung", name: "남원태흥포구", area: "남원읍", group: "S", x: 67.44, y: 79.49, label: true, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-146.stream/playlist.m3u8" } },
   { id: "namwon_deokdol", name: "남원덕돌", area: "남원읍", group: "S", x: 69.19, y: 76.92, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100006/0/1/1.m3u8" } },

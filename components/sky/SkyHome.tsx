@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SKY_CAMERAS, skyCameraSub, type SkyCamera, type SkyGroup } from "@/lib/sky/cameras";
 import { JEJU_ISLANDS, JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
 import { openWatch, watchUrl } from "@/lib/sky/watch";
@@ -38,20 +38,30 @@ function canHover() {
 }
 
 export function SkyHome() {
-  const [focusId, setFocusId] = useState("seongsan");
+  // 미리보기는 기본으로 띄우지 않는다. 별에 올린 동안만 보이고, 벗어나거나 빈 곳을 누르거나 ESC면 닫힌다.
+  const [focusId, setFocusId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const bg = useMemo(() => makeBackgroundStars(150), []);
-  const focus = SKY_CAMERAS.find((c) => c.id === focusId) ?? SKY_CAMERAS[0];
+  const focus = focusId ? SKY_CAMERAS.find((c) => c.id === focusId) ?? null : null;
   const cards = SKY_CAMERAS.filter((c) => inFilter(c, filter));
   const count = (f: Filter) => SKY_CAMERAS.filter((c) => inFilter(c, f)).length;
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFocusId(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const onStar = (c: SkyCamera) => {
-    // 마우스 환경: 올리면 미리보기, 누르면 새 창. 터치 환경: 첫 탭은 미리보기
+    // 마우스 환경: 올리면 미리보기, 누르면 새 창. 터치 환경: 첫 탭은 미리보기, 같은 별 두 번째 탭에 새 창
     if (canHover() || focusId === c.id) openWatch(c);
     else setFocusId(c.id);
   };
+  const leaveStar = (c: SkyCamera) => {
+    if (canHover()) setFocusId((cur) => (cur === c.id ? null : cur));
+  };
 
-  const cardPos =
+  const cardPos = !focus ? "" :
     focus.x > 55
       ? focus.y > 60 ? "translate(calc(-100% - 24px), calc(-100% + 40px))" : "translate(calc(-100% - 24px), -30%)"
       : focus.y > 60 ? "translate(24px, calc(-100% + 40px))" : "translate(24px, -30%)";
@@ -117,7 +127,13 @@ export function SkyHome() {
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[1328px]" style={{ aspectRatio: "1000 / 543" }}>
+        {/* 지도 빈 곳을 누르면 미리보기 닫힘 (별 버튼은 stopPropagation) */}
+        <div
+          role="presentation"
+          onClick={() => setFocusId(null)}
+          className="relative mx-auto w-full max-w-[1328px]"
+          style={{ aspectRatio: "1000 / 543" }}
+        >
           <svg viewBox={JEJU_VIEWBOX} aria-hidden="true" className="absolute inset-0 h-full w-full overflow-visible">
             <defs>
               <filter id="sky-glow" x="-20%" y="-20%" width="140%" height="140%">
@@ -138,7 +154,7 @@ export function SkyHome() {
           <span className="sky-mono absolute left-[7.4%] top-[15.4%] hidden text-[10px] tracking-[0.18em] text-[#7E8BB0] sm:block">추자도 · 45km N</span>
 
           {SKY_CAMERAS.map((c, i) => {
-            const isFocus = c.id === focus.id;
+            const isFocus = c.id === focus?.id;
             const size = c.label || isFocus ? 5 : 3.5;
             return (
               <div key={c.id}>
@@ -146,9 +162,11 @@ export function SkyHome() {
                   type="button"
                   aria-label={`${c.name} 카메라 열기`}
                   onMouseEnter={() => setFocusId(c.id)}
+                  onMouseLeave={() => leaveStar(c)}
                   onFocus={() => setFocusId(c.id)}
-                  onClick={() => onStar(c)}
-                  className="absolute z-[2] flex h-[22px] w-[22px] -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
+                  onBlur={() => leaveStar(c)}
+                  onClick={(e) => { e.stopPropagation(); onStar(c); }}
+                  className="absolute z-[2] flex h-[22px] w-[22px] md:h-[14px] md:w-[14px] -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center"
                   style={{ left: `${c.x}%`, top: `${c.y}%` }}
                 >
                   <span
@@ -174,30 +192,47 @@ export function SkyHome() {
             );
           })}
 
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute z-[3] h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(255,214,140,0.85)]"
-            style={{ left: `${focus.x}%`, top: `${focus.y}%`, boxShadow: "0 0 22px rgba(255,214,140,0.45)" }}
-          />
-          <div
-            className="absolute z-[4] hidden w-[288px] overflow-hidden rounded-2xl border border-[rgba(169,192,255,0.28)] bg-[rgba(8,12,24,0.92)] shadow-[0_24px_60px_rgba(0,0,0,0.6)] md:block"
-            style={{ left: `${focus.x}%`, top: `${focus.y}%`, transform: cardPos }}
-          >
-            <FocusCard cam={focus} />
-          </div>
-
+          {focus && (
+            <>
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute z-[3] h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[rgba(255,214,140,0.85)]"
+                style={{ left: `${focus.x}%`, top: `${focus.y}%`, boxShadow: "0 0 22px rgba(255,214,140,0.45)" }}
+              />
+              {/* 마우스를 가로채지 않는 미리보기 — 카드 밑에 가려진 옆 별에도 바로 올릴 수 있다 */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute z-[4] hidden w-[288px] overflow-hidden rounded-2xl border border-[rgba(169,192,255,0.28)] bg-[rgba(8,12,24,0.92)] shadow-[0_24px_60px_rgba(0,0,0,0.6)] md:block"
+                style={{ left: `${focus.x}%`, top: `${focus.y}%`, transform: cardPos }}
+              >
+                <FocusCard cam={focus} preview />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="mx-auto -mt-4 hidden w-full max-w-[1328px] flex-wrap gap-5 text-[11px] tracking-[0.08em] text-[#93A0C4] sm:flex">
           <Legend color="#EAF2FF" glow="rgba(150,190,255,0.8)" text={`해안 · 포구 ${SKY_CAMERAS.filter((c) => c.group === "J" || c.group === "S").length}`} />
           <Legend color="#FFF1D6" glow="rgba(255,210,140,0.8)" text="한라산 5" />
           <Legend color="#FFE1A0" glow="rgba(255,190,90,0.8)" text="공항 1" />
-          <span className="text-[#6F7BA0]">별에 마우스를 올리면 미리보기, 누르면 새 창</span>
+          <span className="text-[#6F7BA0]">별에 마우스를 올리면 미리보기, 누르면 새 창 · 빈 곳을 누르거나 ESC로 닫기</span>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-[rgba(169,192,255,0.28)] bg-[rgba(8,12,24,0.92)] md:hidden">
-          <FocusCard cam={focus} />
-        </div>
+        {focus ? (
+          <div className="relative overflow-hidden rounded-2xl border border-[rgba(169,192,255,0.28)] bg-[rgba(8,12,24,0.92)] md:hidden">
+            <FocusCard cam={focus} />
+            <button
+              type="button"
+              aria-label="미리보기 닫기"
+              onClick={() => setFocusId(null)}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(3,5,10,0.72)] text-[#E8EEFF]"
+            >
+              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2 2l10 10M12 2L2 12" /></svg>
+            </button>
+          </div>
+        ) : (
+          <p className="text-center text-xs text-[#6F7BA0] md:hidden">별을 누르면 미리보기, 한 번 더 누르면 새 창이 열립니다</p>
+        )}
       </section>
 
       <section id="cams" className="relative flex flex-col gap-8 px-5 pb-24 pt-24 md:px-14 md:pt-[120px]">
@@ -231,7 +266,6 @@ export function SkyHome() {
               href={watchUrl(c)}
               target={`funjeju_cctv_${c.id}`}
               onClick={(e) => { e.preventDefault(); openWatch(c); }}
-              onMouseEnter={() => setFocusId(c.id)}
               className="group relative block overflow-hidden rounded-2xl border border-[#1A2238] bg-[#0A0F1E] text-white"
               style={{ aspectRatio: "16 / 10" }}
             >
@@ -280,7 +314,7 @@ export function SkyHome() {
   );
 }
 
-function FocusCard({ cam }: { cam: SkyCamera }) {
+function FocusCard({ cam, preview }: { cam: SkyCamera; preview?: boolean }) {
   return (
     <>
       <div className="relative bg-[#0B1020]" style={{ aspectRatio: "16 / 9" }}>
@@ -296,13 +330,17 @@ function FocusCard({ cam }: { cam: SkyCamera }) {
           <span className="sky-serif truncate text-[19px] font-extrabold text-[#F6F8FF]">{cam.name}</span>
           <span className="truncate text-xs text-[#93A0C4]">{skyCameraSub(cam)}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => openWatch(cam)}
-          className="inline-flex h-9 shrink-0 items-center rounded-full border border-[#A9C0FF] px-3.5 text-xs text-[#E8EEFF] hover:bg-white/5"
-        >
-          영상 보기 ↗
-        </button>
+        {preview ? (
+          <span className="shrink-0 text-[11px] text-[#93A0C4]">클릭하면 새 창 ↗</span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => openWatch(cam)}
+            className="inline-flex h-9 shrink-0 items-center rounded-full border border-[#A9C0FF] px-3.5 text-xs text-[#E8EEFF] hover:bg-white/5"
+          >
+            영상 보기 ↗
+          </button>
+        )}
       </div>
     </>
   );
