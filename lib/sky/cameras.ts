@@ -39,7 +39,8 @@ export const SKY_CAMERAS: SkyCamera[] = [
   { id: "ongpo", name: "옹포항", area: "한림읍", group: "J", x: 15.47, y: 43.33, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100005/0/1/1.m3u8" } },
   { id: "gwakji", name: "곽지해변", area: "애월읍", group: "J", x: 25.35, y: 30.77, label: true, thumb: true, source: { kind: "jejusi", point: 10005 } },
   { id: "hagwi", name: "하귀가문동", area: "애월읍", group: "J", x: 31.16, y: 25.9, label: false, thumb: true, source: { kind: "jejusi", point: 10004 } },
-  { id: "sechon", name: "세천포구", area: "이호동", group: "J", x: 37.67, y: 20.77, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8" } },
+  // 세천포구 도식 위치는 한국관광공사 포구 대표점(위도 33.2683, 경도 126.674)을 outline.ts 투영으로 환산한 값이며, CCTV 설치점은 미확인.
+  { id: "sechon", name: "세천포구", area: "남원읍 위미리", group: "S", x: 64.42, y: 79.92, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8" } },
   { id: "iho", name: "이호해변", area: "이호동", group: "J", x: 38.72, y: 21.03, label: true, thumb: true, source: { kind: "jejusi", point: 10019 } },
   { id: "dodu", name: "도두항", area: "도두동", group: "J", x: 41.28, y: 17.18, label: false, thumb: true, source: { kind: "jejusi", point: 10003 } },
   { id: "donghandugi", name: "동한두기", area: "용담동", group: "J", x: 45.12, y: 16.92, label: false, thumb: true, source: { kind: "jejusi", point: 10002 } },
