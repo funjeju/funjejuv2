@@ -31,16 +31,18 @@ export function usePageViewTracker() {
     }).catch(() => { /* ignore */ });
   }, [pathname, user?.uid]);
 
-  useDwellTracker(pathname);
+  useDwellTracker(pathname, user?.uid);
 }
 
 /**
  * 체류시간 — 이 페이지를 실제로 띄워 둔 시간(탭이 앞에 있던 시간)만 센다.
  * 탭이 가려질 때와 다른 페이지로 옮길 때 sendBeacon 한 번으로 보낸다 (페이지당 쓰기 1회 수준).
+ * 페이지뷰와 같은 방문자 번호를 붙여, 관리자 화면이 '시간을 남긴 방문자 수'로 평균을 낸다.
  */
-function useDwellTracker(pathname: string | null) {
+function useDwellTracker(pathname: string | null, uid: string | undefined) {
   useEffect(() => {
     if (!pathname || pathname.startsWith("/admin")) return;
+    const userId = uid ?? getAnonId();
     let shownAt = document.visibilityState === "visible" ? Date.now() : 0;
     let acc = 0;
 
@@ -49,7 +51,7 @@ function useDwellTracker(pathname: string | null) {
       const sec = Math.round(acc / 1000);
       acc = 0;
       if (sec < 1) return;
-      const body = JSON.stringify({ path: pathname, sec });
+      const body = JSON.stringify({ path: pathname, sec, userId });
       if (!navigator.sendBeacon?.("/api/stats/dwell", body)) {
         fetch("/api/stats/dwell", { method: "POST", body, keepalive: true }).catch(() => { /* ignore */ });
       }
@@ -64,7 +66,7 @@ function useDwellTracker(pathname: string | null) {
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", flush);
-      flush(); // 다른 페이지로 이동
+      flush(); // 다른 페이지로 이동 (또는 로그인으로 방문자 번호가 바뀜)
     };
-  }, [pathname]);
+  }, [pathname, uid]);
 }

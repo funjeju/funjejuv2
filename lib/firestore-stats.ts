@@ -477,29 +477,40 @@ const DWELL_CAP_SEC = 1800;
 
 /**
  * 페이지를 실제로 띄워 둔 시간(탭이 앞에 있던 시간)을 하루 문서 하나에 더한다.
- * `stats_dwell/{date}` = { sec, n, sections: { key: { sec, n } } } — 페이지를 떠날 때 1회 쓰기.
+ * `stats_dwell/{date}` = { sec, n, u: { userId: sec }, sections: { key: { sec, n } } } — 페이지를 떠날 때 1회 쓰기.
+ * u는 방문자별 합계라, 평균을 '그날 시간을 남긴 방문자 수'로 나눌 수 있다 (하루 수천 명이면 필드 한도 2만 안).
  */
-export async function logDwell(path: string, seconds: number): Promise<void> {
+export async function logDwell(path: string, seconds: number, userId?: string): Promise<void> {
   const sec = Math.min(DWELL_CAP_SEC, Math.round(seconds));
   if (!(sec >= 1)) return;
   const key = sectionKeyFor(path);
+  const id = userId && /^[A-Za-z0-9_-]{6,64}$/.test(userId) ? userId : null;
   await getAdminDb().collection("stats_dwell").doc(todayDate()).set({
     sec: FieldValue.increment(sec),
     n: FieldValue.increment(1),
+    ...(id ? { u: { [id]: FieldValue.increment(sec) } } : {}),
     sections: { [key]: { sec: FieldValue.increment(sec), n: FieldValue.increment(1) } },
   }, { merge: true });
 }
 
-type DwellDoc = { sec?: number; n?: number; sections?: Record<string, { sec?: number; n?: number }> };
+type DwellDoc = {
+  sec?: number;
+  n?: number;
+  u?: Record<string, number>;
+  sections?: Record<string, { sec?: number; n?: number }>;
+};
 
 export type DailySectionStat = {
   date: string;
   views: number;
   /** 그날 순방문자(섹션 합집합) */
   visitors: number;
-  /** 그날 모든 방문자가 페이지를 띄워 둔 시간의 합(초). 체류시간 기록 전 날짜는 null */
+  /** 시간을 남긴 방문자들이 페이지를 띄워 둔 시간의 합(초). 기록 전 날짜는 null */
   dwellSec: number | null;
-  sections: Record<string, { views: number; visitors: number; dwellSec: number }>;
+  /** 그날 체류시간을 남긴 방문자 수 — 평균 체류 = dwellSec / dwellVisitors */
+  dwellVisitors: number;
+  /** 구역별 dwellSec/dwellViews = 한 번 볼 때 평균 */
+  sections: Record<string, { views: number; visitors: number; dwellSec: number; dwellViews: number }>;
 };
 
 /**
@@ -525,9 +536,13 @@ export async function getDailySectionStats(days = 14): Promise<DailySectionStat[
     for (const [key, v] of Object.entries(r.sections ?? {})) {
       views += v.views;
       for (const u of v.users ?? []) all.add(u);
-      sections[key] = { views: v.views, visitors: (v.users ?? []).length, dwellSec: dwell?.sections?.[key]?.sec ?? 0 };
+      const d = dwell?.sections?.[key];
+      sections[key] = { views: v.views, visitors: (v.users ?? []).length, dwellSec: d?.sec ?? 0, dwellViews: d?.n ?? 0 };
     }
-    return { date: r.date, views, visitors: all.size, dwellSec: dwell ? dwell.sec ?? 0 : null, sections };
+    // 방문자 번호가 붙은 기록만 평균에 쓴다 (번호 없이 들어온 초기 기록은 나눌 사람 수를 몰라서 뺀다)
+    const perUser = Object.values(dwell?.u ?? {});
+    const dwellSec = perUser.length ? perUser.reduce((a, b) => a + b, 0) : null;
+    return { date: r.date, views, visitors: all.size, dwellSec, dwellVisitors: perUser.length, sections };
   });
 }
 
