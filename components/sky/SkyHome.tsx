@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SKY_CAMERAS, skyCameraSub, type SkyCamera, type SkyGroup } from "@/lib/sky/cameras";
 import { JEJU_ISLANDS, JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
-import { openWatch, watchUrl } from "@/lib/sky/watch";
+import { openWatch } from "@/lib/sky/watch";
 import { PROMO_CONTACT, PROMO_MAILTO } from "@/lib/sky/contact";
 import { MUNG_COURSES, mungHomeUrl } from "@/lib/sky/mung";
 
@@ -297,9 +297,13 @@ export function SkyHome() {
           {cards.map((c, i) => (
             <a
               key={c.id}
-              href={watchUrl(c)}
-              target={`funjeju_cctv_${c.id}`}
-              onClick={(e) => { e.preventDefault(); openWatch(c); }}
+              href={`/cctv/${c.id}`}
+              onClick={(e) => {
+                // 평소처럼 클릭하면 영상 새 창. 링크 주소는 카메라 페이지(검색엔진이 따라가는 길), Ctrl·가운데 클릭은 그 페이지로
+                if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+                e.preventDefault();
+                openWatch(c);
+              }}
               className="group relative block overflow-hidden rounded-2xl border border-[#1A2238] bg-[#0A0F1E] text-white"
               style={{ aspectRatio: "16 / 10" }}
             >

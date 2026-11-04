@@ -8,6 +8,7 @@ import { listPublishedSites } from "@/lib/biz/store";
 import { listLocations } from "@/lib/cctv-location";
 import { GROUP_HUB } from "@/types/cctv-location";
 import { SKY_ONLY_PUBLIC } from "@/constants/public-mode";
+import { SKY_CAMERAS } from "@/lib/sky/cameras";
 
 // canonical 도메인(non-www, 네이버 등록 도메인)으로 통일 — 색인 신호 분산 방지
 const BASE = "https://funjeju.com";
@@ -23,9 +24,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // CCTV 전용 공개 모드 — 열려 있는 공개 화면만 알린다(나머지는 / 로 리다이렉트되므로). 아래 원래 목록은 그대로 보존.
   if (SKY_ONLY_PUBLIC) {
+    const skyDate = new Date("2026-11-04T00:00:00.000Z");
     return [
-      { url: BASE, lastModified: new Date("2026-11-02T00:00:00.000Z"), changeFrequency: "always", priority: 1.0 },
-      { url: `${BASE}/promo`, lastModified: new Date("2026-11-02T00:00:00.000Z"), changeFrequency: "monthly", priority: 0.6 },
+      { url: BASE, lastModified: skyDate, changeFrequency: "always", priority: 1.0 },
+      // 카메라별 페이지 — 예전에 색인된 /cctv/{id} 주소 그대로
+      ...SKY_CAMERAS.map((c) => ({ url: `${BASE}/cctv/${c.id}`, lastModified: skyDate, changeFrequency: "daily" as const, priority: 0.8 })),
+      { url: `${BASE}/promo`, lastModified: new Date("2026-11-02T00:00:00.000Z"), changeFrequency: "monthly", priority: 0.5 },
     ];
   }
 
