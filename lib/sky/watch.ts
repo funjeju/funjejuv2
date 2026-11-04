@@ -1,4 +1,5 @@
 import type { SkyCamera } from "./cameras";
+import { nearestMungCourse } from "./mung";
 
 /**
  * 평문 HTTP 원본(서귀포·공항·방재 vurix)은 HTTPS 페이지에서 재생할 수 없어서 HTTP로 뜨는 뷰어 새 창으로 연다.
@@ -13,7 +14,10 @@ export function httpViewerUrl(cam: SkyCamera): string {
   if (cam.source.kind !== "http") return `/watch/${encodeURIComponent(cam.id)}`;
   const base = process.env.NEXT_PUBLIC_HTTP_VIEWER_URL;
   if (base) {
-    return `${base}?src=${encodeURIComponent(cam.source.url)}&name=${encodeURIComponent(cam.name)}`;
+    // mc/mt: 가까운 제주멍 코스 id·이름 — 뷰어가 '이 근처 숲길 걷기' 링크를 만든다
+    const course = nearestMungCourse(cam);
+    return `${base}?src=${encodeURIComponent(cam.source.url)}&name=${encodeURIComponent(cam.name)}` +
+      `&id=${encodeURIComponent(cam.id)}&mc=${encodeURIComponent(course.id)}&mt=${encodeURIComponent(`${course.title} ${course.minutes}분`)}`;
   }
   return `${VULTR_HTTP_WATCH}?id=${encodeURIComponent(cam.id)}&name=${encodeURIComponent(cam.name)}`;
 }

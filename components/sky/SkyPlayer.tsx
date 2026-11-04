@@ -12,12 +12,14 @@ type Props = {
   /** 재생이 끝내 안 될 때 보여 줄 제공기관 공식 페이지 */
   officialUrl?: string;
   credit: string;
+  /** 이 카메라와 가장 가까운 제주멍 코스 (영상 아래·끊김 화면에서 권함) */
+  mung?: { title: string; minutes: number; url: string; offlineUrl: string };
 };
 
 type Status = "loading" | "playing" | "error";
 const MAX_ATTEMPTS = 3;
 
-export function SkyPlayer({ id, name, sub, kind, url, officialUrl, credit }: Props) {
+export function SkyPlayer({ id, name, sub, kind, url, officialUrl, credit, mung }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<import("hls.js").default | null>(null);
   const attemptsRef = useRef(0);
@@ -144,6 +146,19 @@ export function SkyPlayer({ id, name, sub, kind, url, officialUrl, credit }: Pro
                     <a href={officialUrl} className="inline-flex h-11 items-center rounded-full border border-[#A9C0FF] px-5 text-sm text-[#E8EEFF]">공식 페이지에서 보기 ↗</a>
                   )}
                 </div>
+                {mung && (
+                  <a
+                    href={mung.offlineUrl}
+                    target="_blank"
+                    rel="noopener"
+                    className="mt-2 flex items-center gap-3 rounded-2xl border border-[rgba(159,227,190,0.4)] bg-[rgba(7,20,16,0.85)] px-5 py-3.5 text-left"
+                  >
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-sm text-[#F6F8FF]">지금은 이 바다가 쉬는 중이에요</span>
+                      <span className="text-[13px] text-[#9FE3BE]">대신 근처 숲길을 걸어볼까요? 제주멍 · {mung.title} {mung.minutes}분 ↗</span>
+                    </span>
+                  </a>
+                )}
               </>
             )}
           </div>
@@ -152,6 +167,11 @@ export function SkyPlayer({ id, name, sub, kind, url, officialUrl, credit }: Pro
 
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 px-5 py-2.5 text-[11px] text-[#6F7BA0]">
         <span>영상 제공 · {credit}</span>
+        {mung && (
+          <a href={mung.url} target="_blank" rel="noopener" className="text-[12px] text-[#9FE3BE] hover:text-[#C9F5DC]">
+            이 근처 숲길 걷기 · 제주멍 {mung.title} {mung.minutes}분 ↗
+          </a>
+        )}
         <span>FunJeju는 영상을 저장하지 않습니다 · ESC로 닫기</span>
       </footer>
     </div>

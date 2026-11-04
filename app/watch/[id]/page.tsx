@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { findSkyCamera, skyCameraSub } from "@/lib/sky/cameras";
 import { httpViewerUrl } from "@/lib/sky/watch";
+import { mungCourseUrl, nearestMungCourse } from "@/lib/sky/mung";
 import { SkyPlayer } from "@/components/sky/SkyPlayer";
 import { SkyFonts } from "@/components/sky/SkyFonts";
 
@@ -27,6 +28,13 @@ export default async function WatchPage({ params }: Props) {
 
   const credit =
     cam.source.kind === "jejusi" ? "제주시 재난안전대책본부" : "제주특별자치도 한라산국립공원";
+  const course = nearestMungCourse(cam);
+  const mung = {
+    title: course.title,
+    minutes: course.minutes,
+    url: mungCourseUrl(course.id, "watch", cam.id),
+    offlineUrl: mungCourseUrl(course.id, "watch_offline", cam.id),
+  };
 
   return (
     <>
@@ -39,6 +47,7 @@ export default async function WatchPage({ params }: Props) {
         url={cam.source.kind === "hls" ? cam.source.url : undefined}
         officialUrl={cam.source.kind === "jejusi" ? JEJUSI_OFFICIAL : "https://www.jeju.go.kr/tool/halla/cctv.html"}
         credit={credit}
+        mung={mung}
       />
     </>
   );

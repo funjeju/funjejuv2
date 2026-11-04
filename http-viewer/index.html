@@ -33,6 +33,9 @@ video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
 .rb{height:44px;padding:0 20px;border-radius:999px;border:0;background:#F6F8FF;color:#03050A;font-size:14px;font-weight:500;cursor:pointer}
 footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:10px 20px;border-top:1px solid rgba(255,255,255,.05);font-size:11px;color:#6F7BA0}
 footer a{color:#93A0C4;text-decoration:none}
+footer a.mung{color:#9FE3BE;font-size:12px}
+.mung-off{display:block;margin-top:6px;padding:14px 20px;border-radius:16px;border:1px solid rgba(159,227,190,.4);background:rgba(7,20,16,.85);color:#F6F8FF;font-size:14px;line-height:1.6;text-decoration:none;text-align:left}
+.mung-off span{color:#9FE3BE;font-size:13px}
 @media (max-width:640px){.clk,.st{display:none}}
 </style>
 </head>
@@ -55,10 +58,12 @@ footer a{color:#93A0C4;text-decoration:none}
       <span class="e1">지금은 영상이 들어오지 않아요</span>
       <span class="e2" id="erm">제공기관 쪽 송출이 잠시 멈췄을 수 있어요. 잠시 뒤 다시 연결해 보세요.</span>
       <button class="rb" type="button" onclick="start()">다시 연결</button>
+      <a class="mung-off" id="mungOff" target="_blank" rel="noopener" hidden>지금은 이 바다가 쉬는 중이에요<br><span>대신 근처 숲길을 걸어볼까요? 제주멍 ↗</span></a>
     </div>
   </div>
   <footer>
     <span>영상 제공 · 제주특별자치도 · 서귀포시 재난안전대책본부 · 한국공항공사</span>
+    <a class="mung" id="mungFoot" target="_blank" rel="noopener" hidden></a>
     <span><a href="https://funjeju.com">funjeju.com</a> · FunJeju는 영상을 저장하지 않습니다 · ESC로 닫기</span>
   </footer>
 </div>
@@ -80,6 +85,16 @@ var hls = null, attempts = 0;
 
 document.getElementById("nm").textContent = NAME;
 document.title = "FunJeju · " + NAME;
+
+// 가까운 제주멍 코스 (funjeju.com 이 mc/mt 로 넘겨 줌)
+(function () {
+  var mc = (q.get("mc") || "").replace(/[^A-Za-z0-9_]/g, ""), mt = (q.get("mt") || "").slice(0, 30), cam = (q.get("id") || "").replace(/[^a-z0-9_]/g, "");
+  if (!mc) return;
+  var base = "https://jejumung.vercel.app/engine?clip=" + mc + "&utm_source=funjeju&utm_content=" + cam + "&utm_medium=";
+  var foot = document.getElementById("mungFoot"), off = document.getElementById("mungOff");
+  foot.href = base + "watch"; foot.textContent = "이 근처 숲길 걷기 · 제주멍 " + mt + " ↗"; foot.hidden = false;
+  off.href = base + "watch_offline"; off.querySelector("span").textContent = "대신 근처 숲길을 걸어볼까요? 제주멍 · " + mt + " ↗"; off.hidden = false;
+})();
 
 function allowed(u) {
   try { var x = new URL(u); return x.protocol === "http:" && ALLOWED_HOSTS.indexOf(x.host) !== -1 && /\.m3u8$/i.test(x.pathname); }

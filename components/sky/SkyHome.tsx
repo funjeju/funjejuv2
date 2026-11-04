@@ -7,6 +7,7 @@ import { SKY_CAMERAS, skyCameraSub, type SkyCamera, type SkyGroup } from "@/lib/
 import { JEJU_ISLANDS, JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
 import { openWatch, watchUrl } from "@/lib/sky/watch";
 import { PROMO_CONTACT, PROMO_MAILTO } from "@/lib/sky/contact";
+import { MUNG_COURSES, mungHomeUrl } from "@/lib/sky/mung";
 
 const LOOK: Record<SkyGroup, { core: string; glow: string }> = {
   J: { core: "#EAF2FF", glow: "0 0 6px 2px rgba(150,190,255,.85), 0 0 18px 6px rgba(110,150,255,.30)" },
@@ -112,6 +113,9 @@ export function SkyHome() {
           <a href="#sky" className="text-white">별자리 지도</a>
           <a href="#cams" className="text-[#93A0C4] hover:text-white">카메라 목록</a>
           <a href="https://www.youtube.com/@funjeju" className="text-[#93A0C4] hover:text-white">유튜브 채널</a>
+          <a href={mungHomeUrl("nav")} target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 text-[#9FE3BE] hover:text-[#C9F5DC]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#9FE3BE]" />제주멍
+          </a>
         </nav>
         <div className="sky-mono hidden items-center gap-2.5 text-xs tracking-[0.14em] text-[#93A0C4] lg:flex">
           <span className="sky-pulse h-2 w-2 rounded-full bg-[#7CF0C8]" />
@@ -263,7 +267,9 @@ export function SkyHome() {
         )}
       </section>
 
-      <section id="cams" className="relative flex flex-col gap-8 px-5 pb-24 pt-24 md:px-14 md:pt-[120px]">
+      <MungBanner />
+
+      <section id="cams" className="relative flex flex-col gap-8 px-5 pb-24 pt-20 md:px-14 md:pt-24">
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div className="flex flex-col gap-3">
             <p className="sky-mono text-xs tracking-[0.3em] text-[#8FB4FF]">ALL CAMERAS</p>
@@ -371,6 +377,46 @@ function FocusCard({ cam, preview }: { cam: SkyCamera; preview?: boolean }) {
         )}
       </div>
     </>
+  );
+}
+
+/** 제주멍(걷는 제주)으로 보내는 메인 배너 — 별자리 지도 아래, 카메라 목록 위 */
+function MungBanner() {
+  return (
+    <section aria-label="제주에서 멍때리기 · 제주멍" className="relative px-5 pt-20 md:px-14 md:pt-28">
+      <a
+        href={mungHomeUrl("home_banner")}
+        target="_blank"
+        rel="noopener"
+        className="group mx-auto grid max-w-[1328px] overflow-hidden rounded-[22px] border border-[rgba(159,227,190,0.35)] bg-[#071410] text-[#E8EEFF] md:grid-cols-[1.05fr_1fr]"
+      >
+        <div className="grid h-[220px] grid-cols-[2fr_1fr] grid-rows-2 gap-[3px] md:h-auto md:min-h-[320px]">
+          <div className="relative row-span-2">
+            <Image src="/sky/mung/geomun.jpg" alt="제주멍 거문오름 숲길 산책" fill sizes="(max-width: 768px) 66vw, 35vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.03]" />
+          </div>
+          <div className="relative">
+            <Image src="/sky/mung/coast-deck.jpg" alt="제주멍 서귀포 해안 데크 산책" fill sizes="(max-width: 768px) 33vw, 18vw" className="object-cover" />
+          </div>
+          <div className="relative">
+            <Image src="/sky/mung/saryeoni-snow.jpg" alt="제주멍 눈 내린 사려니숲 산책" fill sizes="(max-width: 768px) 33vw, 18vw" className="object-cover" />
+          </div>
+        </div>
+        <div
+          className="flex flex-col justify-center gap-4 px-6 py-8 md:px-11 md:py-10"
+          style={{ backgroundImage: "radial-gradient(ellipse 80% 80% at 100% 100%, rgba(159,227,190,0.12), transparent 70%)" }}
+        >
+          <span className="sky-mono text-[11px] tracking-[0.26em] text-[#9FE3BE]">JEJUMUNG · 걷는 제주</span>
+          <h2 className="sky-serif text-[38px] font-extrabold leading-[1.12] text-white md:text-[46px]">제주에서<br />멍때리기</h2>
+          <p className="text-[15px] leading-[1.75] text-[#C9D8D0] md:text-base">
+            CCTV 화면 너머, 그 길을 직접 걸어보세요. 실제 제주 숲길·바닷길 영상 위를 천천히 걷다가 해먹에서 쉬어 가요.
+          </p>
+          <span className="text-[13px] text-[#8FB7A2]">숲길·바닷길 {MUNG_COURSES.length}코스 · 3~5분 · 캐릭터 4종 · 실시간 쉼터</span>
+          <span className="mt-1 inline-flex h-[52px] items-center gap-2.5 self-start rounded-full bg-[#9FE3BE] px-6 text-base font-bold text-[#06140D] group-hover:bg-[#B8EED0]">
+            제주멍 산책하러 가기 ↗
+          </span>
+        </div>
+      </a>
+    </section>
   );
 }
 
