@@ -1,5 +1,6 @@
 /**
- * funjeju.com CCTV 전용 화면(별자리 지도)의 카메라 목록 — 2026-11-02 기준 53대.
+ * funjeju.com CCTV 전용 화면(별자리 지도)의 카메라 목록 — 2026-11-04 기준 64대.
+ * 화면의 "N개의 별"·"N CAMERAS ON AIR"와 홈 제목·설명의 숫자는 이 배열 길이(SKY_CAMERAS.length)에서 나온다.
  *
  * - x, y: 별자리 지도 위 위치(%). 실제 위·경도를 lib/sky/outline.ts 해안선과 같은 투영으로 환산.
  *   거의 같은 자리의 카메라(서귀포항·새연교·천지연, 법환 2곳, 모슬포·하모 3곳, 화순·산방산)는 마우스로 고를 수 있게 1~2%씩 벌려 놓았다.
@@ -39,7 +40,8 @@ export const SKY_CAMERAS: SkyCamera[] = [
   { id: "ongpo", name: "옹포항", area: "한림읍", group: "J", x: 15.47, y: 43.33, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100005/0/1/1.m3u8" } },
   { id: "gwakji", name: "곽지해변", area: "애월읍", group: "J", x: 25.35, y: 30.77, label: true, thumb: true, source: { kind: "jejusi", point: 10005 } },
   { id: "hagwi", name: "하귀가문동", area: "애월읍", group: "J", x: 31.16, y: 25.9, label: false, thumb: true, source: { kind: "jejusi", point: 10004 } },
-  { id: "sechon", name: "세천포구", area: "이호동", group: "J", x: 37.67, y: 20.77, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8" } },
+  // 세천포구 도식 위치는 한국관광공사 포구 대표점(위도 33.2683, 경도 126.674)을 outline.ts 투영으로 환산한 값이며, CCTV 설치점은 미확인.
+  { id: "sechon", name: "세천포구", area: "남원읍 위미리", group: "S", x: 64.42, y: 79.92, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-149.stream/playlist.m3u8" } },
   { id: "iho", name: "이호해변", area: "이호동", group: "J", x: 38.72, y: 21.03, label: true, thumb: true, source: { kind: "jejusi", point: 10019 } },
   { id: "dodu", name: "도두항", area: "도두동", group: "J", x: 41.28, y: 17.18, label: false, thumb: true, source: { kind: "jejusi", point: 10003 } },
   { id: "donghandugi", name: "동한두기", area: "용담동", group: "J", x: 45.12, y: 16.92, label: false, thumb: true, source: { kind: "jejusi", point: 10002 } },
@@ -73,10 +75,23 @@ export const SKY_CAMERAS: SkyCamera[] = [
   { id: "pyoseon", name: "표선항", area: "표선면", group: "S", x: 83.49, y: 65.64, label: true, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-77.stream/playlist.m3u8" } },
   { id: "onpyeong", name: "온평어촌계", area: "성산읍", group: "S", x: 90.81, y: 48.21, label: false, thumb: false, source: { kind: "http", url: "http://59.8.86.94:8080/media/api/v1/hls/vurix/192871/100011/0/1/1.m3u8" } },
   { id: "seopjikoji", name: "섭지코지", area: "성산읍", group: "S", x: 94.19, y: 38.97, label: true, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-116.stream/playlist.m3u8" } },
-  { id: "sinsan", name: "신산포구", area: "성산읍", group: "S", x: 92.33, y: 35.9, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-143.stream/playlist.m3u8" } },
+  { id: "sinsan", name: "신산포구", area: "성산읍", group: "S", x: 92.33, y: 35.9, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-143.stream/playlist.m3u8" } },
   { id: "seongsan", name: "성산일출봉", area: "성산읍", group: "S", x: 95.58, y: 31.28, label: true, thumb: true, source: { kind: "http", url: "http://123.140.197.51/stream/34/play.m3u8" } },
   { id: "seongsan_suma", name: "성산수마포구", area: "성산읍", group: "S", x: 93.14, y: 30.51, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-76.stream/playlist.m3u8" } },
   { id: "seongsan_hang", name: "성산항", area: "성산읍", group: "S", x: 94.07, y: 28.46, label: false, thumb: true, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-140.stream/playlist.m3u8" } },
+  // 2026-11-04 추가: 서귀포시 예전 서버(211.34.191.215)에서 송출 중인 바다 카메라 11대. 시청 deviceId 순서와 화면으로 짝지음(docs/seogwipo-sea-cctv-2026-11.md).
+  // 마라도 2대는 실제 위치가 지도 아래 밖이라 모슬포 남쪽 가장자리로 당겨 놓았다.
+  { id: "daepyeong", name: "대평포구", area: "안덕면 감산리", group: "S", x: 28.4, y: 89.6, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-197.stream/playlist.m3u8" } },
+  { id: "beophwan_sgp", name: "법환포구(서귀포시)", area: "법환동", group: "S", x: 45.4, y: 87.9, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/1-200.stream/playlist.m3u8" } },
+  { id: "marado_salledeok", name: "마라도 살레덕선착장", area: "대정읍 마라도", group: "S", x: 13.2, y: 98.6, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-21.stream/playlist.m3u8" } },
+  { id: "marado_dohang", name: "마라도 도항선선착장", area: "대정읍 마라도", group: "S", x: 14.6, y: 99.2, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-22.stream/playlist.m3u8" } },
+  { id: "songaksan", name: "송악산 선착장", area: "대정읍 상모리", group: "S", x: 19.8, y: 95.9, label: true, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-51.stream/playlist.m3u8" } },
+  { id: "yeongnak", name: "영락 해녀탈의장", area: "대정읍 영락리", group: "S", x: 9.8, y: 85.4, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-52.stream/playlist.m3u8" } },
+  { id: "mureung_haenyeo", name: "무릉 해녀탈의장", area: "대정읍 무릉리", group: "S", x: 8.4, y: 80.6, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-53.stream/playlist.m3u8" } },
+  { id: "mureung_dock", name: "무릉 선착장", area: "대정읍 무릉리", group: "S", x: 7.2, y: 79.2, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-54.stream/playlist.m3u8" } },
+  { id: "sinsan_dock", name: "신산 선착장", area: "성산읍 신산리", group: "S", x: 91.4, y: 37.2, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-55.stream/playlist.m3u8" } },
+  { id: "taeheung_east", name: "태흥포구 동편", area: "남원읍 태흥리", group: "S", x: 70.6, y: 78.4, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-56.stream/playlist.m3u8" } },
+  { id: "taeheung1", name: "태흥1리 어촌계", area: "남원읍 태흥리", group: "S", x: 72.1, y: 77.4, label: false, thumb: false, source: { kind: "http", url: "http://211.34.191.215:1935/live/11-57.stream/playlist.m3u8" } },
   { id: "halla_1100", name: "한라산 1100도로", area: "한라산", group: "H", x: 39.99, y: 56.62, label: false, thumb: true, source: { kind: "hls", url: "https://hallacctv.kr/live/cctv05.stream_360p/playlist.m3u8" } },
   { id: "halla_eoseungsaeng", name: "한라산 어승생악", area: "한라산", group: "H", x: 42.28, y: 48.79, label: false, thumb: true, source: { kind: "hls", url: "https://hallacctv.kr/live/cctv04.stream_360p/playlist.m3u8" } },
   { id: "halla_witse", name: "한라산 윗세오름", area: "한라산", group: "H", x: 42.66, y: 57.54, label: false, thumb: true, source: { kind: "hls", url: "https://hallacctv.kr/live/cctv03.stream_360p/playlist.m3u8" } },

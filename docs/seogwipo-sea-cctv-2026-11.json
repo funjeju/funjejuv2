@@ -1,0 +1,342 @@
+[
+  {
+    "deviceId": "10001",
+    "name": "대포포구",
+    "address": "제주특별자치도 서귀포시 대포동 2184-1",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "daepo",
+    "oldStream": "1-115",
+    "note": ""
+  },
+  {
+    "deviceId": "10002",
+    "name": "섭지코지",
+    "address": "제주특별자치도 서귀포시 성산읍 고성리 127-1",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "seopjikoji",
+    "oldStream": "1-116",
+    "note": ""
+  },
+  {
+    "deviceId": "10003",
+    "name": "성산항",
+    "address": "제주특별자치도 서귀포시 성산읍 성산리 347-9",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "seongsan_hang",
+    "oldStream": "1-140",
+    "note": ""
+  },
+  {
+    "deviceId": "10004",
+    "name": "신산포구",
+    "address": "제주특별자치도 서귀포시 성산읍 신산리 565-7",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "sinsan",
+    "oldStream": "1-143",
+    "note": ""
+  },
+  {
+    "deviceId": "10005",
+    "name": "태흥2리 남원하수처리장",
+    "address": "제주특별자치도 서귀포시 남원읍 태흥리 73",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "namwon_taeheung?",
+    "oldStream": "1-146?",
+    "note": "예전 '태흥포구'(1-146)가 10005인지 10037인지 화면 대조 필요"
+  },
+  {
+    "deviceId": "10006",
+    "name": "위미항",
+    "address": "제주특별자치도 서귀포시 남원읍 위미리 789-2",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "sechon?",
+    "oldStream": "1-149?",
+    "note": "예전 '세천포구'(위미리, 1-149)와 같은 카메라인지 화면 대조 필요"
+  },
+  {
+    "deviceId": "10007",
+    "name": "보목포구",
+    "address": "제주특별자치도 서귀포시 보목동 566-3",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "bomok",
+    "oldStream": "1-152",
+    "note": ""
+  },
+  {
+    "deviceId": "10008",
+    "name": "모슬포항",
+    "address": "제주특별자치도 서귀포시 대정읍 하모리 770-31",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "mosulpo",
+    "oldStream": "1-155",
+    "note": ""
+  },
+  {
+    "deviceId": "10010",
+    "name": "논짓물",
+    "address": "제주특별자치도 서귀포시 하예동 532-3",
+    "purpose": "물놀이안전",
+    "kind": "바다",
+    "funjejuId": "nonjitmul",
+    "oldStream": "1-193",
+    "note": ""
+  },
+  {
+    "deviceId": "10012",
+    "name": "속골",
+    "address": "제주특별자치도 서귀포시 호근동 1628",
+    "purpose": "물놀이안전",
+    "kind": "바다(계곡 하구)",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10014",
+    "name": "대평포구",
+    "address": "제주특별자치도 서귀포시 안덕면 감산리 982-3",
+    "purpose": "물놀이안전",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10015",
+    "name": "쇠소깍",
+    "address": "제주특별자치도 서귀포시 하효동 1460 인근",
+    "purpose": "물놀이안전",
+    "kind": "바다(하구)",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "예전 1-41 '쇠소깍 다리'는 하천감시 20012 쪽으로 보임"
+  },
+  {
+    "deviceId": "10016",
+    "name": "온평포구",
+    "address": "제주특별자치도 서귀포시 성산읍 온평리 1001-4",
+    "purpose": "물놀이안전",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "펀제주 onpyeong(온평어촌계)은 방재 vurix 카메라로 별개"
+  },
+  {
+    "deviceId": "10017",
+    "name": "법환포구",
+    "address": "제주특별자치도 서귀포시 법환동 1654(법환동 286-4)",
+    "purpose": "물놀이안전",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "펀제주 beophwan_po/eo는 방재 vurix 카메라로 별개"
+  },
+  {
+    "deviceId": "10018",
+    "name": "사계해안",
+    "address": "제주특별자치도 서귀포시 안덕면 사계리 2294-34",
+    "purpose": "물놀이안전",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10021",
+    "name": "서귀포항",
+    "address": "제주특별자치도 서귀포시 서홍동 718-3",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "seogwipo_hang2",
+    "oldStream": "1-34",
+    "note": ""
+  },
+  {
+    "deviceId": "10024",
+    "name": "신도포구",
+    "address": "제주특별자치도 서귀포시 대정읍 신도리 3076",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "sindo",
+    "oldStream": "1-71",
+    "note": ""
+  },
+  {
+    "deviceId": "10025",
+    "name": "하모1리 대정하수처리장",
+    "address": "제주특별자치도 서귀포시 대정읍 하모리 125(하모리 141)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "daejeong_hamo",
+    "oldStream": "1-73",
+    "note": "예전 이름 '대정 해안'"
+  },
+  {
+    "deviceId": "10026",
+    "name": "수마포구",
+    "address": "제주특별자치도 서귀포시 성산읍 성산리 399-81",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "seongsan_suma",
+    "oldStream": "1-76",
+    "note": ""
+  },
+  {
+    "deviceId": "10027",
+    "name": "표선 당케포구(어촌계)",
+    "address": "제주특별자치도 서귀포시 표선면 표선리 1-2",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "pyoseon",
+    "oldStream": "1-77",
+    "note": "펀제주 이름 '표선항'"
+  },
+  {
+    "deviceId": "10028",
+    "name": "마라도 살레덕선착장",
+    "address": "제주특별자치도 서귀포시 대정읍 가파리 585",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "지번상 가파리(마라도)"
+  },
+  {
+    "deviceId": "10029",
+    "name": "마라도 도항선선착장",
+    "address": "제주특별자치도 서귀포시 대정읍 가파리 581-9",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10030",
+    "name": "하모해수욕장",
+    "address": "제주특별자치도 서귀포시 대정읍 최남단해안로 160 (모슬포 크리에이티브 하우스 옥상)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "hamo_beach",
+    "oldStream": "11-24",
+    "note": ""
+  },
+  {
+    "deviceId": "10031",
+    "name": "화순금모래해변",
+    "address": "제주특별자치도 서귀포시 안덕면 화순해안로 69 옆(해변공연장 뒤)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": "hwasun",
+    "oldStream": "11-25",
+    "note": ""
+  },
+  {
+    "deviceId": "10032",
+    "name": "송악산 선착장",
+    "address": "제주특별자치도 서귀포시 대정읍 상모리 130-8",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10033",
+    "name": "영락 해녀탈의장",
+    "address": "제주특별자치도 서귀포시 대정읍 영락리 2169-4",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10034",
+    "name": "무릉 해녀탈의장",
+    "address": "제주특별자치도 서귀포시 대정읍 무릉리 4097(3881-7 인접)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10035",
+    "name": "무릉 선착장",
+    "address": "제주특별자치도 서귀포시 대정읍 무릉리 4097-38",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10036",
+    "name": "신산 선착장",
+    "address": "제주특별자치도 서귀포시 성산읍 신산리 565-7(573-1 앞)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "10004 신산포구와 지번 같음"
+  },
+  {
+    "deviceId": "10037",
+    "name": "태흥포구 동편",
+    "address": "제주특별자치도 서귀포시 남원읍 태흥리 364-3",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "10005 메모 참고"
+  },
+  {
+    "deviceId": "10038",
+    "name": "태흥1리 어촌계 옆",
+    "address": "제주특별자치도 서귀포시 남원읍 태흥리 1768-2(1225 앞)",
+    "purpose": "월파감시",
+    "kind": "바다",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": ""
+  },
+  {
+    "deviceId": "10009",
+    "name": "산짓물",
+    "address": "제주특별자치도 서귀포시 동홍동 1285-1",
+    "purpose": "물놀이안전",
+    "kind": "확인 필요",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "바다 인접 여부 지도 확인 필요"
+  },
+  {
+    "deviceId": "10020",
+    "name": "배릿내/중문천",
+    "address": "제주특별자치도 서귀포시 색달동 338-1(3381-8 인근)",
+    "purpose": "물놀이안전",
+    "kind": "확인 필요(하구)",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "예전 1-40 '중문천'은 하천감시 20011일 수 있음"
+  },
+  {
+    "deviceId": "20039",
+    "name": "표선해신사 세월교",
+    "address": "제주특별자치도 서귀포시 표선면 하천리 2601(63-3 인근)",
+    "purpose": "하천감시",
+    "kind": "확인 필요(하구)",
+    "funjejuId": null,
+    "oldStream": null,
+    "note": "천미천 하구, 표선해수욕장 인접"
+  }
+]

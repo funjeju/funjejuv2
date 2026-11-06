@@ -4,8 +4,9 @@ import { nearestMungCourse } from "./mung";
 /**
  * 평문 HTTP 원본(서귀포·공항·방재 vurix)은 HTTPS 페이지에서 재생할 수 없어서 HTTP로 뜨는 뷰어 새 창으로 연다.
  *
- * - NEXT_PUBLIC_HTTP_VIEWER_URL 이 있으면 정적 뷰어(http-viewer/index.html, GitHub Pages)를 쓴다.
+ * - NEXT_PUBLIC_HTTP_VIEWER_URL 이 있으면 정적 뷰어(http-viewer/index.html, 카페24 웹호스팅)를 쓴다.
  *   예: http://cctv-view.funjeju.com/  → ?src=<원본 m3u8>&name=<이름>
+ *   이 주소에는 SSL을 붙이면 안 된다(https가 열리면 크롬이 https로 바꿔 열어 영상이 막힘). http-viewer/README.md 참고.
  * - 없으면 지금 운영 중인 Vultr 뷰어로 연다. Vultr를 없애기 전에 반드시 위 변수를 설정할 것.
  */
 const VULTR_HTTP_WATCH = "http://141.164.53.216:8080/watch";

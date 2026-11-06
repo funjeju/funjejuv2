@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>서귀포 예전 서버 미확인 스트림 미리보기</title>
+<style>body{margin:0;background:#111;color:#eee;font:14px sans-serif}h1{font-size:16px;padding:12px}
+#g{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:6px;padding:6px}
+.c{position:relative;background:#222}.c b{position:absolute;left:0;top:0;background:#c00;padding:2px 8px;z-index:2}
+video{width:100%;aspect-ratio:16/9;display:block}.s{padding:4px 8px;color:#aaa;font-size:12px}</style>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script></head><body>
+<h1>211.34.191.215:1935 에서 응답하지만 이름이 없는 스트림 — 화면을 보고 어느 장소인지 적어 주세요 (PC에서 파일을 더블클릭해서 여세요)</h1>
+<div id="g"></div>
+<script>
+const ids=["1-32","1-61","1-81","1-82","1-84","1-197","1-200","11-21","11-22","11-51","11-52","11-53","11-54","11-55","11-56","11-57","22","61"];
+const g=document.getElementById("g");
+ids.forEach((id,i)=>{const d=document.createElement("div");d.className="c";d.innerHTML=`<b>${id}</b>`;
+const v=document.createElement("video");v.muted=true;v.controls=true;d.appendChild(v);
+const s=document.createElement("div");s.className="s";s.textContent="불러오는 중…";d.appendChild(s);g.appendChild(d);
+setTimeout(()=>{const url=`http://211.34.191.215:1935/live/${id}.stream/playlist.m3u8`;
+ if(window.Hls&&Hls.isSupported()){const h=new Hls({maxBufferLength:6});h.loadSource(url);h.attachMedia(v);
+  h.on(Hls.Events.MANIFEST_PARSED,()=>{v.play().catch(()=>{});s.textContent=url});
+  h.on(Hls.Events.ERROR,(e,x)=>{if(x.fatal)s.textContent="재생 실패: "+x.details})}
+ else{v.src=url;s.textContent=url}},i*700)});
+</script></body></html>

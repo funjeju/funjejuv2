@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@800&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+/* .ov·.mung-off 의 display 지정이 hidden 속성을 덮어써서 로딩·오류 안내가 영상 위에 계속 떠 있던 문제 방지 */
+[hidden]{display:none!important}
 html,body{height:100%;background:#03050A;color:#E8EEFF;overflow:hidden;font-family:Pretendard,-apple-system,BlinkMacSystemFont,'Malgun Gothic','Apple SD Gothic Neo',sans-serif}
 .app{position:fixed;inset:0;display:flex;flex-direction:column}
 header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.05)}
