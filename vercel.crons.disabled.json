@@ -1,6 +1,11 @@
 {
   "_comment": "비용 분석용으로 비활성화한 크론 백업 (2026-07-20). Vercel은 vercel.json에 미정의 속성을 허용하지 않아 이 파일로 분리 보관. 복원 시 아래 항목을 vercel.json의 crons 배열에 합칠 것. health-check는 CCTV 프록시 감시용 필수라 이미 복원되어 vercel.json에 있음.",
+  "_comment_health_check": "2026-11-06 health-check(1분 주기)도 비활성화. 감시 대상이던 Vultr CCTV 프록시를 없애면서 필요가 없어졌고, 켜 두면 매분 실패 기록을 Firestore에 쓰고 Lightsail 재부팅을 시도한다. Vultr 프록시를 다시 세우지 않는 한 복원하지 말 것.",
   "disabled_crons": [
+    {
+      "path": "/api/cron/health-check",
+      "schedule": "* * * * *"
+    },
     {
       "path": "/api/cron/webzine",
       "schedule": "0 1,6,11 * * *"
