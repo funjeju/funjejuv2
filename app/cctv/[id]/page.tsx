@@ -18,6 +18,11 @@ import { RecentGameBanner } from "@/components/cctv/RecentGameBanner";
 import { CctvLiveInfo } from "@/components/cctv/CctvLiveInfo";
 import { listGames } from "@/lib/spot";
 import { T } from "@/lib/i18n";
+import { SKY_ONLY_PUBLIC } from "@/constants/public-mode";
+import { SKY_CAMERAS, findSkyCamera } from "@/lib/sky/cameras";
+import { getSkyLocation } from "@/lib/sky/locations";
+import { SkyCameraPage } from "@/components/sky/SkyCameraPage";
+import { SkyFonts } from "@/components/sky/SkyFonts";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -27,7 +32,38 @@ const PROXY_BASE  = process.env.NEXT_PUBLIC_WORKER_URL || process.env.NEXT_PUBLI
 
 // 빌드 시 mockCctvs 기반으로 정적 생성 + 새 ID는 ISR로 동적 처리
 export async function generateStaticParams() {
+  // CCTV 전용 모드: 별자리 화면의 카메라 페이지(옛 주소 그대로)를 미리 만든다
+  if (SKY_ONLY_PUBLIC) return SKY_CAMERAS.map((c) => ({ id: c.id }));
   return mockCctvs.map((c) => ({ id: c.id }));
+}
+
+/**
+ * CCTV 전용 모드의 카메라 페이지 메타데이터.
+ * 예전에 색인된 제목 공식("{정식명}날씨·실시간 CCTV·가볼만한곳 | {시설} - 펀제주")을 그대로 써서 검색 순위를 이어받는다.
+ */
+async function skyMetadata(id: string): Promise<Metadata | null> {
+  const cam = findSkyCamera(id);
+  if (!cam) return null;
+  const loc = await getSkyLocation(id);
+  const url = `${SITE_URL}/cctv/${id}`;
+  const fac = loc?.facility?.[0] ?? cam.name;
+  const title = loc
+    ? `${loc.titleLead ?? loc.formal}날씨·실시간 CCTV·가볼만한곳 | ${fac} - 펀제주`
+    : `${cam.name} 실시간 CCTV - 펀제주`;
+  const description = loc
+    ? `${loc.region ? loc.region + " " : ""}${loc.formal}(${loc.short}) 실시간 CCTV로 지금 날씨·파도·바람을 확인하고, ${loc.formal} 가볼만한 곳·주변 여행 코스·가는 길까지 한눈에. 펀제주 ${fac} 실시간 화면.`
+    : `${cam.name} 실시간 CCTV로 지금 제주 날씨·파도·바람을 확인하세요.`;
+  const image = cam.thumb ? `${SITE_URL}/sky/cams/${id}.jpg` : `${SITE_URL}/og-image.png`;
+  return {
+    title: { absolute: title },
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, siteName: "FunJeju", locale: "ko_KR", type: "website", images: [{ url: image, alt: `${cam.name} 실시간 CCTV` }] },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
+    keywords: loc
+      ? [`${loc.formal}날씨`, `${loc.formal} cctv`, `${loc.short}날씨`, `${loc.short} cctv`, `${loc.formal} 실시간`, `${loc.formal} 가볼만한곳`, ...(loc.region ? [loc.region] : []), ...(loc.facility ?? []).map((f) => `${f} 실시간`)]
+      : [`${cam.name} cctv`, `${cam.name} 실시간`],
+  };
 }
 
 // 새 ID 동적 생성 허용 (404 안 나게)
@@ -57,6 +93,10 @@ async function loadCctv(id: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  if (SKY_ONLY_PUBLIC) {
+    const sky = await skyMetadata(id);
+    if (sky) return sky;
+  }
   const cctv = await loadCctv(id);
   if (!cctv) return { title: "CCTV 정보 없음 | FunJeju" };
 
@@ -96,6 +136,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CctvDetailPage({ params }: Props) {
   const { id } = await params;
+
+  // CCTV 전용 모드: 별자리 디자인 카메라 페이지 (아래 원래 페이지 코드는 SKY_ONLY_PUBLIC=false 일 때 그대로 쓰인다)
+  if (SKY_ONLY_PUBLIC) {
+    const cam = findSkyCamera(id);
+    if (!cam) notFound();
+    return (
+      <>
+        <SkyFonts />
+        <SkyCameraPage cam={cam} loc={await getSkyLocation(id)} />
+      </>
+    );
+  }
+
   const cctv = await loadCctv(id);
   if (!cctv) notFound();
 

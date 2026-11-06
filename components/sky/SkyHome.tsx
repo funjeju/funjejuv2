@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SKY_CAMERAS, skyCameraSub, type SkyCamera, type SkyGroup } from "@/lib/sky/cameras";
 import { JEJU_ISLANDS, JEJU_OUTLINE, JEJU_VIEWBOX } from "@/lib/sky/outline";
-import { openWatch, watchUrl } from "@/lib/sky/watch";
+import { openWatch } from "@/lib/sky/watch";
 import { PROMO_CONTACT, PROMO_MAILTO } from "@/lib/sky/contact";
 import { MUNG_COURSES, mungHomeUrl } from "@/lib/sky/mung";
 
@@ -124,7 +124,7 @@ export function SkyHome() {
       </header>
 
       <section id="sky" className="relative flex flex-col gap-10 px-5 pt-10 md:px-14 md:pt-14">
-        <div className="flex flex-wrap items-end justify-between gap-10">
+        <div className="flex flex-wrap items-center justify-between gap-10">
           <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-6">
             <p className="sky-mono text-xs tracking-[0.32em] text-[#8FB4FF]">33.38°N · 126.53°E · LIVE</p>
             <h1 className="sky-serif text-5xl font-extrabold leading-[1.08] tracking-[-0.02em] text-[#F6F8FF] md:text-[84px]">
@@ -134,8 +134,29 @@ export function SkyHome() {
               별 하나가 카메라 하나입니다. 별을 누르면 지금 그 바다와 하늘이 새 창에 뜹니다.
             </p>
           </div>
+          <div className="flex w-full flex-[0_1_460px] flex-col gap-4">
+          {/* 제주멍 — 첫 화면에서 바로 보이는 큰 사진 카드 */}
+          <a
+            href={mungHomeUrl("hero")}
+            target="_blank"
+            rel="noopener"
+            className="sky-mung-glow group flex flex-col overflow-hidden rounded-[22px] border-2 border-[#9FE3BE] bg-[#071410]"
+          >
+            <span className="relative block h-[150px] md:h-[170px]">
+              <Image src="/sky/mung/geomun.jpg" alt="제주멍 거문오름 숲길" fill priority sizes="460px" className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+              <span aria-hidden="true" className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(7,20,16,0) 35%, rgba(7,20,16,0.95))" }} />
+              <span className="absolute left-4 top-4 rounded-full bg-[#9FE3BE] px-3 py-1 text-[12px] font-bold text-[#06140D]">NEW · 제주멍</span>
+              <span className="sky-serif absolute bottom-3 left-5 text-[32px] font-extrabold leading-none text-white md:text-[36px]">제주에서 멍때리기</span>
+            </span>
+            <span className="flex flex-col gap-3 px-5 pb-5 pt-3">
+              <span className="text-[15px] leading-[1.6] text-[#D4F2E2]">CCTV 화면 너머, 실제 제주 숲길·바닷길을 천천히 걸어보세요. 해먹에서 쉬어 가도 돼요.</span>
+              <span className="flex h-[54px] items-center justify-between rounded-full bg-[#9FE3BE] px-6 text-[17px] font-extrabold text-[#06140D] group-hover:bg-[#B8EED0]">
+                <span>제주멍 산책하러 가기</span><span aria-hidden="true">↗</span>
+              </span>
+            </span>
+          </a>
           {/* 업소 홍보 — 별자리 흐름을 방해하지 않게 차분한 테두리 버튼, 메일 주소는 바로 보이게 */}
-          <div className="flex flex-[0_1_420px] flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
             <span className="text-xs tracking-[0.14em] text-[#C9B98F]">뷰맛집 사장님께</span>
             <Link
               href="/promo"
@@ -149,6 +170,7 @@ export function SkyHome() {
               <span className="sky-mono tracking-[0.02em]">{PROMO_CONTACT.email}</span>
             </a>
             <span className="px-1 text-xs leading-[1.7] text-[#8E97B5]">장비와 위치는 사장님이, 365일 24시간 송출은 펀제주가 책임집니다.</span>
+          </div>
           </div>
         </div>
 
@@ -297,9 +319,13 @@ export function SkyHome() {
           {cards.map((c, i) => (
             <a
               key={c.id}
-              href={watchUrl(c)}
-              target={`funjeju_cctv_${c.id}`}
-              onClick={(e) => { e.preventDefault(); openWatch(c); }}
+              href={`/cctv/${c.id}`}
+              onClick={(e) => {
+                // 평소처럼 클릭하면 영상 새 창. 링크 주소는 카메라 페이지(검색엔진이 따라가는 길), Ctrl·가운데 클릭은 그 페이지로
+                if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+                e.preventDefault();
+                openWatch(c);
+              }}
               className="group relative block overflow-hidden rounded-2xl border border-[#1A2238] bg-[#0A0F1E] text-white"
               style={{ aspectRatio: "16 / 10" }}
             >

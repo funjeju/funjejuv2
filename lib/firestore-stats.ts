@@ -381,8 +381,16 @@ const SECTION_RULES: { key: string; label: string; test: (p: string) => boolean 
   { key: "ai",       label: "제주여행 AI",   test: (p) => /^\/(jeju-ai|trip-ai|chat)/.test(p) },
   { key: "feed",     label: "라이브 피드",   test: (p) => p.startsWith("/feed") },
   { key: "youtube",  label: "제주tube",      test: (p) => p.startsWith("/youtube") },
+  { key: "watch",    label: "CCTV 영상 창",  test: (p) => p.startsWith("/watch") },
+  { key: "promo",    label: "업소 홍보",     test: (p) => p.startsWith("/promo") },
   { key: "home",     label: "홈",            test: (p) => p === "/" },
 ];
+
+/** 섹션 key → 이름 (요약 문서에 남은 key를 화면 이름으로 바꿀 때) */
+export const SECTION_LABELS: Record<string, string> = {
+  ...Object.fromEntries(SECTION_RULES.map((r) => [r.key, r.label])),
+  etc: "기타",
+};
 
 export type SectionStat = { key: string; label: string; views: number; uniqueUsers: number };
 
@@ -441,8 +449,114 @@ async function computeDailyRollup(date: string): Promise<DailyRollup> {
  *  - 오늘 날짜: 계속 늘어나므로 5분 TTL로만 재계산한다.
  * 워밍업 후 호출당 읽기는 요약 7건 수준으로 떨어진다.
  */
-export async function getSectionStats(days = 7): Promise<SectionStat[]> {
+/** 하루치 요약을 stats_daily에서 꺼내고, 없거나(또는 오늘치 TTL 만료) 확정 전이면 원본에서 다시 만든다 */
+async function loadDailyRollup(date: string, today: string): Promise<DailyRollup> {
+  const ref = getAdminDb().collection("stats_daily").doc(date);
+  try {
+    const snap = await ref.get();
+    if (snap.exists) {
+      const cached = snap.data() as DailyRollup;
+      // 확정된 과거 요약은 그대로 재사용
+      if (cached.final) return cached;
+      // 오늘치는 TTL 내라면 재사용
+      if (date === today && Date.now() - (cached.computedAt ?? 0) < TODAY_ROLLUP_TTL_MS) {
+        return cached;
+      }
+    }
+  } catch { /* 요약 읽기 실패 시 원본에서 재계산 */ }
+
+  const fresh = await computeDailyRollup(date);
+  // 저장 실패해도 집계 자체는 계속 진행
+  await ref.set(fresh).catch(() => { /* ignore */ });
+  return fresh;
+}
+
+// ── 체류시간 ─────────────────────────────────────────
+/** 한 번에 받는 최대 초 — 탭을 띄워 두고 자리를 뜬 경우가 평균을 끌어올리지 않게 */
+const DWELL_CAP_SEC = 1800;
+
+/**
+ * 페이지를 실제로 띄워 둔 시간(탭이 앞에 있던 시간)을 하루 문서 하나에 더한다.
+ * `stats_dwell/{date}` = { sec, n, u: { userId: sec }, sections: { key: { sec, n } } } — 페이지를 떠날 때 1회 쓰기.
+ * u는 방문자별 합계라, 평균을 '그날 시간을 남긴 방문자 수'로 나눌 수 있다 (하루 수천 명이면 필드 한도 2만 안).
+ */
+export async function logDwell(path: string, seconds: number, userId?: string): Promise<void> {
+  const sec = Math.min(DWELL_CAP_SEC, Math.round(seconds));
+  if (!(sec >= 1)) return;
+  const key = sectionKeyFor(path);
+  const id = userId && /^[A-Za-z0-9_-]{6,64}$/.test(userId) ? userId : null;
+  await getAdminDb().collection("stats_dwell").doc(todayDate()).set({
+    sec: FieldValue.increment(sec),
+    n: FieldValue.increment(1),
+    ...(id ? { u: { [id]: FieldValue.increment(sec) } } : {}),
+    sections: { [key]: { sec: FieldValue.increment(sec), n: FieldValue.increment(1) } },
+  }, { merge: true });
+}
+
+type DwellDoc = {
+  sec?: number;
+  n?: number;
+  u?: Record<string, number>;
+  sections?: Record<string, { sec?: number; n?: number }>;
+};
+
+export type DailySectionStat = {
+  date: string;
+  views: number;
+  /** 그날 순방문자(섹션 합집합) */
+  visitors: number;
+  /** 시간을 남긴 방문자들이 페이지를 띄워 둔 시간의 합(초). 기록 전 날짜는 null */
+  dwellSec: number | null;
+  /** 그날 체류시간을 남긴 방문자 수 — 평균 체류 = dwellSec / dwellVisitors */
+  dwellVisitors: number;
+  /** 구역별 dwellSec/dwellViews = 한 번 볼 때 평균 */
+  sections: Record<string, { views: number; visitors: number; dwellSec: number; dwellViews: number }>;
+};
+
+/**
+ * 최근 N일 날짜별·섹션별 집계 (오래된 날짜부터). 제주멍 관리자 화면의 펀제주 탭이 쓴다.
+ * getSectionStats와 같은 stats_daily 요약을 읽으므로 워밍업 후 호출당 읽기는 N건 수준.
+ */
+export async function getDailySectionStats(days = 14): Promise<DailySectionStat[]> {
+  const today = todayDate();
+  const dates: string[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    dates.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+  }
   const db = getAdminDb();
+  const [rollups, dwells] = await Promise.all([
+    Promise.all(dates.map((date) => loadDailyRollup(date, today))),
+    db.getAll(...dates.map((date) => db.collection("stats_dwell").doc(date))),
+  ]);
+  return rollups.map((r, i) => {
+    const dwell = dwells[i].exists ? (dwells[i].data() as DwellDoc) : null;
+    const all = new Set<string>();
+    const sections: DailySectionStat["sections"] = {};
+    let views = 0;
+    for (const [key, v] of Object.entries(r.sections ?? {})) {
+      views += v.views;
+      for (const u of v.users ?? []) all.add(u);
+      const d = dwell?.sections?.[key];
+      sections[key] = { views: v.views, visitors: (v.users ?? []).length, dwellSec: d?.sec ?? 0, dwellViews: d?.n ?? 0 };
+    }
+    // 방문자 번호가 붙은 기록만 평균에 쓴다 (번호 없이 들어온 초기 기록은 나눌 사람 수를 몰라서 뺀다)
+    const perUser = Object.values(dwell?.u ?? {});
+    const dwellSec = perUser.length ? perUser.reduce((a, b) => a + b, 0) : null;
+    return { date: r.date, views, visitors: all.size, dwellSec, dwellVisitors: perUser.length, sections };
+  });
+}
+
+/** 최근 몇 분 안에 페이지를 연 순방문자 수 — 공개 화면은 시청 ping이 없어서 '지금 접속'을 이것으로 본다 */
+export async function getRecentVisitorCount(minutes = 5): Promise<number> {
+  const since = new Date(Date.now() - minutes * 60000);
+  const snap = await getAdminDb().collection("stats_pageviews")
+    .where("visitedAt", ">=", since)
+    .limit(2000)
+    .get();
+  return new Set(snap.docs.map((d) => d.get("userId") as string)).size;
+}
+
+export async function getSectionStats(days = 7): Promise<SectionStat[]> {
   const today = todayDate();
 
   // 대상 날짜 목록 (오늘 포함 최근 N일)
@@ -451,28 +565,7 @@ export async function getSectionStats(days = 7): Promise<SectionStat[]> {
     dates.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
   }
 
-  const rollups = await Promise.all(
-    dates.map(async (date) => {
-      const ref = db.collection("stats_daily").doc(date);
-      try {
-        const snap = await ref.get();
-        if (snap.exists) {
-          const cached = snap.data() as DailyRollup;
-          // 확정된 과거 요약은 그대로 재사용
-          if (cached.final) return cached;
-          // 오늘치는 TTL 내라면 재사용
-          if (date === today && Date.now() - (cached.computedAt ?? 0) < TODAY_ROLLUP_TTL_MS) {
-            return cached;
-          }
-        }
-      } catch { /* 요약 읽기 실패 시 원본에서 재계산 */ }
-
-      const fresh = await computeDailyRollup(date);
-      // 저장 실패해도 집계 자체는 계속 진행
-      await ref.set(fresh).catch(() => { /* ignore */ });
-      return fresh;
-    }),
-  );
+  const rollups = await Promise.all(dates.map((date) => loadDailyRollup(date, today)));
 
   // 일별 요약 병합 — views는 합산, users는 합집합(재방문 중복 제거)
   const agg = new Map<string, { views: number; users: Set<string> }>();
